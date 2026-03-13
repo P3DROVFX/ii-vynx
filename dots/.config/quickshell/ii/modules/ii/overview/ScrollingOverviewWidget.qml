@@ -17,11 +17,10 @@ Item {
     required property var panelWindow
 
     readonly property bool hyprscrollingEnabled: true //FIXME
-    readonly property bool useWorkspaceMap: Config.options.overview.useWorkspaceMap
     readonly property list<int> workspaceMap: Config.options.overview.workspaceMap
     readonly property string backgroundStyle: Config.options.overview.scrollingStyle.backgroundStyle
 
-    property int workspaceOffset: useWorkspaceMap ? workspaceMap[monitorIndex] : 0
+    property int workspaceOffset: workspaceMap[monitorIndex]
 
     property int windowRounding: Appearance.rounding.normal 
     readonly property int rows: 10 
@@ -84,6 +83,7 @@ Item {
     onScrollWindowChanged: scrollX = scrollWindow * workspaceImplicitWidth
 
     Component.onCompleted: {
+        // console.log("monitorIndex:", monitorIndex, "workspaceMap:", workspaceMap, "workspaceOffset:", workspaceOffset)
         updateScrollProps()
         HyprlandData.windowListChanged()
     }
