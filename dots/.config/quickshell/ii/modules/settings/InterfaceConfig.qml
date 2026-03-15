@@ -14,20 +14,6 @@ ContentPage {
     forceWidth: true
 
     ContentSection {
-        icon: "model_training"
-        title: Translation.tr("AI")
-
-        ConfigSwitch {
-            buttonIcon: "buttons_alt"
-            text: Translation.tr("Show provider and model buttons")
-            checked: Config.options.sidebar.ai.showProviderAndModelButtons
-            onCheckedChanged: {
-                Config.options.sidebar.ai.showProviderAndModelButtons = checked;
-            }
-        }
-    }
-
-    ContentSection {
         icon: "keyboard"
         title: Translation.tr("Cheat sheet")
 
@@ -159,6 +145,33 @@ ContentPage {
                 Config.options.dock.monochromeIcons = checked;
             }
         }
+    }
+
+    ContentSection {
+        icon: "switch_access"
+        title: Translation.tr("Extra")
+
+        ConfigSwitch {
+            buttonIcon: "buttons_alt"
+            text: Translation.tr("Show AI provider and model buttons")
+            checked: Config.options.sidebar.ai.showProviderAndModelButtons
+            onCheckedChanged: {
+                Config.options.sidebar.ai.showProviderAndModelButtons = checked;
+            }
+        }
+
+        ConfigSwitch {
+            buttonIcon: "crop_square"
+            text: Translation.tr("Shell no rounding mode")
+            checked: Config.options.appearance.noRoundingMode
+            onCheckedChanged: {
+                Config.options.appearance.noRoundingMode = checked;
+            }
+            StyledToolTip {
+                text: Translation.tr("HIGHLY EXPERIMENTAL")
+            }
+        }
+    
     }
 
     ContentSection {

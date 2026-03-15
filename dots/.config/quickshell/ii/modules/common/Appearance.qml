@@ -199,16 +199,16 @@ Singleton {
     }
 
     rounding: QtObject {
-        property int unsharpen: 2
-        property int unsharpenmore: 6
-        property int verysmall: 8
-        property int small: 12
-        property int normal: 17
-        property int large: 23
-        property int verylarge: 30
-        property int full: 9999
+        property int unsharpen: Config.options.appearance.noRoundingMode ? 0 : 2
+        property int unsharpenmore: Config.options.appearance.noRoundingMode ? 0 : 6
+        property int verysmall: Config.options.appearance.noRoundingMode ? 0 : 8
+        property int small: Config.options.appearance.noRoundingMode ? 0 : 12
+        property int normal: Config.options.appearance.noRoundingMode ? 0 : 17
+        property int large: Config.options.appearance.noRoundingMode ? 0 : 23
+        property int verylarge: Config.options.appearance.noRoundingMode ? 0 : 30
+        property int full: Config.options.appearance.noRoundingMode ? 0 : 9999
         property int screenRounding: large
-        property int windowRounding: 18
+        property int windowRounding: Config.options.appearance.noRoundingMode ? 0 : 18
     }
 
     font: QtObject {
