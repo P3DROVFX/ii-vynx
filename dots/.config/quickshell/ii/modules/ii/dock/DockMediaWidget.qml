@@ -279,28 +279,6 @@ Item {
         }
 
         focus: true
-        Keys.onPressed: (event) => {
-            if (event.key === Qt.Key_Space) {
-                root.currentPlayer?.togglePlaying()
-                event.accepted = true
-            }
-        }
-
-        // Middle-click to toggle play, back/forward buttons to skip tracks
-        MouseArea {
-            anchors.fill: parent
-            acceptedButtons: Qt.MiddleButton | Qt.BackButton | Qt.ForwardButton | Qt.RightButton
-            cursorShape: Qt.PointingHandCursor
-            onPressed: (event) => {
-                if (event.button === Qt.MiddleButton) {
-                    root.currentPlayer?.togglePlaying()
-                } else if (event.button === Qt.BackButton) {
-                    root.currentPlayer?.previous()
-                } else if (event.button === Qt.ForwardButton || event.button === Qt.RightButton) {
-                    root.currentPlayer?.next()
-                }
-            }
-        }
 
         // ── Horizontal layout ─────────────────────────────────────────────
         Item {
