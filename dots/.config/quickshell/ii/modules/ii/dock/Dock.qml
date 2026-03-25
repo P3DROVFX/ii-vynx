@@ -70,8 +70,15 @@ Scope {
 
             readonly property bool isVertical: dock.isVertical
             readonly property real dockThickness: isVertical ? dockRoot.sizing.dockWidth : dockRoot.sizing.dockHeight
-            property bool reveal: dock.pinned || (Config.options?.dock.hoverToReveal && dockMouseArea.containsMouse) || (dockContent.requestDockShow) || (!ToplevelManager.activeToplevel?.activated)
+            property bool reveal: dock.pinned || (Config.options?.dock.hoverToReveal && dockMouseArea.containsMouse) || (dockContent.requestDockShow) || (workspaceEmpty)
             property bool positionChanging: false
+
+            // TODO: check for multi-monitor situations
+            readonly property bool workspaceEmpty: {
+                const wsId = HyprlandData.activeWorkspace?.id ?? -1
+                if (wsId === -1) return true
+                return HyprlandData.hyprlandClientsForWorkspace(wsId).length === 0
+            }
 
             readonly property var sizing: dock.computeSizes({
                 gapsOut: Appearance.sizes.hyprlandGapsOut,
