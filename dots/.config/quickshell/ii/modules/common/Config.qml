@@ -304,6 +304,7 @@ Singleton {
                 property JsonObject mediaPlayer: JsonObject {
                     property bool useFixedSize: false
                     property int customSize: 250
+                    property int maxSize: 400
                     property JsonObject lyrics: JsonObject {
                         property bool enable: false
                         property int customSize: 400

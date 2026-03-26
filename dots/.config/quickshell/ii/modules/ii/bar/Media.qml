@@ -27,7 +27,7 @@ Item {
     readonly property string lyricsStyle: Config.options.bar.mediaPlayer.lyrics.style
 
     property int textMetricsSpacing: 50 // text metrics returns width without spacing
-    property int textMetricsAdvance: Math.min(textMetrics.advanceWidth + textMetricsSpacing, 400)
+    property int textMetricsAdvance: Math.min(textMetrics.advanceWidth + textMetricsSpacing, Config.options.bar.mediaPlayer.maxSize)
     implicitWidth: LyricsService.hasSyncedLines && root.lyricsEnabled ? lyricsCustomSize : useFixedSize ? customSize : textMetricsAdvance
     implicitHeight: Appearance.sizes.barHeight
 
