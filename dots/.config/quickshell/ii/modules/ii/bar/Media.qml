@@ -38,10 +38,7 @@ Item {
     // Base width matches the original layout (circle on the left).
     // When artwork is enabled we swap: left circle area -> left artwork area,
     // so we adjust by (artworkBoxSize - progressButtonSize) instead of adding artworkBoxSize.
-    implicitWidth: (LyricsService.hasSyncedLines && root.lyricsEnabled
-                     ? lyricsCustomSize
-                     : useFixedSize ? customSize : textMetricsAdvance)
-                    + (artworkEnabled ? Math.max(artworkBoxSize - progressButtonSize, 0) + artworkContentPadding * 2 : 0)
+    implicitWidth: LyricsService.hasSyncedLines && root.lyricsEnabled ? lyricsCustomSize : useFixedSize ? customSize : textMetricsAdvance
     implicitHeight: Appearance.sizes.barHeight
 
     Behavior on implicitWidth {
