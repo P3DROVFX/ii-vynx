@@ -33,7 +33,7 @@ Item {
     readonly property int artworkBoxSize: artworkEnabled ? Math.min(25, Appearance.sizes.barHeight - 8) : 0
     readonly property int artworkContentPadding: artworkEnabled ? 6 : 0
 
-    property int textMetricsSpacing: 50 // text metrics returns width without spacing
+    property int textMetricsSpacing: artworkEnabled ? 70 : 50 // text metrics returns width without spacing
     property int textMetricsAdvance: Math.min(textMetrics.advanceWidth + textMetricsSpacing, Config.options.bar.mediaPlayer.maxSize)
     // Base width matches the original layout (circle on the left).
     // When artwork is enabled we swap: left circle area -> left artwork area,
@@ -45,7 +45,6 @@ Item {
     implicitHeight: Appearance.sizes.barHeight
 
     Behavior on implicitWidth {
-        enabled: !artworkEnabled
         animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(root)
     }
 
@@ -160,89 +159,32 @@ Item {
         text: `${cleanedTitle}${activePlayer?.trackArtist ? ' • ' + activePlayer.trackArtist : ''}`
     }
 
-    StyledText { // No artwork: restore original centered title layout
-        visible: (!LyricsService.hasSyncedLines || !lyricsEnabled) && !artworkEnabled
-        width: parent.width - mediaCircProgSlot.width * 2
+    StyledText {
+        visible: (!LyricsService.hasSyncedLines || !lyricsEnabled)
         anchors.horizontalCenter: parent.horizontalCenter
-        anchors.horizontalCenterOffset: mediaCircProgSlot.width / 2
+        anchors.horizontalCenterOffset: artworkEnabled ? 0 : mediaCircProgSlot.width / 2
         anchors.verticalCenter: parent.verticalCenter
-
         horizontalAlignment: Text.AlignHCenter
-        elide: Text.ElideRight // Truncates the text on the right
+        width: artworkEnabled ? parent.implicitWidth - (artworkItem.width + mediaCircProgSlot.width + artworkContentPadding) : parent.implicitWidth - mediaCircProgSlot.width
+        elide: Text.ElideRight
         color: Appearance.colors.colOnLayer1
         text: `${cleanedTitle}${activePlayer?.trackArtist ? ' • ' + activePlayer.trackArtist : ''}`
     }
 
-    StyledText { // Artwork enabled: title is between art and the right-side button
-        visible: (!LyricsService.hasSyncedLines || !lyricsEnabled) && artworkEnabled
-        anchors.verticalCenter: parent.verticalCenter
-        anchors.left: artworkItem.right
-        anchors.right: mediaCircProgSlot.left
-        anchors.leftMargin: artworkContentPadding
-        anchors.rightMargin: artworkContentPadding
+    Loader {
+        id: lyricsItemLoader 
+        active: lyricsEnabled
 
-        horizontalAlignment: Text.AlignHCenter
-        elide: Text.ElideRight // Truncates the text on the right
-        color: Appearance.colors.colOnLayer1
-        text: `${cleanedTitle}${activePlayer?.trackArtist ? ' • ' + activePlayer.trackArtist : ''}`
-    }
-
-    Loader { // Lyrics with artwork: stretch between art and the right-side button
-        id: lyricsItemLoaderWithArt
-        active: lyricsEnabled && artworkEnabled
-
-        anchors.top: parent.top
-        anchors.bottom: parent.bottom
-        anchors.left: artworkItem.right
-        anchors.right: mediaCircProgSlot.left
-        anchors.leftMargin: artworkContentPadding
-        anchors.rightMargin: artworkContentPadding
-
-        sourceComponent: Item {
-            id: lyricsItem
-            visible: lyricsEnabled
-            anchors.centerIn: parent
-
-            Loader {
-                active: lyricsStyle == "static"
-                anchors.fill: parent
-                anchors.centerIn: parent
-                sourceComponent: LyricsStatic {
-                    anchors.fill: parent
-                    anchors.centerIn: parent
-                    horizontalAlignment: Text.AlignHCenter
-                }
-            }
-
-            Loader {
-                active: lyricsStyle == "scroller"
-                anchors.fill: parent
-                sourceComponent: LyricScroller {
-                    id: lyricScroller
-                    anchors.fill: parent
-                    visible: lyricsStyle == "scroller" && LyricsService.hasSyncedLines
-                    defaultLyricsSize: Appearance.font.pixelSize.smallest
-                    useGradientMask: root.useGradientMask
-                    halfVisibleLines: 1
-                    downScale: 0.98
-                    rowHeight: 10
-                    gradientDensity: 0.25
-                }
-            }
-        }
-    }
-
-    Loader { // Lyrics without artwork: restore original anchors
-        id: lyricsItemLoaderNoArt
-        active: lyricsEnabled && !artworkEnabled
-        width: parent.width - mediaCircProgSlot.width * 2
+        width: artworkEnabled ? parent.width - (artworkItem.width + mediaCircProg.implicitSize * 2) : parent.width - mediaCircProg.implicitSize * 2
         height: parent.height
+        
         anchors.left: parent.left
-        anchors.leftMargin: mediaCircProgSlot.width * 1.5
+        anchors.leftMargin: artworkEnabled ? mediaCircProg.implicitSize * 1.5 + artworkContentPadding : mediaCircProg.implicitSize * 1.5
 
         sourceComponent: Item {
             id: lyricsItem
             visible: lyricsEnabled
+            
             anchors.centerIn: parent
 
             Loader {
@@ -261,8 +203,10 @@ Item {
                 anchors.fill: parent
                 sourceComponent: LyricScroller {
                     id: lyricScroller
+                    
                     anchors.fill: parent
                     visible: lyricsStyle == "scroller" && LyricsService.hasSyncedLines
+                    
                     defaultLyricsSize: Appearance.font.pixelSize.smallest
                     useGradientMask: root.useGradientMask
                     halfVisibleLines: 1
@@ -271,7 +215,6 @@ Item {
                     gradientDensity: 0.25
                 }
             }
-        }
+        }   
     }
-
 }
