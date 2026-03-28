@@ -307,6 +307,20 @@ ContentPage {
                 Config.options.bar.mediaPlayer.lyrics.customSize = value;
             }
         }
+
+        ContentSubsection {
+            title: Translation.tr("Artwork")
+
+            ConfigSwitch {
+                enabled: !Config.options.bar.vertical
+                buttonIcon: "image"
+                text: Translation.tr("Enable artwork")
+                checked: Config.options.bar.mediaPlayer.artwork.enable
+                onCheckedChanged: {
+                    Config.options.bar.mediaPlayer.artwork.enable = checked;
+                }
+            }
+        }
         
         ContentSubsection {
             title: Translation.tr("Lyrics")
