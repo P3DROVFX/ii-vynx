@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+
+# Resolve the real path of the script
+SOURCE="${BASH_SOURCE[0]}"
+while [ -L "$SOURCE" ]; do
+    DIR="$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )"
+    SOURCE="$(readlink "$SOURCE")"
+    [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE"
+done
+DIR_OF_CLI="$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )"
+
+BASE_DIR="$(cd "$DIR_OF_CLI/../.." && pwd)"
+LIB_DIR="$BASE_DIR/sdata/cli/lib"
+
+# Global Verbose Flag
+export VERBOSE=false
+
+TEMP_ARGS=()
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -v|--verbose)
+            export VERBOSE=true
+            shift
+            ;;
+        *)
+            TEMP_ARGS+=("$1")
+            shift
+            ;;
+    esac
+done
+
+set -- "${TEMP_ARGS[@]}"
+
+# Colors
+BLUE='\033[0;34m'
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+NC='\033[0m'
+
+# Check if command was provided
+if [ -z "$1" ]; then
+    echo -e "${BLUE}Vynx CLI${NC} - Missing command."
+    echo "Usage: vynx [-v] {run|restart|update|remove-cli|hyprset}"
+    exit 1
+fi
+
+COMMAND=$1
+shift
+
+# Subcommand execution
+case "$COMMAND" in
+    run|restart|update|remove-cli|hyprset)
+        if [ -f "$LIB_DIR/${COMMAND}.sh" ]; then
+            source "$LIB_DIR/${COMMAND}.sh" "$@"
+        else
+            echo -e "${RED}Error: Subcommand '${COMMAND}' not found at $LIB_DIR/${COMMAND}.sh${NC}"
+            exit 1
+        fi
+        ;;
+    *)
+        echo -e "${RED}Invalid command: $COMMAND${NC}"
+        exit 1
+        ;;
+esac
