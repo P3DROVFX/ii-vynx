@@ -27,17 +27,12 @@ Item {
     readonly property string lyricsStyle: Config.options.bar.mediaPlayer.lyrics.style
     readonly property bool artworkEnabled: Config.options.bar.mediaPlayer.artwork.enable
 
-    // Keep sizing self-contained so text/lyrics can anchor between art and the right-side button.
-    readonly property int progressButtonSize: 20 // Must match ClippedFilledCircularProgress.implicitSize
-    // Keep artwork small enough to never dominate the bar height/width.
+    readonly property int progressButtonSize: 20
     readonly property int artworkBoxSize: artworkEnabled ? Math.min(25, Appearance.sizes.barHeight - 8) : 0
     readonly property int artworkContentPadding: artworkEnabled ? 6 : 0
 
     property int textMetricsSpacing: artworkEnabled ? 70 : 50 // text metrics returns width without spacing
     property int textMetricsAdvance: Math.min(textMetrics.advanceWidth + textMetricsSpacing, Config.options.bar.mediaPlayer.maxSize)
-    // Base width matches the original layout (circle on the left).
-    // When artwork is enabled we swap: left circle area -> left artwork area,
-    // so we adjust by (artworkBoxSize - progressButtonSize) instead of adding artworkBoxSize.
     implicitWidth: LyricsService.hasSyncedLines && root.lyricsEnabled ? lyricsCustomSize : useFixedSize ? customSize : textMetricsAdvance
     implicitHeight: Appearance.sizes.barHeight
 
@@ -49,9 +44,7 @@ Item {
         LyricsService.initiliazeLyrics()
     }
 
-    readonly property string artSource: activePlayer?.trackArtUrl && activePlayer.trackArtUrl !== ""
-                                     ? activePlayer.trackArtUrl
-                                     : ""
+    readonly property string artSource: activePlayer?.trackArtUrl && activePlayer.trackArtUrl !== "" ? activePlayer.trackArtUrl : ""
 
     Item {
         id: artworkItem
@@ -82,7 +75,7 @@ Item {
                     maskSource: Rectangle {
                         width: artworkItem.width
                         height: artworkItem.height
-                        radius: 6
+                        radius: Appearance.rounding.full
                     }
                 }
             }
