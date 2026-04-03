@@ -17,7 +17,7 @@ Item {
 
     RowLayout {
         id: resourceRowLayout
-        spacing: 2
+        spacing: 4
         x: shown ? 0 : -resourceRowLayout.width
         anchors {
             verticalCenter: parent.verticalCenter
@@ -49,9 +49,10 @@ Item {
             }
         }
 
+        //COLOQUEI +5 AQUI PARA DAR ESPAÇO PRO % FICAR INTEIRO
         Item {
             Layout.alignment: Qt.AlignVCenter
-            implicitWidth: fullPercentageTextMetrics.width
+            implicitWidth: fullPercentageTextMetrics.width + 5
             implicitHeight: percentageText.implicitHeight
 
             TextMetrics {
@@ -65,7 +66,7 @@ Item {
                 anchors.centerIn: parent
                 color: Appearance.colors.colOnLayer1
                 font.pixelSize: Appearance.font.pixelSize.small
-                text: `${Math.round(percentage * 100).toString()}`
+                text: `${Math.round(percentage * 100).toString()}%`
             }
         }
 

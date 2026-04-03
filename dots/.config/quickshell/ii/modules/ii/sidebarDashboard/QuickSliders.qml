@@ -22,12 +22,12 @@ Rectangle {
     property real verticalPadding: 4
     property real horizontalPadding: 12
 
-    property bool showBrightness: Config.options.sidebar.quickSliders.showBrightness 
-    property bool showVolume: Config.options.sidebar.quickSliders.showVolume 
+    property bool showBrightness: Config.options.sidebar.quickSliders.showBrightness
+    property bool showVolume: Config.options.sidebar.quickSliders.showVolume
     property bool showGamma: Config.options.sidebar.quickSliders.showGamma
-    property bool showMic: Config.options.sidebar.quickSliders.showMic 
+    property bool showMic: Config.options.sidebar.quickSliders.showMic
 
-    RowLayout {
+    ColumnLayout {
         id: contentItem
         anchors {
             fill: parent
@@ -37,47 +37,34 @@ Rectangle {
             bottomMargin: root.verticalPadding
         }
 
-        spacing: 8
-
+        spacing: 4
 
         property int activeCount: {
             let count = 0;
             for (let i = 0; i < repeater.count; i++) {
-                if (repeater.itemAt(i) && repeater.itemAt(i).visible) count++;
+                if (repeater.itemAt(i) && repeater.itemAt(i).visible)
+                    count++;
             }
             return count;
         }
 
-
         Repeater {
             id: repeater
             model: [
-                { show: showBrightness, icon: "brightness_6", 
-                getVal: () => root.brightnessMonitor.brightness, 
-                setVal: (v) => root.brightnessMonitor.setBrightness(v) },
-                { show: showVolume, icon: "volume_up", 
-                getVal: () => Audio.sink.audio.volume, 
-                setVal: (v) => { Audio.sink.audio.volume = v } },
-                { show: showMic, icon: "mic", 
-                getVal: () => Audio.source.audio.volume, 
-                setVal: (v) => { Audio.source.audio.volume = v } },
-                { show: showGamma, icon: "light_mode",  secondaryIcon: "wb_twilight",
-                getVal: () => Hyprsunset.gamma === 100 ? 0.3 + root.brightnessMonitor?.brightness * 0.7 : (Hyprsunset.gamma - Hyprsunset.gammaLowerLimit) / (100 - Hyprsunset.gammaLowerLimit) * 0.3,
-                setVal: (v) => {
-                    if (v >= 0.3) {
-                        // 0.3 - 1.0 brightness
-                        root.brightnessMonitor.setBrightness((v - 0.3) / 0.7);
-                        if (Hyprsunset.gamma !== 100) {
-                            Hyprsunset.setGamma(100);
-                        }
-                    } else {
-                        // 0 - 0.3 gamma
-                        if (root.brightnessMonitor.brightness !== 0) {
-                            root.brightnessMonitor.setBrightness(0);
-                        }
-                        Hyprsunset.setGamma((v / 0.3 * (100 - Hyprsunset.gammaLowerLimit) + Hyprsunset.gammaLowerLimit));
+                {
+                    show: true,
+                    icon: "brightness_6",
+                    getVal: () => root.brightnessMonitor.brightness,
+                    setVal: v => root.brightnessMonitor.setBrightness(v)
+                },
+                {
+                    show: true,
+                    icon: "volume_up",
+                    getVal: () => Audio.sink.audio.volume,
+                    setVal: v => {
+                        Audio.sink.audio.volume = v;
                     }
-                } }
+                }
             ]
 
             QuickSlider {
@@ -85,21 +72,23 @@ Rectangle {
                 Layout.fillWidth: true
                 visible: modelData.show
                 materialSymbol: modelData.icon
-                secondaryMaterialSymbol: modelData?.secondaryIcon ?? "" 
+                secondaryMaterialSymbol: modelData?.secondaryIcon ?? ""
                 value: modelData.getVal()
                 onMoved: modelData.setVal(value)
             }
         }
     }
 
-    component QuickSlider: StyledSlider { 
+    component QuickSlider: StyledSlider {
         id: quickSlider
         required property string materialSymbol
         property string secondaryMaterialSymbol
         configuration: StyledSlider.Configuration.M
+        topPadding: 0
+        bottomPadding: 0
         stopIndicatorValues: []
         dividerValues: secondaryMaterialSymbol.length > 0 ? [secondaryIcon.iconLocation] : []
-        
+
         MaterialSymbol {
             id: icon
             property bool nearFull: quickSlider.value >= 0.82

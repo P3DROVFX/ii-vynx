@@ -22,7 +22,6 @@ ContentPage {
             text: Translation.tr("Vertical")
             checked: Config.options.background.parallax.vertical
             onCheckedChanged: {
-                HyprlandSettings.changeAnimation("workspaces", checked ? "slidevert" : "slide");
                 Config.options.background.parallax.vertical = checked;
             }
         }
@@ -55,14 +54,6 @@ ContentPage {
             stepSize: 1
             onValueChanged: {
                 Config.options.background.parallax.workspaceZoom = value / 100;
-            }
-        }
-        ConfigSwitch {
-            buttonIcon: "masked_transitions"
-            text: Translation.tr("Animate wallpaper changes")
-            checked: Config.options.background.animateWallpaperChanges
-            onCheckedChanged: {
-                Config.options.background.animateWallpaperChanges = checked;
             }
         }
     }
@@ -176,20 +167,6 @@ ContentPage {
                 Config.options.background.mediaMode.changeShellColor = checked;
             }
         }
-
-        ConfigSpinBox {
-            Layout.fillWidth: true
-            icon: "opacity"
-            text: Translation.tr("Background album art opacity (%)")
-            value: Config.options.background.mediaMode.backgroundOpacity
-            from: 0
-            to: 100
-            stepSize: 10
-            onValueChanged: {
-                Config.options.background.mediaMode.backgroundOpacity = value;
-            }
-        }
-
 
         ContentSubsection {
             title: Translation.tr("Text highlight style")
@@ -468,6 +445,30 @@ ContentPage {
         ContentSubsection {
             visible: settingsClock.cookiePresent
             title: Translation.tr("Cookie clock settings")
+
+            ConfigSwitch {
+                buttonIcon: "wand_stars"
+                text: Translation.tr("Auto styling with Gemini")
+                checked: Config.options.background.widgets.clock.cookie.aiStyling
+                onCheckedChanged: {
+                    Config.options.background.widgets.clock.cookie.aiStyling = checked;
+                }
+                StyledToolTip {
+                    text: Translation.tr("Uses Gemini to categorize the wallpaper then picks a preset based on it.\nYou'll need to set Gemini API key on the left sidebar first.\nImages are downscaled for performance, but just to be safe,\ndo not select wallpapers with sensitive information.")
+                }
+            }
+
+            ConfigSwitch {
+                buttonIcon: "airwave"
+                text: Translation.tr("Use old sine wave cookie implementation")
+                checked: Config.options.background.widgets.clock.cookie.useSineCookie
+                onCheckedChanged: {
+                    Config.options.background.widgets.clock.cookie.useSineCookie = checked;
+                }
+                StyledToolTip {
+                    text: Translation.tr("Looks a bit softer and more consistent with different number of sides,\nbut has less impressive morphing")
+                }
+            }
 
             ConfigSpinBox {
                 enabled: Config.options.background.widgets.clock.cookie.backgroundStyle !== "shape"

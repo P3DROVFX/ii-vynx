@@ -102,7 +102,7 @@ ContentPage {
                         colBackgroundHover: ColorUtils.transparentize(Appearance.colors.colOnPrimary, 0.85)
                         colRipple: ColorUtils.transparentize(Appearance.colors.colOnPrimary, 0.5)
                         onClicked: {
-                            Quickshell.execDetached(`${Directories.wallpaperSwitchScriptPath}`);
+                            Quickshell.execDetached(["qs", "-p", FileUtils.trimFileProtocol(Directories.shellConfig), "ipc", "call", "wallpaperSelector", "toggle"]);
                         }
                     }
                     
@@ -261,7 +261,6 @@ ContentPage {
         ConfigRow {
             ContentSubsection {
                 title: Translation.tr("Bar position")
-                Layout.fillWidth: true
                 ConfigSelectionArray {
                     currentValue: (Config.options.bar.bottom ? 1 : 0) | (Config.options.bar.vertical ? 2 : 0)
                     onSelected: newValue => {
@@ -294,7 +293,6 @@ ContentPage {
             }
             ContentSubsection {
                 title: Translation.tr("Bar style")
-                Layout.fillWidth: false
 
                 ConfigSelectionArray {
                     currentValue: Config.options.bar.cornerStyle
@@ -325,7 +323,6 @@ ContentPage {
         ConfigRow {
             ContentSubsection {
                 title: Translation.tr("Screen round corner")
-                Layout.fillWidth: true
 
                 ConfigSelectionArray {
                     currentValue: Config.options.appearance.fakeScreenRounding
@@ -344,7 +341,7 @@ ContentPage {
                             value: 1
                         },
                         {
-                            displayName: Translation.tr("Not fullscreen"),
+                            displayName: Translation.tr("When not fullscreen"),
                             icon: "fullscreen_exit",
                             value: 2
                         },
@@ -356,31 +353,7 @@ ContentPage {
                     ]
                 }
             }
-
-            ContentSubsection {
-                title: Translation.tr("Rounding style")
-                Layout.fillWidth: false
-
-                ConfigSelectionArray {
-                    currentValue: Config.options.appearance.sharpMode
-                    onSelected: newValue => {
-                        Config.options.appearance.sharpMode = newValue;
-                        HyprlandSettings.setRounding(newValue ? 0 : Config.options.appearance.defaultBorderRadius);
-                    }
-                    options: [ 
-                        {
-                            displayName: Translation.tr("Default"),
-                            icon: "rounded_corner",
-                            value: false
-                        }, 
-                        {
-                            displayName: Translation.tr("Sharp"),
-                            icon: "square",
-                            value: true
-                        }
-                    ]
-                }
-            } 
+            
         }
 
         ConfigSpinBox {
@@ -425,41 +398,43 @@ ContentPage {
                     ]
                 }
             }
-            
+
             ContentSubsection {
-                title: Translation.tr("Hyprland layout")
+                title: Translation.tr("Rounding style")
+                tooltip: Translation.tr("Sharp mode is experimental")
                 Layout.fillWidth: false
 
                 ConfigSelectionArray {
-                    currentValue: {
-                        if (Persistent.states.hyprland.layout !== "scrolling") return "default"
-                        else return "scrolling"
-                    }
+                    currentValue: Config.options.appearance.sharpMode
                     onSelected: newValue => {
-                        console.log(newValue)
-                        if (newValue === "scrolling") {
-                            HyprlandSettings.setLayout("scrolling")
+                        Config.options.appearance.sharpMode = newValue;
+                        if (!Config.options.appearance.toggleWindowRounding) return;
+                        if (newValue) {
+                            Quickshell.execDetached(["hyprctl", "keyword", "decoration:rounding", "0"])
                         } else {
-                            const defaultLayout = Config.options.hyprland.defaultHyprlandLayout
-                            HyprlandSettings.setLayout(defaultLayout)
+                            Quickshell.execDetached(["hyprctl", "keyword", "decoration:rounding", "18"]) // NOTE: Is using 18 okay here?
                         }
                     }
                     options: [ 
                         {
                             displayName: Translation.tr("Default"),
-                            icon: "mobile_layout",
-                            value: "default"
+                            icon: "rounded_corner",
+                            value: false
                         }, 
                         {
-                            displayName: Translation.tr("Scrolling"),
-                            icon: "view_carousel",
-                            value: "scrolling"
+                            displayName: Translation.tr("Sharp"),
+                            icon: "square",
+                            value: true
                         }
                     ]
                 }
-            }                          
+            }
         }
-    }    
+        
+    }
+
+    
+    
 
     NoticeBox {
         Layout.fillWidth: true

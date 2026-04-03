@@ -2,8 +2,6 @@ import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
 import QtQuick
-import QtQuick.Controls
-import QtQuick.Layouts
 
 Toolbar {
     id: extraOptions
@@ -49,22 +47,6 @@ Toolbar {
         text: "ifl"
         StyledToolTip {
             text: Translation.tr("Pick random from this folder")
-        }
-    }
-
-    IconToolbarButton {
-        implicitWidth: height
-        onClicked: {
-            if (!toggled) wallpaperSelectorContent.updateColorCache();
-            colorFilterToolbar.visible = !colorFilterToolbar.visible
-            if (!colorFilterToolbar.visible) {
-                wallpaperSelectorContent.activeColorFilter = ""
-            }
-        }
-        toggled: colorFilterToolbar.visible
-        text: "palette"
-        StyledToolTip {
-            text: colorCacheProc.running ? Translation.tr("Updating color cache...") : Translation.tr("Filter by color")
         }
     }
 

@@ -6,9 +6,9 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell
-import Quickshell.Io
 import Quickshell.Bluetooth
 import Quickshell.Hyprland
+import Qt5Compat.GraphicalEffects
 
 import qs.modules.ii.sidebarDashboard.quickToggles
 import qs.modules.ii.sidebarDashboard.quickToggles.classicStyle
@@ -228,6 +228,38 @@ Item {
                 id: uptimeRow
                 anchors.centerIn: parent
                 spacing: 8
+
+                // Foto de perfil circular
+                Item {
+                    id: profilePicContainer
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 28
+                    height: 28
+
+                    Image {
+                        id: profilePicSource
+                        anchors.fill: parent
+                        source: "file://" + Quickshell.env("HOME") + "/.config/quickshell/ii/assets/profile.png"
+                        sourceSize.width: parent.width
+                        sourceSize.height: parent.height
+                        fillMode: Image.PreserveAspectCrop
+                        visible: false
+                    }
+
+                    Rectangle {
+                        id: profilePicMask
+                        anchors.fill: parent
+                        radius: width / 2
+                        visible: false
+                    }
+
+                    OpacityMask {
+                        anchors.fill: parent
+                        source: profilePicSource
+                        maskSource: profilePicMask
+                    }
+                }
+
                 CustomIcon {
                     id: distroIcon
                     anchors.verticalCenter: parent.verticalCenter
@@ -313,8 +345,8 @@ Item {
                 }
                 onClicked: {
                     if (confirm) {
-                        Quickshell.execDetached([Directories.cliPath, "update", "--no-confirm", "--no-backup"]);
                         GlobalStates.sidebarRightOpen = false;
+                        Quickshell.execDetached(["bash", "-c", Config.options.update.scriptPath + " " + Config.options.update.scriptFlags ]);
                     } else {
                         confirm = true
                         confirmTimer.start()
@@ -322,7 +354,7 @@ Item {
                     
                 }
                 StyledToolTip {
-                    text: Translation.tr("Update the ii-vynx, make sure you have the vynx-cli installed")
+                    text: Translation.tr("Update the ii-vynx, make sure to set script path in settings")
                 }
             }
             QuickToggleButton {

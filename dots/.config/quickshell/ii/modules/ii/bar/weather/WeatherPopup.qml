@@ -10,106 +10,148 @@ StyledPopup {
     id: root
 
     ColumnLayout {
-        id: columnLayout
         anchors.centerIn: parent
-        implicitWidth: Math.max(header.implicitWidth, gridLayout.implicitWidth)
-        implicitHeight: gridLayout.implicitHeight
-        spacing: 5
+        spacing: 16
 
-        // Header
-        ColumnLayout {
-            id: header
-            Layout.alignment: Qt.AlignHCenter
-            spacing: 2
+        // Big Hero Card
+        Rectangle {
+            Layout.fillWidth: true
+            implicitHeight: heroRow.implicitHeight + 48
+            Layout.minimumWidth: 360
+            color: Appearance.colors.colPrimaryContainer
+            radius: Appearance.rounding.large
 
             RowLayout {
-                Layout.alignment: Qt.AlignHCenter
-                spacing: 6
+                id: heroRow
+                anchors.fill: parent
+                anchors.margins: 24
+                spacing: 20
 
-                MaterialSymbol {
-                    fill: 0
-                    font.weight: Font.Medium
-                    text: "location_on"
-                    iconSize: Appearance.font.pixelSize.large
-                    color: Appearance.colors.colOnSurfaceVariant
-                }
+                MaterialShape {
+                    shapeString: "Cookie9Sided"
+                    implicitSize: 110
+                    color: Appearance.colors.colPrimary
 
-                StyledText {
-                    text: Weather.data.city
-                    font {
-                        weight: Font.Medium
-                        pixelSize: Appearance.font.pixelSize.normal
+                    MaterialSymbol {
+                        anchors.centerIn: parent
+                        text: Icons.getWeatherIcon(Weather.data.wCode)
+                        iconSize: Appearance.font.pixelSize.hugeass * 1.5
+                        color: Appearance.colors.colOnPrimary
                     }
-                    color: Appearance.colors.colOnSurfaceVariant
                 }
-            }
-            StyledText {
-                id: temp
-                font.pixelSize: Appearance.font.pixelSize.smaller
-                color: Appearance.colors.colOnSurfaceVariant
-                text: Weather.data.temp + " • " + Translation.tr("Feels like %1").arg(Weather.data.tempFeelsLike)
+
+                Item {
+                    Layout.fillWidth: true
+                } // Spacer
+
+                // Typography Column
+                ColumnLayout {
+                    Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
+                    Layout.fillWidth: true
+                    spacing: -2
+
+                    // City Pill
+                    Rectangle {
+                        Layout.alignment: Qt.AlignRight
+                        implicitHeight: cityRow.implicitHeight + 12
+                        implicitWidth: cityRow.implicitWidth + 20
+                        radius: 100
+                        color: Appearance.colors.colSecondaryContainer
+
+                        RowLayout {
+                            id: cityRow
+                            anchors.centerIn: parent
+                            spacing: 6
+
+                            MaterialSymbol {
+                                text: "location_on"
+                                iconSize: Appearance.font.pixelSize.small
+                                color: Appearance.colors.colOnSecondaryContainer
+                            }
+                            StyledText {
+                                text: Weather.data.city || "--"
+                                font.weight: Font.Bold
+                                font.pixelSize: Appearance.font.pixelSize.small
+                                color: Appearance.colors.colOnSecondaryContainer
+                                elide: Text.ElideRight
+                                Layout.maximumWidth: 120
+                            }
+                        }
+                    }
+
+                    StyledText {
+                        text: Weather.data.temp
+                        font.family: Appearance.font.family.title
+                        font.weight: Font.Black
+                        font.pixelSize: Appearance.font.pixelSize.hugeass * 2.5
+                        color: Appearance.colors.colOnSurface
+                        Layout.alignment: Qt.AlignRight
+                    }
+
+                    StyledText {
+                        text: Weather.data.wDesc || "--"
+                        font.weight: Font.DemiBold
+                        font.pixelSize: Appearance.font.pixelSize.large
+                        color: Appearance.colors.colOnSurface
+                        Layout.alignment: Qt.AlignRight
+                    }
+
+                    StyledText {
+                        text: Translation.tr("Feels like %1").arg(Weather.data.tempFeelsLike || "--")
+                        font.italic: true
+                        font.pixelSize: Appearance.font.pixelSize.small
+                        color: Appearance.colors.colOnSurface
+                        Layout.alignment: Qt.AlignRight
+                        Layout.topMargin: 4
+                    }
+                }
             }
         }
 
-        // Metrics grid
+        // Animated Divider (just a styled line)
+        Rectangle {
+            Layout.fillWidth: true
+            height: 2
+            color: Appearance.colors.colSurfaceContainerHighest
+            radius: 1
+        }
+
+        // Expressive Metrics Grid
         GridLayout {
-            id: gridLayout
+            Layout.fillWidth: true
             columns: 2
-            rowSpacing: 5
-            columnSpacing: 5
+            rowSpacing: 12
+            columnSpacing: 12
             uniformCellWidths: true
 
             WeatherCard {
                 title: Translation.tr("UV Index")
                 symbol: "wb_sunny"
                 value: Weather.data.uv
+                accentColor: Appearance.colors.colTertiaryContainer
+                onAccentColor: Appearance.colors.colOnTertiaryContainer
             }
             WeatherCard {
                 title: Translation.tr("Wind")
                 symbol: "air"
                 value: `(${Weather.data.windDir}) ${Weather.data.wind}`
+                accentColor: Appearance.colors.colSecondaryContainer
+                onAccentColor: Appearance.colors.colOnSecondaryContainer
             }
             WeatherCard {
-                title: Translation.tr("Precipitation")
+                title: Translation.tr("Rainfall")
                 symbol: "rainy_light"
                 value: Weather.data.precip
+                accentColor: Appearance.colors.colPrimaryContainer
+                onAccentColor: Appearance.colors.colOnPrimaryContainer
             }
             WeatherCard {
                 title: Translation.tr("Humidity")
                 symbol: "humidity_low"
                 value: Weather.data.humidity
+                accentColor: Appearance.colors.colTertiaryContainer
+                onAccentColor: Appearance.colors.colOnTertiaryContainer
             }
-            WeatherCard {
-                title: Translation.tr("Visibility")
-                symbol: "visibility"
-                value: Weather.data.visib
-            }
-            WeatherCard {
-                title: Translation.tr("Pressure")
-                symbol: "readiness_score"
-                value: Weather.data.press
-            }
-            WeatherCard {
-                title: Translation.tr("Sunrise")
-                symbol: "wb_twilight"
-                value: Weather.data.sunrise
-            }
-            WeatherCard {
-                title: Translation.tr("Sunset")
-                symbol: "bedtime"
-                value: Weather.data.sunset
-            }
-        }
-
-        // Footer: last refresh
-        StyledText {
-            Layout.alignment: Qt.AlignHCenter
-            text: Translation.tr("Last refresh: %1").arg(Weather.data.lastRefresh)
-            font {
-                weight: Font.Medium
-                pixelSize: Appearance.font.pixelSize.smaller
-            }
-            color: Appearance.colors.colOnSurfaceVariant
         }
     }
 }

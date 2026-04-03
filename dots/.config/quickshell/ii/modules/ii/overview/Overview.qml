@@ -37,7 +37,7 @@ Scope {
                 readonly property bool monitorIsFocused: realOverviewLoader.monitorIsFocused
                 readonly property int monitorIndex: realOverviewLoader.monitorIndex
 
-                readonly property bool isScrollingLayout: Persistent.states.hyprland.layout === "scrolling"
+                readonly property bool isScrollingLayout: GlobalStates.isScrollingLayout
                 property string searchingText: ""
 
                 WlrLayershell.namespace: "quickshell:overview"

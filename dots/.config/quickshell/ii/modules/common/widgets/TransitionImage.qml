@@ -10,57 +10,82 @@ Item {
     required property string imageSource
 
     property int animationDuration: 1000
-    property var fillMode: Image.PreserveAspectCrop
-    property bool animated: true
-    property bool imgAIsBack: true
 
-    onImageSourceChanged: fadeTo(imageSource)
-    Component.onCompleted: imgA.source = imageSource
+    onImageSourceChanged: {
+        fadeTo(root.imageSource)
+    }
+    Component.onCompleted: {
+        imgOld.source = imageSource
+    }
+
+    Timer {
+        id: revertBackTimer
+        interval: root.animationDuration * 1.5
+        running: true
+        repeat: false
+        onTriggered: {
+            imgNew.animEnabled = false
+            imgOld.animEnabled = false
+            
+            Qt.callLater(() => {
+                imgOld.source = imgNew.source
+                imgOld.opacity = 1
+                imgNewFixTimer.restart()
+            })
+        }
+    }
+
+    Timer {
+        id: imgNewFixTimer
+        interval: 50
+        onTriggered: {
+            imgNew.opacity = 0
+            imgNew.source = ""
+        }
+    }
 
     function fadeTo(newSrc) {
-        var back  = imgAIsBack ? imgA : imgB
-        var front = imgAIsBack ? imgB : imgA
+        imgNew.source = newSrc
+        imgNew.opacity = 0
+        
+        imgNew.animEnabled = true
+        imgOld.animEnabled = true
 
-        if (newSrc === back.source) return
+        imgNew.opacity = 1    // animasyonu başlatır
+        imgOld.opacity = 0    // animasyonu başlatır
 
-        front.source  = newSrc
-        front.z       = 1
-        back.z        = 0
-
-        if (root.animated) {
-            front.opacity = 0
-            fadeAnim.target = front
-            fadeAnim.restart()
-        } else {
-            front.opacity = 1
-            root.imgAIsBack = !root.imgAIsBack
-        }
+        Qt.callLater(() => {
+            revertBackTimer.restart()
+        })
     }
 
-    NumberAnimation {
-        id: fadeAnim
-        property: "opacity"
-        from: 0; to: 1
-        duration: root.animationDuration
-        easing.type: Easing.InOutQuad
+    Image {
+        id: imgOld
+        anchors.fill: parent
+        opacity: 1.0
+        fillMode: Image.PreserveAspectCrop
+        cache: false; antialiasing: true; asynchronous: true
+        
+        property bool animEnabled: true
 
-        onFinished: {
-            root.imgAIsBack = !root.imgAIsBack
+        Behavior on opacity {
+            enabled: imgNew.animEnabled
+            NumberAnimation { duration: root.animationDuration }
         }
     }
 
     Image {
-        id: imgA
+        id: imgNew
         anchors.fill: parent
-        fillMode: root.fillMode
+        opacity: 0.0
+        fillMode: Image.PreserveAspectCrop
         cache: false; antialiasing: true; asynchronous: true
-    }
 
-    Image {
-        id: imgB
-        anchors.fill: parent
-        opacity: 0
-        fillMode: root.fillMode
-        cache: false; antialiasing: true; asynchronous: true
+        property bool animEnabled: true
+
+        Behavior on opacity {
+            enabled: imgNew.animEnabled
+            NumberAnimation { duration: root.animationDuration }
+        }
     }
 }

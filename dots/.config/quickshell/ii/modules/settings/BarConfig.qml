@@ -18,8 +18,7 @@ ContentPage {
         "utility_buttons": utilityButtons,
         "system_tray": systemTray,
         "workspaces": workspaces,
-        "timer": indicators,
-        "record_indicator": indicators
+        "timer": timerAndPomodoro
     })
 
     function scrollTo(stringId) {
@@ -308,20 +307,6 @@ ContentPage {
                 Config.options.bar.mediaPlayer.lyrics.customSize = value;
             }
         }
-
-        ContentSubsection {
-            title: Translation.tr("Artwork")
-
-            ConfigSwitch {
-                enabled: !Config.options.bar.vertical
-                buttonIcon: "image"
-                text: Translation.tr("Enable artwork")
-                checked: Config.options.bar.mediaPlayer.artwork.enable
-                onCheckedChanged: {
-                    Config.options.bar.mediaPlayer.artwork.enable = checked;
-                }
-            }
-        }
         
         ContentSubsection {
             title: Translation.tr("Lyrics")
@@ -418,46 +403,30 @@ ContentPage {
     }
 
     ContentSection {
-        id: indicators
-        icon: "ad"
-        title: Translation.tr("Indicators")
+        id: timerAndPomodoro
+        icon: "timer_play"
+        title: Translation.tr("Timer & Pomodoro")
 
-        ContentSubsection {
-            title: Translation.tr("Timer and pomodoro")
-
-            ConfigRow {
-                uniform: true
-                ConfigSwitch {
-                    buttonIcon: "timer"
-                    text: Translation.tr("Show stopwatch")
-                    checked: Config.options.bar.timers.showStopwatch
-                    onCheckedChanged: {
-                        Config.options.bar.timers.showStopwatch = checked;
-                    }
-                }
-                ConfigSwitch {
-                    buttonIcon: "search_activity"
-                    text: Translation.tr("Show pomodoro")
-                    checked: Config.options.bar.timers.showPomodoro
-                    onCheckedChanged: {
-                        Config.options.bar.timers.showPomodoro = checked;
-                    }
-                }
-            }
-        }
-        
-        ContentSubsection {
-            title: Translation.tr("Record")
-
+        ConfigRow {
+            uniform: true
             ConfigSwitch {
-                buttonIcon: "check_indeterminate_small"
-                text: Translation.tr("Minimal mode")
-                checked: Config.options.bar.indicators.record.minimal
+                buttonIcon: "timer"
+                text: Translation.tr("Show stopwatch")
+                checked: Config.options.bar.timers.showStopwatch
                 onCheckedChanged: {
-                    Config.options.bar.indicators.record.minimal = checked;
+                    Config.options.bar.timers.showStopwatch = checked;
+                }
+            }
+            ConfigSwitch {
+                buttonIcon: "search_activity"
+                text: Translation.tr("Show pomodoro")
+                checked: Config.options.bar.timers.showPomodoro
+                onCheckedChanged: {
+                    Config.options.bar.timers.showPomodoro = checked;
                 }
             }
         }
+
     }
 
     ContentSection {
