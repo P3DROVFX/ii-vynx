@@ -6,20 +6,21 @@ import QtQuick.Layouts
 
 StyledPopup {
     id: root
-    property string formattedDate: Qt.locale().toString(DateTime.clock.date, "dd MMMM, dddd")
+    property string formattedDate: Qt.locale().toString(DateTime.clock.date, "MMMM dd, dddd")
     property string formattedTime: DateTime.time
     property string formattedUptime: DateTime.uptime
-    property string todosSection: getUpcomingTodos()
+    property string todosSection: getUpcomingTodos(Todo.list)
+    property bool todosEmpty: todosSection === ""
 
-    function getUpcomingTodos() {
-        const unfinishedTodos = Todo.list.filter(function (item) {
+    function getUpcomingTodos(todos) {
+        const unfinishedTodos = todos.filter(function (item) {
             return !item.done;
         });
         if (unfinishedTodos.length === 0) {
-            return Translation.tr("No pending tasks");
+            return "";
         }
 
-        // Limit to first 3 todos to keep popup manageable and visually clean
+        // Limit to first 3 todos
         const limitedTodos = unfinishedTodos.slice(0, 3);
         let todoText = limitedTodos.map(function (item, index) {
             return `  • ${item.content}`;
@@ -43,13 +44,13 @@ StyledPopup {
         anchors.centerIn: parent
         spacing: 12
 
-        // Large Expressive Time & Date Card
+        // Hero date time card
         Rectangle {
             Layout.fillWidth: true
             Layout.minimumWidth: 320
             implicitHeight: 160
             color: Appearance.colors.colPrimaryContainer
-            radius: Appearance.rounding.large
+            radius: Appearance.rounding.normal
 
             RowLayout {
                 anchors.fill: parent
@@ -71,7 +72,7 @@ StyledPopup {
 
                 Item {
                     Layout.fillWidth: true
-                } // Spacer
+                }
 
                 ColumnLayout {
                     spacing: -8
@@ -82,7 +83,7 @@ StyledPopup {
                         font.pixelSize: Appearance.font.pixelSize.hugeass * 2.5
                         font.family: Appearance.font.family.title
                         font.weight: Font.Black
-                        color: Appearance.colors.colOnSurface
+                        color: Appearance.colors.colOnPrimaryContainer
                         horizontalAlignment: Text.AlignRight
                         Layout.alignment: Qt.AlignRight
                     }
@@ -92,7 +93,7 @@ StyledPopup {
                         font.pixelSize: Appearance.font.pixelSize.normal
                         font.family: Appearance.font.family.main
                         font.weight: Font.DemiBold
-                        color: Appearance.colors.colOnSurface
+                        color: Appearance.colors.colOnPrimaryContainer
                         horizontalAlignment: Text.AlignRight
                         Layout.alignment: Qt.AlignRight
                     }
@@ -100,7 +101,7 @@ StyledPopup {
             }
         }
 
-        // Quick info stack
+        // 2 middle shapes
         ColumnLayout {
             Layout.fillWidth: true
             spacing: 12
@@ -109,7 +110,7 @@ StyledPopup {
             Rectangle {
                 Layout.fillWidth: true
                 implicitHeight: 64
-                radius: 32 // Full Pill shape
+                radius: 32
                 color: Appearance.colors.colSecondaryContainer
 
                 RowLayout {
@@ -141,7 +142,7 @@ StyledPopup {
 
                     Item {
                         width: 8
-                    } // Small padding on the right for symmetry
+                    }
                 }
             }
 
@@ -150,7 +151,7 @@ StyledPopup {
                 Layout.fillWidth: true
                 implicitHeight: 64
                 radius: 32 // Full Pill shape
-                color: TimerService.pomodoroBreak ? Appearance.colors.colTertiaryContainer : Appearance.colors.colSecondaryContainer
+                color: TimerService.pomodoroBreak ? Appearance.colors.colTertiaryContainer : (TimerService.pomodoroRunning || TimerService.stopwatchRunning ? Appearance.colors.colPrimaryContainer : Appearance.colors.colSecondaryContainer)
 
                 RowLayout {
                     anchors.centerIn: parent
@@ -159,27 +160,27 @@ StyledPopup {
                     MaterialShape {
                         shapeString: "Circle"
                         implicitSize: 40
-                        color: TimerService.pomodoroBreak ? Appearance.colors.colTertiary : Appearance.colors.colPrimary
+                        color: TimerService.pomodoroBreak ? Appearance.colors.colTertiary : (TimerService.pomodoroRunning || TimerService.stopwatchRunning ? Appearance.colors.colPrimary : Appearance.colors.colSecondary)
 
                         MaterialSymbol {
                             anchors.centerIn: parent
                             text: TimerService.pomodoroBreak ? "coffee" : "timer"
                             iconSize: Appearance.font.pixelSize.large
-                            color: TimerService.pomodoroBreak ? Appearance.colors.colOnTertiary : Appearance.colors.colOnPrimary
+                            color: TimerService.pomodoroBreak ? Appearance.colors.colOnTertiary : (TimerService.pomodoroRunning || TimerService.stopwatchRunning ? Appearance.colors.colOnPrimary : Appearance.colors.colOnSecondary)
                         }
                     }
 
                     StyledText {
-                        text: TimerService.pomodoroRunning ? root.formatTimerDisplay(TimerService.pomodoroSecondsLeft) : Translation.tr("Timer Off")
+                        text: TimerService.pomodoroRunning ? root.formatTimerDisplay(TimerService.pomodoroSecondsLeft) : (TimerService.stopwatchRunning ? root.formatTimerDisplay(TimerService.stopwatchTime) : Translation.tr("Timer Off"))
                         font.pixelSize: Appearance.font.pixelSize.large
                         font.family: Appearance.font.family.title
                         font.weight: Font.Bold
-                        color: TimerService.pomodoroBreak ? Appearance.colors.colOnTertiaryContainer : Appearance.colors.colOnSecondaryContainer
+                        color: TimerService.pomodoroBreak ? Appearance.colors.colOnTertiaryContainer : (TimerService.pomodoroRunning || TimerService.stopwatchRunning ? Appearance.colors.colOnPrimaryContainer : Appearance.colors.colOnSecondaryContainer)
                     }
 
                     Item {
                         width: 8
-                    } // Small padding on the right for symmetry
+                    }
                 }
             }
         }
@@ -234,6 +235,7 @@ StyledPopup {
                 }
 
                 StyledText {
+                    visible: !root.todosEmpty
                     Layout.fillWidth: true
                     horizontalAlignment: Text.AlignLeft
                     wrapMode: Text.Wrap
@@ -241,6 +243,31 @@ StyledPopup {
                     color: Appearance.colors.colOnSurfaceVariant
                     text: root.todosSection
                     lineHeight: 1.4
+                }
+
+                // using loading indicator on empty state for now
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 120
+                    visible: root.todosEmpty
+                    color: "transparent"
+
+                    ColumnLayout {
+                        anchors.centerIn: parent
+                        spacing: 8
+
+                        MaterialLoadingIndicator {
+                            Layout.alignment: Qt.AlignHCenter
+                            loading: true
+                        }
+
+                        StyledText {
+                            Layout.alignment: Qt.AlignHCenter
+                            text: Translation.tr("No pending tasks")
+                            font.pixelSize: Appearance.font.pixelSize.small
+                            color: Appearance.colors.colOnSurfaceVariant
+                        }
+                    }
                 }
             }
         }
