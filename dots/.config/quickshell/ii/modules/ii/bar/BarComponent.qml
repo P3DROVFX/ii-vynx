@@ -43,7 +43,9 @@ Item {
         "timer": [timerComp, timerCompVert],
         "weather": [weatherComp, weatherComp],
         "policies_panel_button": [policiesPanelButton, policiesPanelButton],
-        "dashboard_panel_button": [dashboardPanelButton, dashboardPanelButtonVert]
+        "dashboard_panel_button": [dashboardPanelButton, dashboardPanelButtonVert],
+        "bluetooth_devices": [bluetoothComp, bluetoothCompVert],
+        "keyboard_layout": [keyboardComp, keyboardCompVert]
     })
 
     property list<string> primaryBackgroundComps: ["timer", "record_indicator", "screen_share_indicator"] // components that are mostly indicators
@@ -95,7 +97,7 @@ Item {
         
         startRadius: rootItem.startRadius
         endRadius: rootItem.endRadius
-        colBackground: primaryBackgroundComps.includes(modelData.id) ? rootItem.colBackgroundHighlight : rootItem.colBackground
+        colBackground: (itemLoader.item?.activated || primaryBackgroundComps.includes(modelData.id)) ? rootItem.colBackgroundHighlight : rootItem.colBackground
 
         Loader {
             id: itemLoader
@@ -140,4 +142,9 @@ Item {
     
     Component { id: dashboardPanelButton; DashboardPanelButton {} }
     Component { id: dashboardPanelButtonVert; VerticalDashboardPanelButton {} }
+
+    Component { id: bluetoothComp; BluetoothDevicesWidget { vertical: rootItem.vertical } }
+    Component { id: bluetoothCompVert; Vertical.VerticalBluetoothDevicesWidget {} }
+    Component { id: keyboardComp; KeyboardLayoutWidget { vertical: rootItem.vertical } }
+    Component { id: keyboardCompVert; Vertical.VerticalKeyboardLayoutWidget {} }
 }

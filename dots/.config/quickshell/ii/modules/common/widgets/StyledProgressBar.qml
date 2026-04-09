@@ -4,7 +4,6 @@ import qs.modules.common.widgets
 import QtQuick
 import QtQuick.Controls
 
-
 /**
  * Material 3 progress bar. See https://m3.material.io/components/progress-indicators/overview
  */
@@ -13,6 +12,8 @@ ProgressBar {
     property real valueBarWidth: 120
     property real valueBarHeight: 4
     property real valueBarGap: 4
+    readonly property real stopPointSize: Math.max(4, Math.round(valueBarHeight * 2 / 3))
+    readonly property real stopPointMargin: Math.max(2, Math.round(stopPointSize * 0.4))
     property color highlightColor: Appearance?.colors.colPrimary ?? "#685496"
     property color trackColor: Appearance?.m3colors.m3secondaryContainer ?? "#F1D3F9"
     property bool wavy: false // If true, the progress bar will have a wavy fill effect
@@ -28,7 +29,7 @@ ProgressBar {
     Behavior on value {
         animation: Appearance?.animation.elementMoveEnter.numberAnimation.createObject(this)
     }
-    
+
     background: Item {
         implicitHeight: valueBarHeight
         implicitWidth: valueBarWidth
@@ -55,13 +56,17 @@ ProgressBar {
                 fullLength: root.width
                 Connections {
                     target: root
-                    function onValueChanged() { wavyFill.requestPaint(); }
-                    function onHighlightColorChanged() { wavyFill.requestPaint(); }
+                    function onValueChanged() {
+                        wavyFill.requestPaint();
+                    }
+                    function onHighlightColorChanged() {
+                        wavyFill.requestPaint();
+                    }
                 }
                 FrameAnimation {
                     running: root.animateWave
                     onTriggered: {
-                        wavyFill.requestPaint()
+                        wavyFill.requestPaint();
                     }
                 }
             }
@@ -77,20 +82,29 @@ ProgressBar {
                 color: root.highlightColor
             }
         }
-        
+
         Rectangle { // Right remaining part fill
+            readonly property real remainingSpace: (1 - root.visualPosition) * contentItem.width
+            readonly property real computedWidth: remainingSpace - root.valueBarGap
+            visible: computedWidth > 1
             anchors.right: parent.right
-            width: (1 - root.visualPosition) * parent.width - valueBarGap
+            width: Math.max(0, computedWidth)
             height: parent.height
             radius: Appearance.rounding.full
             color: root.trackColor
         }
-        
+
         Rectangle { // Stop point
+            readonly property real remainingTrackWidth: (1 - root.visualPosition) * contentItem.width - root.valueBarGap
+            readonly property real availableSize: remainingTrackWidth - 2 * root.stopPointMargin
+            readonly property real effectiveSize: Math.min(root.stopPointSize, Math.max(0, availableSize))
+            visible: effectiveSize >= 2
+            anchors.rightMargin: root.stopPointMargin
             anchors.right: parent.right
-            width: valueBarGap
-            height: valueBarGap
-            radius: Appearance.rounding.full
+            anchors.verticalCenter: parent.verticalCenter
+            width: effectiveSize
+            height: effectiveSize
+            radius: effectiveSize / 2
             color: root.highlightColor
         }
     }

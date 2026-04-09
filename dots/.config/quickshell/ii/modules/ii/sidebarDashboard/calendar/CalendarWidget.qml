@@ -15,7 +15,7 @@ Item {
     anchors.topMargin: 10
     width: calendarColumn.width
     implicitHeight: calendarColumn.height + 10 * 2
-    Keys.onPressed: (event) => {
+    Keys.onPressed: event => {
         if ((event.key === Qt.Key_PageDown || event.key === Qt.Key_PageUp) && event.modifiers === Qt.NoModifier) {
             if (event.key === Qt.Key_PageDown)
                 monthShift++;
@@ -27,7 +27,7 @@ Item {
 
     MouseArea {
         anchors.fill: parent
-        onWheel: (event) => {
+        onWheel: event => {
             if (event.angleDelta.y > 0)
                 monthShift--;
             else if (event.angleDelta.y < 0)
@@ -72,7 +72,6 @@ Item {
                     horizontalAlignment: Text.AlignHCenter
                     color: Appearance.colors.colOnLayer1
                 }
-
             }
 
             CalendarHeaderButton {
@@ -87,9 +86,7 @@ Item {
                     horizontalAlignment: Text.AlignHCenter
                     color: Appearance.colors.colOnLayer1
                 }
-
             }
-
         }
 
         // Week days row
@@ -113,9 +110,7 @@ Item {
                     enabled: false
                     taskList: []
                 }
-
             }
-
         }
 
         // Real week rows
@@ -138,13 +133,8 @@ Item {
                         isToday: calendarLayout[modelData][index].today
                         taskList: CalendarService.getTasksByDate(new Date(calendarLayout[modelData][index].year, calendarLayout[modelData][index].month, calendarLayout[modelData][index].day))
                     }
-
                 }
-
             }
-
         }
-
     }
-
 }

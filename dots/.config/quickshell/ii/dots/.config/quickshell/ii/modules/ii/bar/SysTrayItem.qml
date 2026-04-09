@@ -1,0 +1,139 @@
+pragma ComponentBehavior: Bound
+import QtQuick
+import Quickshell
+import Quickshell.Services.SystemTray
+import Quickshell.Widgets
+import Qt5Compat.GraphicalEffects
+import qs.services
+import qs.modules.common
+import qs.modules.common.widgets
+import qs.modules.common.functions
+
+MouseArea {
+    id: root
+    required property SystemTrayItem item
+    property bool targetMenuOpen: false
+
+    signal menuOpened(qsWindow: var)
+    signal menuClosed()
+
+    hoverEnabled: true
+    acceptedButtons: Qt.LeftButton | Qt.RightButton
+    cursorShape: Qt.PointingHandCursor
+    implicitWidth: 20
+    implicitHeight: 20
+    onPressed: (event) => {
+        switch (event.button) {
+        case Qt.LeftButton:
+            item.activate();
+            break;
+        case Qt.RightButton:
+            if (item.hasMenu)
+                if (menu.active && menu.item && typeof menu.item.close === "function")
+                    menu.item.close();
+                else 
+                    menu.open();
+            break;
+        }
+        event.accepted = true;
+    }
+    onEntered: {
+        tooltip.text = TrayService.getTooltipForItem(root.item);
+    }
+
+    Loader {
+        id: menu
+        function open() { menu.active = true; }
+        active: false
+
+        sourceComponent: SysTrayMenu {
+            Component.onCompleted: this.open();
+            trayItemMenuHandle: root.item.menu
+            trayItemId: root.item.id
+            
+            anchor {
+                window: root.QsWindow.window
+                
+                rect: {
+                    var gap = Appearance.sizes.elevationMargin; // SysTrayItem menu gap
+                    var pos = root.mapToItem(null, 0, 0); 
+                    
+                    if (Config.options.bar.vertical) {
+                        return Qt.rect(
+                            Config.options.bar.bottom ? pos.x - gap : pos.x + gap, 
+                            pos.y, 
+                            root.width, 
+                            root.height
+                        );
+                    } else {
+                        return Qt.rect(
+                            pos.x, 
+                            Config.options.bar.bottom ? pos.y - gap : pos.y + gap, 
+                            root.width, 
+                            root.height
+                        );
+                    }
+                }
+
+                edges: {
+                    if (Config.options.bar.vertical) {
+                        return Config.options.bar.bottom ? (Edges.Left | Edges.Middle) : (Edges.Right | Edges.Middle);
+                    } else {
+                        return Config.options.bar.bottom ? (Edges.Top | Edges.Center) : (Edges.Bottom | Edges.Center);
+                    }
+                }
+                
+                gravity: {
+                    if (Config.options.bar.vertical) {
+                        return Config.options.bar.bottom ? Edges.Left : Edges.Right;
+                    } else {
+                        return Config.options.bar.bottom ? Edges.Top : Edges.Bottom;
+                    }
+                }
+            }
+
+            onMenuOpened: (window) => root.menuOpened(window);
+            onMenuClosed: {
+                root.menuClosed();
+                menu.active = false;
+            }
+        }
+    }
+
+
+    IconImage {
+        id: trayIcon
+        visible: !Config.options.tray.monochromeIcons
+        source: root.item.icon
+        anchors.centerIn: parent
+        width: parent.width
+        height: parent.height
+    }
+
+    Loader {
+        active: Config.options.tray.monochromeIcons
+        anchors.fill: trayIcon
+        sourceComponent: Item {
+            Desaturate {
+                id: desaturatedIcon
+                visible: false // There's already color overlay
+                anchors.fill: parent
+                source: trayIcon
+                desaturation: 0.8 // 1.0 means fully grayscale
+            }
+            ColorOverlay {
+                anchors.fill: desaturatedIcon
+                source: desaturatedIcon
+                color: ColorUtils.transparentize(Appearance.colors.colOnLayer0, 0.9)
+            }
+        }
+    }
+
+    PopupToolTip {
+        id: tooltip
+        extraVisibleCondition: root.containsMouse
+        alternativeVisibleCondition: extraVisibleCondition
+        anchorEdges: (!Config.options.bar.bottom && !Config.options.bar.vertical) ? Edges.Bottom : Edges.Top
+    }
+
+}

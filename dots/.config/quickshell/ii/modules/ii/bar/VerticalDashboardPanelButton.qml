@@ -80,12 +80,6 @@ RippleButton { // Right sidebar button
                 color: rightSidebarButton.colText
             }
         }
-        HyprlandXkbIndicator {
-            vertical: true
-            Layout.alignment: Qt.AlignHCenter
-            Layout.bottomMargin: indicatorsColumnLayout.realSpacing
-            color: rightSidebarButton.colText
-        }
         Revealer {
             vertical: true
             reveal: Notifications.silent || Notifications.unread > 0

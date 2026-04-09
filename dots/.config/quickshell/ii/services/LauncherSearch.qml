@@ -7,7 +7,6 @@ import QtQuick
 import Qt.labs.folderlistmodel
 import Quickshell
 import Quickshell.Io
-import Quickshell.Hyprland
 
 Singleton {
     id: root
@@ -109,7 +108,7 @@ Singleton {
         {
             action: "wallpaper",
             execute: () => {
-                Hyprland.dispatch("global quickshell:wallpaperSelectorToggle")
+                Quickshell.execDetached(["qs", "-c", "ii", "ipc", "call", "wallpaperSelector", "toggle"]);
             }
         },
         {

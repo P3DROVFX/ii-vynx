@@ -4,6 +4,7 @@ import Quickshell
 import qs.modules.common
 import qs.modules.ii.background
 import qs.modules.ii.bar
+import qs.modules.ii.bluetoothConnectionPopup
 import qs.modules.ii.cheatsheet
 import qs.modules.ii.dock
 import qs.modules.ii.lock
@@ -48,6 +49,7 @@ Scope {
     PanelLoader { extraCondition: Config.options.dock.enable; component: Dock {} }
     PanelLoader { component: Lock {} }
     PanelLoader { component: MediaControls {} }
+    PanelLoader { component: BluetoothConnectionPopup {} }
     PanelLoader { component: NotificationPopup {} }
     PanelLoader { component: OnScreenDisplay {} }
     PanelLoader { component: OnScreenKeyboard {} }

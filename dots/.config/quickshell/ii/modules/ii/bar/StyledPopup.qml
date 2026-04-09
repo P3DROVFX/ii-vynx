@@ -68,7 +68,7 @@ LazyLoader {
             bottom: Appearance.sizes.barHeight
         }
 
-        WlrLayershell.namespace: "quickshell:popup"
+        WlrLayershell.namespace: "quickshell:styledPopup"
         WlrLayershell.layer: WlrLayer.Overlay
 
         StyledRectangularShadow {
@@ -89,7 +89,7 @@ LazyLoader {
 
             implicitWidth: root.contentItem.implicitWidth + margin * 2
             implicitHeight: root.contentItem.implicitHeight + margin * 2
-            color: Appearance.m3colors.m3surfaceContainer
+            color: ColorUtils.transparentize(Appearance.m3colors.m3surfaceContainer, 0.15)
             radius: root.popupRadius
             children: [root.contentItem]
             border.width: 1

@@ -11,12 +11,13 @@ Item {
     id: root
     property real spacing: 8
     property color backgroundColor: "transparent"
+    readonly property bool eventPopupVisible: eventPopup.visible
 
     property int startHour: 0
     property int startMinute: 0
     property int endHour: 24
     property int slotDuration: 60 // in minutes
-    property int slotHeight: 60 // in pixels
+    property int slotHeight: 120 // in pixels
     property int timeColumnWidth: 100
     property real maxContentWidth: 1350
 
@@ -61,6 +62,108 @@ Item {
     readonly property color todayHighlightBorder: withOpacity(Appearance.colors.colPrimary, 0.28)
     readonly property color dayBackgroundFill: withOpacity(Appearance.colors.colSecondary, 0.04)
     readonly property color dayBackgroundFillVariant: withOpacity(Appearance.colors.colSecondary, 0.08)
+
+    // ─── Drag-to-create state ─────────────────────────────────────
+    property bool isDragging: false
+    property int dragDayIndex: -1
+    property real dragStartY: 0
+    property real dragCurrentY: 0
+
+    // Ghost block state (post-drag, before popup)
+    property bool ghostVisible: false
+    property int ghostDayIndex: -1
+    property real ghostTopY: 0
+    property real ghostHeight: 0
+
+    // Snap interval in minutes
+    readonly property int snapInterval: 15
+
+    function snapToGrid(minutes) {
+        return Math.round(minutes / root.snapInterval) * root.snapInterval;
+    }
+
+    function yToMinutes(y) {
+        return root.startHour * 60 + root.startMinute + (y / root.pixelsPerMinute);
+    }
+
+    function minutesToY(totalMinutes) {
+        return (totalMinutes - (root.startHour * 60 + root.startMinute)) * root.pixelsPerMinute;
+    }
+
+    function minutesToTimeStr(totalMinutes) {
+        let clamped = Math.max(0, Math.min(totalMinutes, 24 * 60));
+        let hour = Math.floor(clamped / 60);
+        let minute = Math.round(clamped % 60);
+        let d = new Date();
+        d.setHours(hour, minute, 0, 0);
+        return Qt.formatTime(d, Config.options?.time.format ?? "hh:mm");
+    }
+
+    function minutesToKhalTimeStr(totalMinutes) {
+        let clamped = Math.max(0, Math.min(totalMinutes, 24 * 60));
+        let hour = Math.floor(clamped / 60);
+        let minute = Math.round(clamped % 60);
+        return (hour < 10 ? "0" : "") + hour + ":" + (minute < 10 ? "0" : "") + minute;
+    }
+
+    function getDateForDayIndex(dayIndex) {
+        let d = new Date();
+        let dayOffset = (dayIndex + Config.options.time.firstDayOfWeek + 1);
+        d.setDate(d.getDate() - d.getDay() + dayOffset % 7);
+        return d;
+    }
+
+    function beginGhost(dayIndex, startY, endY) {
+        let topY = Math.min(startY, endY);
+        let botY = Math.max(startY, endY);
+
+        // Enforce minimum 15 min
+        let topMin = root.snapToGrid(root.yToMinutes(topY));
+        let botMin = root.snapToGrid(root.yToMinutes(botY));
+        if (botMin - topMin < root.snapInterval)
+            botMin = topMin + root.snapInterval;
+
+        root.ghostDayIndex = dayIndex;
+        root.ghostTopY = root.minutesToY(topMin);
+        root.ghostHeight = root.minutesToY(botMin) - root.ghostTopY;
+        root.ghostVisible = true;
+    }
+
+    function openPopupForGhost() {
+        let topMin = root.snapToGrid(root.yToMinutes(root.ghostTopY));
+        let botMin = root.snapToGrid(root.yToMinutes(root.ghostTopY + root.ghostHeight));
+        let startStr = root.minutesToTimeStr(topMin);
+        let endStr = root.minutesToTimeStr(botMin);
+        let eventDate = root.getDateForDayIndex(root.ghostDayIndex);
+
+        // Calculate popup anchor position relative to root
+        let colX = root.timeColumnWidth + (root.ghostDayIndex * (root.dayColumnWidth + root.spacing)) + root.dayColumnWidth;
+        let colY = root.ghostTopY + root.headerHeight - styledFlickable.contentY + 20;
+        eventPopup.open(startStr, endStr, eventDate, root.ghostDayIndex, colX, colY);
+    }
+
+    function cancelGhost() {
+        root.ghostVisible = false;
+        root.ghostDayIndex = -1;
+    }
+
+    // ─── Edit mode helpers ────────────────────────────────────────
+    function openPopupForEdit(event, dayIndex) {
+        let startMin = root.parseTimeToMinutes(event.start);
+        let endMin = root.parseTimeToMinutes(event.end);
+        let startStr = root.minutesToTimeStr(startMin);
+        let endStr = root.minutesToTimeStr(endMin);
+        let eventDate = root.getDateForDayIndex(dayIndex);
+
+        // Position popup near event
+        let colX = root.timeColumnWidth + (dayIndex * (root.dayColumnWidth + root.spacing)) + root.dayColumnWidth;
+        let evtY = root.minutesToY(startMin);
+        let colY = evtY + root.headerHeight - styledFlickable.contentY + 20;
+
+        eventPopup.openForEdit(startStr, endStr, eventDate, dayIndex, colX, colY, event);
+    }
+
+    // ──────────────────────────────────────────────────────────────
 
     function updateCurrentTimeLine() {
         let time = DateTime.clock.date;
@@ -168,30 +271,28 @@ Item {
         return earliest;
     }
 
-    function scrollToFirstEvent() {
+    function scrollToCurrentTime() {
         if (!styledFlickable)
             return;
 
-        let earliest = root.earliestEventStartMinutes();
-        let minOfDay = earliest;
-
-        if (minOfDay === -1 || minOfDay <= (root.startHour * 60 + root.startMinute)) {
-            styledFlickable.contentY = 0;
+        if (styledFlickable.height <= 0) {
+            Qt.callLater(root.scrollToCurrentTime);
             return;
         }
 
-        let diff = minOfDay - (root.startHour * 60 + root.startMinute);
+        let now = DateTime.clock.date;
+        let currentMinutes = now.getHours() * 60 + now.getMinutes();
+        let baseMinutes = root.startHour * 60 + root.startMinute;
+        let diff = currentMinutes - baseMinutes;
+
         if (diff < 0)
             diff = 0;
 
-        let targetY = diff * root.pixelsPerMinute - root.slotHeight;
+        // Position current time ~1/3 from the top of the view
+        let targetY = diff * root.pixelsPerMinute - (styledFlickable.height / 3);
         targetY = Math.max(0, targetY);
 
         let maxScroll = Math.max(0, styledFlickable.contentHeight - styledFlickable.height);
-        if (styledFlickable.height <= 0) {
-            Qt.callLater(root.scrollToFirstEvent);
-            return;
-        }
         styledFlickable.contentY = Math.min(targetY, maxScroll);
     }
 
@@ -204,7 +305,7 @@ Item {
             return;
         }
 
-        root.scrollToFirstEvent();
+        root.scrollToCurrentTime();
         root.initialScrollApplied = true;
     }
 
@@ -391,12 +492,14 @@ Item {
                         id: daysRepeater
                         model: root.days
                         delegate: Item {
+                            id: dayColumnDelegate
                             width: root.dayColumnWidth
                             height: parent.height
                             clip: true
                             
                             property bool isToday: index === root.currentDayIndex
                             property var timedEvents: root.getTimedEvents(modelData.events)
+                            property int dayIdx: index
 
                             Rectangle {
                                 anchors.fill: parent
@@ -406,31 +509,184 @@ Item {
                                 border.color: isToday ? root.todayHighlightBorder : "transparent"
                             }
 
+                            // ─── Drag-to-create MouseArea ─────────────
+                            // This has z: 0 so event blocks (z: 3+) are on top
+                            MouseArea {
+                                id: dayDragArea
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: root.ghostVisible && root.ghostDayIndex === dayIdx ? Qt.ArrowCursor : Qt.CrossCursor
+                                z: 0
+
+                                onPressed: function(mouse) {
+                                    // Don't start drag if ghost is visible (handled by ghost interactions)
+                                    if (root.ghostVisible)
+                                        return;
+
+                                    // Block Flickable from intercepting the drag
+                                    styledFlickable.interactive = false;
+
+                                    root.isDragging = true;
+                                    root.dragDayIndex = dayIdx;
+                                    root.dragStartY = mouse.y;
+                                    root.dragCurrentY = mouse.y;
+                                }
+
+                                onPositionChanged: function(mouse) {
+                                    if (root.isDragging && root.dragDayIndex === dayIdx) {
+                                        root.dragCurrentY = Math.max(0, Math.min(mouse.y, root.contentHeight));
+                                    }
+                                }
+
+                                onReleased: function(mouse) {
+                                    // Re-enable Flickable scrolling
+                                    styledFlickable.interactive = true;
+
+                                    if (root.isDragging && root.dragDayIndex === dayIdx) {
+                                        root.isDragging = false;
+
+                                        let dist = Math.abs(root.dragCurrentY - root.dragStartY);
+                                        if (dist < 10) {
+                                            // Single click: create a 1-hour default ghost block
+                                            let clickMin = root.snapToGrid(root.yToMinutes(root.dragStartY));
+                                            let endMin = clickMin + 60; // 1 hour default
+                                            root.ghostDayIndex = dayIdx;
+                                            root.ghostTopY = root.minutesToY(clickMin);
+                                            root.ghostHeight = root.minutesToY(endMin) - root.ghostTopY;
+                                            root.ghostVisible = true;
+                                        } else {
+                                            root.beginGhost(dayIdx, root.dragStartY, root.dragCurrentY);
+                                        }
+                                        root.dragDayIndex = -1;
+
+                                        // Open popup immediately
+                                        Qt.callLater(root.openPopupForGhost);
+                                    }
+                                }
+
+                                onCanceled: {
+                                    // Also re-enable if the press is cancelled
+                                    styledFlickable.interactive = true;
+                                    root.isDragging = false;
+                                    root.dragDayIndex = -1;
+                                }
+
+                                // Forward wheel events so scroll still works
+                                onWheel: function(wheel) {
+                                    wheel.accepted = false;
+                                }
+                            }
+
+                            // ─── Drag preview (during drag) ───────────
+                            Rectangle {
+                                id: dragPreview
+                                visible: root.isDragging && root.dragDayIndex === dayIdx
+                                width: parent.width - 10
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                radius: Appearance.rounding.normal
+                                color: withOpacity(Appearance.colors.colPrimary, 0.25)
+                                border.width: 2
+                                border.color: withOpacity(Appearance.colors.colPrimary, 0.6)
+                                z: 5
+
+                                y: {
+                                    let topMin = root.snapToGrid(root.yToMinutes(Math.min(root.dragStartY, root.dragCurrentY)));
+                                    return root.minutesToY(topMin);
+                                }
+                                height: {
+                                    let topMin = root.snapToGrid(root.yToMinutes(Math.min(root.dragStartY, root.dragCurrentY)));
+                                    let botMin = root.snapToGrid(root.yToMinutes(Math.max(root.dragStartY, root.dragCurrentY)));
+                                    if (botMin - topMin < root.snapInterval)
+                                        botMin = topMin + root.snapInterval;
+                                    return root.minutesToY(botMin) - root.minutesToY(topMin);
+                                }
+
+                                // Time label during drag
+                                StyledText {
+                                    anchors.centerIn: parent
+                                    text: {
+                                        let topMin = root.snapToGrid(root.yToMinutes(Math.min(root.dragStartY, root.dragCurrentY)));
+                                        let botMin = root.snapToGrid(root.yToMinutes(Math.max(root.dragStartY, root.dragCurrentY)));
+                                        if (botMin - topMin < root.snapInterval)
+                                            botMin = topMin + root.snapInterval;
+                                        return root.minutesToTimeStr(topMin) + " — " + root.minutesToTimeStr(botMin);
+                                    }
+                                    font.weight: Font.Medium
+                                    font.pixelSize: Appearance.font.pixelSize.small
+                                    color: Appearance.colors.colPrimary
+                                }
+                            }
+
+                            // ─── Ghost block (post-drag, before confirm) ──
+                            Rectangle {
+                                id: ghostBlock
+                                visible: root.ghostVisible && root.ghostDayIndex === dayIdx
+                                width: parent.width - 10
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                radius: Appearance.rounding.normal
+                                color: withOpacity(Appearance.colors.colPrimary, 0.35)
+                                border.width: 2
+                                border.color: Appearance.colors.colPrimary
+                                z: 8
+                                y: root.ghostTopY
+                                height: root.ghostHeight
+
+                                // Time label on ghost
+                                Column {
+                                    anchors {
+                                        fill: parent
+                                        margins: 8
+                                    }
+                                    spacing: 2
+
+                                    StyledText {
+                                        text: Translation.tr("New event")
+                                        font.weight: Font.DemiBold
+                                        font.pixelSize: Appearance.font.pixelSize.small
+                                        color: Appearance.colors.colOnPrimary
+                                        visible: parent.height > 40
+                                    }
+
+                                    StyledText {
+                                        text: {
+                                            let topMin = root.snapToGrid(root.yToMinutes(root.ghostTopY));
+                                            let botMin = root.snapToGrid(root.yToMinutes(root.ghostTopY + root.ghostHeight));
+                                            return root.minutesToTimeStr(topMin) + " — " + root.minutesToTimeStr(botMin);
+                                        }
+                                        font.weight: Font.Medium
+                                        font.pixelSize: Appearance.font.pixelSize.small
+                                        color: Appearance.colors.colOnPrimary
+                                    }
+                                }
+                            }
+
+                            // ─── Existing event blocks ────────────────
                             Repeater {
                                 model: timedEvents
+                                
                                 Rectangle {
+                                    id: eventBlock
+                                    
+                                    property int eventStartMinutes: {
+                                        let parts = modelData.start.split(":");
+                                        return parseInt(parts[0]) * 60 + parseInt(parts[1]);
+                                    }
+                                    property int eventEndMinutes: {
+                                        let parts = modelData.end.split(":");
+                                        let endTotal = parseInt(parts[0]) * 60 + parseInt(parts[1]);
+                                        if (endTotal === 0 && eventStartMinutes > 0)
+                                            endTotal = 24 * 60;
+                                        return endTotal;
+                                    }
+                                    
                                     width: parent.width - 10
                                     anchors.horizontalCenter: parent.horizontalCenter
                                     radius: Appearance.rounding.normal
                                     clip: true
-                                    y: {
-                                        let startHr = parseInt(modelData.start.split(":")[0]);
-                                        let startMin = parseInt(modelData.start.split(":")[1]);
-                                        let baseTotalMinutes = root.startHour * 60 + root.startMinute;
-                                        let eventTotalMinutes = startHr * 60 + startMin;
-                                        let diffMinutes = eventTotalMinutes - baseTotalMinutes;
-                                        return diffMinutes * root.pixelsPerMinute;
-                                    }
-                                    height: {
-                                        let startHr = parseInt(modelData.start.split(":")[0]);
-                                        let endHr = parseInt(modelData.end.split(":")[0]);
-                                        let startMin = parseInt(modelData.start.split(":")[1]);
-                                        let endMin = parseInt(modelData.end.split(":")[1]);
-                                        let totalMins = (endHr * 60 + endMin) - (startHr * 60 + startMin);
-                                        return Math.max(totalMins * root.pixelsPerMinute - 4, 48); // Minimum height for touch targets
-                                    }
-
+                                    z: 3
                                     color: modelData.color || Appearance.colors.colTertiaryContainer
+                                    y: root.minutesToY(eventStartMinutes)
+                                    height: Math.max((eventEndMinutes - eventStartMinutes) * root.pixelsPerMinute - 4, 48)
 
                                     HoverHandler {
                                         id: eventHover
@@ -441,44 +697,72 @@ Item {
                                         text: root.formatEventTooltip(modelData)
                                     }
 
-                                    Column {
-                                        anchors {
-                                            fill: parent
-                                            margins: 8
+                                    // Click to edit
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: root.openPopupForEdit(modelData, dayIdx)
+                                    }
+
+                                    // Delete button
+                                    RippleButton {
+                                        anchors.right: parent.right
+                                        anchors.top: parent.top
+                                        anchors.margins: 4
+                                        implicitWidth: 24
+                                        implicitHeight: 24
+                                        buttonRadius: Appearance.rounding.full
+                                        buttonColor: withOpacity(Appearance.colors.colOnSurface, 0.15)
+                                        visible: eventHover.hovered
+                                        z: 15
+
+                                        onClicked: {
+                                            if (modelData.uid) {
+                                                CalendarService.removeEventByUid(modelData.uid);
+                                            } else {
+                                                CalendarService.removeEvent(modelData.title);
+                                            }
                                         }
+
+                                        contentItem: MaterialSymbol {
+                                            anchors.centerIn: parent
+                                            horizontalAlignment: Text.AlignHCenter
+                                            font.pixelSize: 14
+                                            text: "close"
+                                            color: ColorUtils.getContrastingTextColor(eventBlock.color)
+                                        }
+                                    }
+
+                                    // Event content
+                                    Column {
+                                        anchors.fill: parent
+                                        anchors.margins: 8
                                         spacing: 4
 
                                         StyledText {
-                                            id: eventTitle
                                             text: modelData.title
-
                                             font.weight: Font.DemiBold
                                             elide: Text.ElideRight
-                                            width: parent.width
-                                            color: ColorUtils.getContrastingTextColor(modelData.color)
+                                            width: parent.width - 28
+                                            color: ColorUtils.getContrastingTextColor(eventBlock.color)
                                         }
 
                                         StyledText {
                                             text: {
-                                                let startHr = parseInt(modelData.start.split(":")[0]);
-                                                let startMin = parseInt(modelData.start.split(":")[1]);
-                                                let endHr = parseInt(modelData.end.split(":")[0]);
-                                                let endMin = parseInt(modelData.end.split(":")[1]);
-
-                                                let formatTime = (hour, minute) => {
-                                                    let testDate = new Date();
-                                                    testDate.setHours(hour, minute, 0);
-                                                    return Qt.formatTime(testDate, Config.options?.time.format ?? "hh:mm");
+                                                let formatTime = (mins) => {
+                                                    let h = Math.floor(mins / 60) % 24;
+                                                    let m = mins % 60;
+                                                    let d = new Date();
+                                                    d.setHours(h, m, 0);
+                                                    return Qt.formatTime(d, Config.options?.time.format ?? "hh:mm");
                                                 };
-
-                                                return formatTime(startHr, startMin) + " - " + formatTime(endHr, endMin);
+                                                return formatTime(eventBlock.eventStartMinutes) + " - " + formatTime(eventBlock.eventEndMinutes);
                                             }
                                             font.weight: Font.Medium
                                             width: parent.width
-                                            wrapMode: Text.NoWrap
-                                            color: ColorUtils.getContrastingTextColor(modelData.color)
+                                            color: ColorUtils.getContrastingTextColor(eventBlock.color)
                                             elide: Text.ElideRight
-                                            visible: !truncated
+                                            visible: eventBlock.height > 60
                                         }
                                     }
                                 }
@@ -519,5 +803,59 @@ Item {
             }
         }
     }
-}
 
+    // ─── Event Creation Popup ─────────────────────────────────────
+    EventCreationPopup {
+        id: eventPopup
+        anchors.fill: parent
+        z: 50
+
+        onEventCreated: function(title, description) {
+            let topMin = root.snapToGrid(root.yToMinutes(root.ghostTopY));
+            let botMin = root.snapToGrid(root.yToMinutes(root.ghostTopY + root.ghostHeight));
+            let startTimeKhal = root.minutesToKhalTimeStr(topMin);
+            let endTimeKhal = root.minutesToKhalTimeStr(botMin);
+            let eventDate = root.getDateForDayIndex(root.ghostDayIndex);
+
+            CalendarService.addEvent(eventDate, startTimeKhal, endTimeKhal, title, description);
+            root.cancelGhost();
+        }
+
+        onEventUpdated: function(oldTitle, title, description) {
+            // Remove old event and create new one with updated info
+            // Note: khal doesn't support updating events directly, so we delete and recreate
+            let eventData = eventPopup.editEventData;
+            if (!eventData) return;
+
+            let startMin = root.parseTimeToMinutes(eventData.start);
+            let endMin = root.parseTimeToMinutes(eventData.end);
+            if (endMin === 0 && startMin > 0) endMin = 24 * 60;
+            
+            let startTimeKhal = root.minutesToKhalTimeStr(startMin);
+            let endTimeKhal = root.minutesToKhalTimeStr(endMin);
+            let eventDate = root.getDateForDayIndex(eventPopup.dayIndex);
+
+            // Use UID if available for precise deletion
+            if (eventData.uid) {
+                CalendarService.removeEventByUid(eventData.uid);
+            } else {
+                CalendarService.removeEvent(oldTitle);
+            }
+            CalendarService.addEvent(eventDate, startTimeKhal, endTimeKhal, title, description);
+        }
+
+        onEventDeleted: function(title) {
+            let eventData = eventPopup.editEventData;
+            if (eventData && eventData.uid) {
+                CalendarService.removeEventByUid(eventData.uid);
+            } else {
+                CalendarService.removeEvent(title);
+            }
+            root.cancelGhost();
+        }
+
+        onCancelled: {
+            root.cancelGhost();
+        }
+    }
+}

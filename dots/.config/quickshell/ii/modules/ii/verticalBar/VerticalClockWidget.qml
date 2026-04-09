@@ -5,10 +5,12 @@ import QtQuick
 import QtQuick.Layouts
 import qs.modules.ii.bar as Bar
 
-Item {
+MouseArea {
     id: root
     implicitHeight: clockColumn.implicitHeight + 10
     implicitWidth: Appearance.sizes.verticalBarWidth
+
+    hoverEnabled: !Config.options.bar.tooltips.clickToShow
 
     ColumnLayout {
         id: clockColumn
@@ -20,35 +22,30 @@ Item {
             delegate: StyledText {
                 required property string modelData
                 Layout.alignment: Qt.AlignHCenter
-                font.pixelSize: modelData.match(/am|pm/i) ? 
-                    Appearance.font.pixelSize.smaller // Smaller "am"/"pm" text
-                    : Appearance.font.pixelSize.large
+                font.pixelSize: modelData.match(/am|pm/i) ? Appearance.font.pixelSize.smaller // Smaller "am"/"pm" text
+                : Appearance.font.pixelSize.large
                 color: Appearance.colors.colOnLayer1
                 text: modelData.padStart(2, "0")
             }
         }
     }
 
-    MouseArea {
-        id: mouseArea
-        anchors.fill: parent
-        hoverEnabled: !Config.options.bar.tooltips.clickToShow
+    property bool compactMode: Config.options.bar.tooltips.compactPopups
 
-        Loader {
-            active: true
-            sourceComponent: Config.options.bar.tooltips.compactPopups ? clockPopupCompact : clockPopup
+    Loader {
+        active: true
+        sourceComponent: root.compactMode ? clockPopupCompact : clockPopup
+    }
+    Component {
+        id: clockPopup
+        Bar.ClockWidgetPopup {
+            hoverTarget: root
         }
-        Component {
-            id: clockPopup
-            Bar.ClockWidgetPopup {
-                hoverTarget: mouseArea
-            }
-        }
-        Component {
-            id: clockPopupCompact
-            Bar.ClockWidgetPopupCompact {
-                hoverTarget: mouseArea
-            }
+    }
+    Component {
+        id: clockPopupCompact
+        Bar.ClockWidgetPopupCompact {
+            hoverTarget: root
         }
     }
 }

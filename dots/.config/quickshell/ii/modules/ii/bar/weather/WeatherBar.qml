@@ -21,12 +21,8 @@ MouseArea {
     onPressed: {
         if (mouse.button === Qt.RightButton) {
             Weather.getData();
-            Quickshell.execDetached(["notify-send", 
-                Translation.tr("Weather"), 
-                Translation.tr("Refreshing (manually triggered)")
-                , "-a", "Shell"
-            ])
-            mouse.accepted = false
+            Quickshell.execDetached(["notify-send", Translation.tr("Weather"), Translation.tr("Refreshing (manually triggered)"), "-a", "Shell"]);
+            mouse.accepted = false;
         }
     }
 
@@ -60,7 +56,7 @@ MouseArea {
         active: true
         sourceComponent: root.compactMode ? weatherPopupCompact : weatherPopup
     }
-    
+
     Component {
         id: weatherPopupCompact
 
@@ -68,7 +64,7 @@ MouseArea {
             hoverTarget: root
         }
     }
-    
+
     Component {
         id: weatherPopup
 

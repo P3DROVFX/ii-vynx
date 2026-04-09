@@ -6,9 +6,9 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell
-import Quickshell.Io
 import Quickshell.Bluetooth
 import Quickshell.Hyprland
+import Qt5Compat.GraphicalEffects
 
 import qs.modules.ii.sidebarDashboard.quickToggles
 import qs.modules.ii.sidebarDashboard.quickToggles.classicStyle
@@ -221,37 +221,56 @@ Item {
             color: Appearance.colors.colLayer1
             readonly property int fullRadius: Config.options.appearance.sharpMode ? Appearance.rounding.full : height / 2
             radius: fullRadius
-            implicitWidth: uptimeRow.implicitWidth + 24
-            implicitHeight: uptimeRow.implicitHeight + 8
+            implicitWidth: uptimeRow.implicitWidth + 28
+            implicitHeight: uptimeRow.implicitHeight + 4
             
             Row {
                 id: uptimeRow
-                anchors.centerIn: parent
-                spacing: 8
-                CustomIcon {
-                    id: distroIcon
+                anchors {
+                    left: parent.left
+                    verticalCenter: parent.verticalCenter
+                    leftMargin: 6
+                    }
+                spacing: 4
+
+                // PROFILE PICTURE
+                Item {
+                    id: profilePicContainer
+                    
                     anchors.verticalCenter: parent.verticalCenter
-                    width: 25
-                    height: 25
-                    source: SystemInfo.distroIcon
-                    colorize: true
-                    color: Appearance.colors.colOnLayer0
+                    width: 40
+                    height: 40
+
+                    Image {
+                        id: profilePicSource
+                        anchors.fill: parent
+                        source: "file://" + Quickshell.env("HOME") + "/.config/quickshell/ii/assets/profile.png" // PROFILE PICTURE PATH
+                        sourceSize.width: parent.width
+                        sourceSize.height: parent.height
+                        fillMode: Image.PreserveAspectCrop
+                        visible: false
+                    }
+
+                    Rectangle {
+                        id: profilePicMask
+                        anchors.fill: parent
+                        radius: width / 2
+                        visible: false
+                    }
+
+                    OpacityMask {
+                        anchors.fill: parent
+                        source: profilePicSource
+                        maskSource: profilePicMask
+                    }
                 }
-                ColumnLayout {
+
+                StyledText {
                     anchors.verticalCenter: parent.verticalCenter
-                    spacing: -4
-                    StyledText {
-                        font.pixelSize: Appearance.font.pixelSize.small
-                        color: Appearance.colors.colOnLayer0
-                        text: Translation.tr("Up")
-                        textFormat: Text.MarkdownText
-                    }
-                    StyledText {
-                        font.pixelSize: Appearance.font.pixelSize.smaller
-                        color: Appearance.colors.colSubtext
-                        text: DateTime.uptime
-                        textFormat: Text.MarkdownText
-                    }
+                    font.pixelSize: Appearance.font.pixelSize.small
+                    color: Appearance.colors.colOnLayer0
+                    text: "Olá, P3DROVFX"
+                    font.bold: true
                 }
                 
             }
@@ -302,6 +321,7 @@ Item {
                 id: updateButton
                 toggled: confirm
                 property bool confirm: false
+                property string updateScript: Quickshell.env("HOME") + "/.local/share/ii-vynx/update-with-customs.sh"
                 buttonIcon: confirm ? "check" : "download"
                 Timer {
                     id: confirmTimer
@@ -313,8 +333,19 @@ Item {
                 }
                 onClicked: {
                     if (confirm) {
-                        Quickshell.execDetached([Directories.cliPath, "update", "--no-confirm", "--no-backup"]);
                         GlobalStates.sidebarRightOpen = false;
+                        // Wrapper: roda dry-run primeiro, se exit 0 aplica de verdade
+                        const script = updateScript;
+                        const wrapperCmd = [
+                            `echo '━━━ ii-vynx: Verificando conflitos (dry-run)... ━━━'`,
+                            `bash '${script}' --dry-run -v`,
+                            `echo ''`,
+                            `echo '━━━ Sem conflitos! Aplicando update... ━━━'`,
+                            `echo ''`,
+                            `bash '${script}' -v`,
+                        ].join(" && ");
+                        const fullCmd = `${wrapperCmd} || echo -e '\\n⚠ Conflitos ou erro detectado. Update NÃO aplicado.'`;
+                        Quickshell.execDetached([Config.options.apps.terminal, "-e", "bash", "-c", fullCmd + "; echo ''; echo 'Pressione Enter para fechar...'; read"]);
                     } else {
                         confirm = true
                         confirmTimer.start()
@@ -322,7 +353,7 @@ Item {
                     
                 }
                 StyledToolTip {
-                    text: Translation.tr("Update the ii-vynx, make sure you have the vynx-cli installed")
+                    text: Translation.tr("Update ii-vynx (preserving your customizations)")
                 }
             }
             QuickToggleButton {

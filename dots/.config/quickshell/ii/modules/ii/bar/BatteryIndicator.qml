@@ -6,52 +6,128 @@ import QtQuick.Layouts
 
 MouseArea {
     id: root
+    property bool borderless: Config.options.bar.borderless
+
+    // ── Propriedades reativas ──
     readonly property var chargeState: Battery.chargeState
     readonly property bool isCharging: Battery.isCharging
     readonly property bool isPluggedIn: Battery.isPluggedIn
     readonly property real percentage: Battery.percentage
+    readonly property bool isFull: Battery.isFull
     readonly property bool isLow: percentage <= Config.options.battery.low / 100
+    readonly property bool isCritical: percentage <= Config.options.battery.critical / 100
 
-    implicitWidth: batteryProgress.implicitWidth
+    // Cor do preenchimento
+    readonly property color fillColor: {
+        if (root.isCritical && !root.isCharging)
+            return "#E53935";
+        if (root.isLow && !root.isCharging)
+            return "#FB8C00";
+        return "#43A047";
+    }
+
+    // Cor da moldura
+    readonly property color frameColor: {
+        if (root.isCritical && !root.isCharging)
+            return Appearance.m3colors.m3error;
+        if (root.isLow && !root.isCharging)
+            return Appearance.m3colors.m3error;
+        return Appearance.colors.colOnSecondaryContainer;
+    }
+
+    implicitWidth: batteryContainer.width + 12
     implicitHeight: Appearance.sizes.barHeight
 
     hoverEnabled: !Config.options.bar.tooltips.clickToShow
 
-    ClippedProgressBar {
-        id: batteryProgress
+    Item {
+        id: batteryContainer
         anchors.centerIn: parent
-        value: percentage
-        highlightColor: (isLow && !isCharging) ? Appearance.m3colors.m3error : Appearance.colors.colOnSecondaryContainer
+        height: 14
+        width: height * (28 / 13)
 
-        Item {
-            anchors.centerIn: parent
-            width: batteryProgress.valueBarWidth
-            height: batteryProgress.valueBarHeight
+        // ── Camada 1: Fill (sem clipping, com rounding próprio) ──
+        Rectangle {
+            id: fillBar
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.left: parent.left
+            anchors.leftMargin: 3
 
-            RowLayout {
-                anchors {
-                    horizontalCenter: parent.horizontalCenter
-                    bottom: parent.bottom
-                    bottomMargin: (parent.height - height) / 2
-                }
-                spacing: 0
+            readonly property real bodyInnerWidth: (parent.width * (24 / 28)) - 6
+            readonly property real clampedPct: Math.max(0, Math.min(1, root.percentage))
 
-                MaterialSymbol {
-                    id: boltIcon
-                    Layout.alignment: Qt.AlignVCenter
-                    Layout.leftMargin: -2
-                    Layout.rightMargin: -2
-                    fill: 1
-                    text: "bolt"
-                    iconSize: Appearance.font.pixelSize.smaller
-                    visible: isCharging && percentage < 1 // TODO: animation
-                }
-                StyledText {
-                    Layout.alignment: Qt.AlignVCenter
-                    font: batteryProgress.font
-                    text: batteryProgress.text
+            height: parent.height - 6
+            width: Math.max(0, bodyInnerWidth * clampedPct)
+            radius: 1.5
+            color: root.fillColor
+            z: 0
+
+            Behavior on width {
+                NumberAnimation {
+                    duration: Appearance.animation.elementMoveFast.duration
+                    easing.type: Appearance.animation.elementMoveFast.type
+                    easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
                 }
             }
+
+            Behavior on color {
+                ColorAnimation {
+                    duration: Appearance.animation.elementMoveFast.duration
+                    easing.type: Appearance.animation.elementMoveFast.type
+                    easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
+                }
+            }
+        }
+
+        // ── Camada 2: Moldura SVG ──
+        CustomIcon {
+            anchors.fill: parent
+            source: "Battery.svg"
+            colorize: true
+            color: root.frameColor
+            z: 1
+
+            Behavior on color {
+                ColorAnimation {
+                    duration: Appearance.animation.elementMoveFast.duration
+                    easing.type: Appearance.animation.elementMoveFast.type
+                    easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
+                }
+            }
+        }
+
+        // ── Camada 3: Bolt outline (knockout — cor de fundo anula fill e frame) ──
+        MaterialSymbol {
+            visible: root.isCharging || root.isPluggedIn
+
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.horizontalCenterOffset: -(parent.width * (4 / 28)) / 2
+
+            anchors.top: parent.top
+            anchors.topMargin: -5
+
+            text: "bolt"
+            iconSize: 17
+            fill: 1
+            color: Appearance.colors.colLayer0
+            z: 2
+        }
+
+        // ── Camada 4: Bolt principal (por cima do knockout) ──
+        MaterialSymbol {
+            visible: root.isCharging || root.isPluggedIn
+
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.horizontalCenterOffset: -(parent.width * (4 / 28)) / 2
+
+            anchors.top: parent.top
+            anchors.topMargin: -6
+
+            text: "bolt"
+            iconSize: 16
+            fill: 1
+            color: Appearance.colors.colOnSecondaryContainer
+            z: 3
         }
     }
 

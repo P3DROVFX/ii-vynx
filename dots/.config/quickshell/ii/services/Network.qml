@@ -38,11 +38,11 @@ Singleton {
         ? "lan"
         : (root.wifiEnabled && root.wifiStatus === "connected")
             ? (
-                (root.active?.strength ?? 0) > 83 ? "signal_wifi_4_bar" :
-                (root.active?.strength ?? 0) > 67 ? "network_wifi" :
-                (root.active?.strength ?? 0) > 50 ? "network_wifi_3_bar" :
-                (root.active?.strength ?? 0) > 33 ? "network_wifi_2_bar" :
-                (root.active?.strength ?? 0) > 17 ? "network_wifi_1_bar" :
+                (root.active?.strength ?? 0) > 83 ? "android_wifi_4_bar" :
+                (root.active?.strength ?? 0) > 67 ? "android_wifi_3_bar" :
+                (root.active?.strength ?? 0) > 50 ? "wifi_2_bar" :
+                (root.active?.strength ?? 0) > 33 ? "wifi_2_bar" :
+                (root.active?.strength ?? 0) > 17 ? "wifi_1_bar" :
                 "signal_wifi_0_bar"
             )
             : (root.wifiStatus === "connecting")

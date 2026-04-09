@@ -10,19 +10,21 @@ MouseArea {
     id: indicator
     property bool vertical: false
 
-    property bool minimal: Config.options.bar.indicators.record.minimal
     property bool activelyRecording: Persistent.states.screenRecord.active
+    property bool isLoading: Persistent.states.screenRecord.loading === true
+
     property color colText: Appearance.colors.colOnPrimary
 
     hoverEnabled: true
-    implicitWidth: vertical ? 20 : minimal ? 50 : 80 // NOTE: Why do we have to enter a fixed size to make it dull?
-    implicitHeight: vertical ? 50 : 20
+    implicitWidth: vertical ? 20 : 80 // we have to enter a fixed size to make it dull 
+    implicitHeight: vertical ? 75 : 20
 
     Component.onCompleted: updateVisibility()
     onActivelyRecordingChanged: updateVisibility()
+    onIsLoadingChanged: updateVisibility()
 
     function updateVisibility() {
-        rootItem.toggleVisible(activelyRecording)
+        rootItem.toggleVisible(activelyRecording || isLoading)
     }
 
     function formatTime(totalSeconds) {
@@ -56,25 +58,21 @@ MouseArea {
             spacing: 4
 
             MaterialSymbol {
-                text: "screen_record"
+                Layout.bottomMargin: 2
+                id: iconIndicator
+                z: 1
+                text: indicator.isLoading ? "progress_activity" : "screen_record"
                 color: indicator.colText
-                iconSize: Appearance.font.pixelSize.larger
-                horizontalAlignment: Text.AlignVCenter
-            }
-
-            MaterialSymbol {
-                text: "stop"
-                fill: 1
-                visible: minimal
-                color: indicator.colText
-                iconSize: Appearance.font.pixelSize.larger
-                horizontalAlignment: Text.AlignVCenter
+                RotationAnimator on rotation {
+                    running: indicator.isLoading
+                    from: 0; to: 360; duration: 1000; loops: Animation.Infinite
+                }
             }
             
             StyledText {
                 id: textIndicator                
                 Layout.topMargin: 2
-                visible: !minimal
+                visible: !indicator.isLoading
 
                 text: indicator.formatTime(Persistent.states.screenRecord.seconds)
                 color: indicator.colText
@@ -91,22 +89,32 @@ MouseArea {
             spacing: 4
 
             MaterialSymbol {
-                Layout.topMargin: parent.spacing
                 Layout.alignment: Text.AlignHCenter
-                text: "screen_record"
+                id: iconIndicator
+                text: indicator.isLoading ? "progress_activity" : "screen_record"
                 color: indicator.colText
                 iconSize: Appearance.font.pixelSize.larger
                 horizontalAlignment: Text.AlignHCenter
+                RotationAnimator on rotation {
+                    running: indicator.isLoading
+                    from: 0; to: 360; duration: 1000; loops: Animation.Infinite
+                }
             }
 
-            MaterialSymbol {
+            StyledText {              
                 Layout.alignment: Text.AlignHCenter
-                text: "stop"
-                fill: 1
+                text: indicator.formatTime(Persistent.states.screenRecord.seconds).substring(0,2)
                 color: indicator.colText
-                iconSize: Appearance.font.pixelSize.larger
-                horizontalAlignment: Text.AlignHCenter
+                visible: !indicator.isLoading
             }
+            
+            StyledText {      
+                text: indicator.formatTime(Persistent.states.screenRecord.seconds).substring(3,5)
+                color: indicator.colText
+                Layout.alignment: Text.AlignHCenter
+                visible: !indicator.isLoading
+            }
+
         }
     }
     
@@ -115,10 +123,14 @@ MouseArea {
         RowLayout {
             MaterialSymbol {
                 Layout.bottomMargin: 2
-                text: "screen_record"
+                text: indicator.isLoading ? "progress_activity" : "screen_record"
+                RotationAnimator on rotation {
+                    running: indicator.isLoading
+                    from: 0; to: 360; duration: 1000; loops: Animation.Infinite
+                }
             }
             StyledText {
-                text: Translation.tr("Recording...   %1").arg(indicator.formatTime(Persistent.states.screenRecord.seconds))
+                text: indicator.isLoading ? Translation.tr("Loading OBS...") : Translation.tr("Recording...   %1").arg(indicator.formatTime(Persistent.states.screenRecord.seconds))
             }
         }
         RowLayout {

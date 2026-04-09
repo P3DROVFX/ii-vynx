@@ -20,7 +20,7 @@ Toolbar {
         altAction: () => {
             Wallpapers.openFallbackPicker(wallpaperSelectorContent.useDarkMode);
             GlobalStates.wallpaperSelectorOpen = false;
-            Config.options.wallpaperSelector.useSystemFileDialog = true
+            Config.options.wallpaperSelector.useSystemFileDialog = true;
         }
         text: "open_in_new"
         StyledToolTip {
@@ -30,22 +30,22 @@ Toolbar {
 
     IconToolbarButton {
         implicitWidth: height
-            onClicked: {
-                if (wallpaperSelectorContent.browserMode) {
-                    if (wallpaperSelectorContent.apiImages.length > 0) {
-                        const randomImg = wallpaperSelectorContent.apiImages[Math.floor(Math.random() * wallpaperSelectorContent.apiImages.length)];
-                        wallpaperSelectorContent.selectWallpaperPath(randomImg.actualPath || randomImg.filePath);
-                    }
-                } else if (wallpaperSelectorContent.favMode) {
-                    const favs = Persistent.states.wallpaper.favourites;
-                    if (favs.length > 0) {
-                        const randomPath = favs[Math.floor(Math.random() * favs.length)];
-                        wallpaperSelectorContent.selectWallpaperPath(randomPath);
-                    }
-                } else {
-                    Wallpapers.randomFromCurrentFolder();
+        onClicked: {
+            if (wallpaperSelectorContent.browserMode) {
+                if (wallpaperSelectorContent.apiImages.length > 0) {
+                    const randomImg = wallpaperSelectorContent.apiImages[Math.floor(Math.random() * wallpaperSelectorContent.apiImages.length)];
+                    wallpaperSelectorContent.selectWallpaperPath(randomImg.actualPath || randomImg.filePath);
                 }
+            } else if (wallpaperSelectorContent.favMode) {
+                const favs = Persistent.states.wallpaper.favourites;
+                if (favs.length > 0) {
+                    const randomPath = favs[Math.floor(Math.random() * favs.length)];
+                    wallpaperSelectorContent.selectWallpaperPath(randomPath);
+                }
+            } else {
+                Wallpapers.randomFromCurrentFolder();
             }
+        }
         text: "ifl"
         StyledToolTip {
             text: Translation.tr("Pick random from this folder")
@@ -55,10 +55,11 @@ Toolbar {
     IconToolbarButton {
         implicitWidth: height
         onClicked: {
-            if (!toggled) wallpaperSelectorContent.updateColorCache();
-            colorFilterToolbar.visible = !colorFilterToolbar.visible
+            if (!toggled)
+                wallpaperSelectorContent.updateColorCache();
+            colorFilterToolbar.visible = !colorFilterToolbar.visible;
             if (!colorFilterToolbar.visible) {
-                wallpaperSelectorContent.activeColorFilter = ""
+                wallpaperSelectorContent.activeColorFilter = "";
             }
         }
         toggled: colorFilterToolbar.visible
@@ -70,8 +71,8 @@ Toolbar {
 
     IconToolbarButton {
         implicitWidth: height
-            onClicked: wallpaperSelectorContent.useDarkMode = !wallpaperSelectorContent.useDarkMode
-            text: wallpaperSelectorContent.useDarkMode ? "dark_mode" : "light_mode"
+        onClicked: wallpaperSelectorContent.useDarkMode = !wallpaperSelectorContent.useDarkMode
+        text: wallpaperSelectorContent.useDarkMode ? "dark_mode" : "light_mode"
         StyledToolTip {
             text: Translation.tr("Click to toggle light/dark mode\n(applied when wallpaper is chosen)")
         }
@@ -80,8 +81,9 @@ Toolbar {
     ToolbarTextField {
         id: filterField
         placeholderText: {
-            if (wallpaperSelectorContent.browserMode) return Translation.tr("Search API (e.g. nature, city)");
-            return focus ? Translation.tr("Search wallpapers") : Translation.tr("Hit \"/\" to search")
+            if (wallpaperSelectorContent.browserMode)
+                return Translation.tr("Search API (e.g. nature, city)");
+            return focus ? Translation.tr("Search wallpapers") : Translation.tr("Hit \"/\" to search");
         }
 
         // Style
@@ -102,7 +104,7 @@ Toolbar {
             if (wallpaperSelectorContent.browserMode && text.trim().length > 0) {
                 const newTags = text.trim().split(/\s+/);
                 const allTags = [...newTags];
-                wallpaperSelectorContent.moreOptionsModelData = null
+                wallpaperSelectorContent.moreOptionsModelData = null;
                 WallpaperBrowser.clearResponses();
                 WallpaperBrowser.makeRequest(allTags, 20, 1);
                 grid.currentIndex = 0;
@@ -114,8 +116,7 @@ Toolbar {
             if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_V) { // Intercept Ctrl+V to handle "paste to go to" in pickers
                 wallpaperSelectorContent.handleFilePasting(event);
                 return;
-            }
-            else if (text.length !== 0) {
+            } else if (text.length !== 0) {
                 // No filtering, just navigate grid
                 if (event.key === Qt.Key_Down) {
                     grid.moveSelection(grid.columns);
@@ -141,5 +142,5 @@ Toolbar {
         StyledToolTip {
             text: Translation.tr("Cancel wallpaper selection")
         }
-    }                        
+    }
 }

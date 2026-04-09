@@ -53,6 +53,7 @@ Scope { // Scope
             WlrLayershell.namespace: "quickshell:cheatsheet"
             // Hyprland 0.49: Focus is always exclusive and setting this breaks mouse focus grab
             // WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
+            WlrLayershell.keyboardFocus: cheatsheetTimetable.eventPopupVisible ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
             color: "transparent"
 
             mask: Region {
@@ -175,7 +176,7 @@ Scope { // Scope
                             }
                         }
 
-                        CheatsheetTimetable {}
+                        CheatsheetTimetable { id: cheatsheetTimetable }
                         CheatsheetKeybinds {}
                         CheatsheetPeriodicTable {}
                         

@@ -9,24 +9,23 @@ import QtQml.Models
 ContentPage {
     id: page
     forceWidth: true
-    readonly property int index: 2 
+    readonly property int index: 2
     property bool register: parent.register ?? false
 
     property var componentMap: ({
-        "active_window": activeWindow,
-        "music_player": musicPlayer,
-        "utility_buttons": utilityButtons,
-        "system_tray": systemTray,
-        "workspaces": workspaces,
-        "timer": indicators,
-        "record_indicator": indicators
-    })
+            "active_window": activeWindow,
+            "music_player": musicPlayer,
+            "utility_buttons": utilityButtons,
+            "system_tray": systemTray,
+            "workspaces": workspaces,
+            "timer": indicators,
+            "record_indicator": indicators
+        })
 
     function scrollTo(stringId) {
-        const item = componentMap[stringId]
-        page.contentY = item.y
+        const item = componentMap[stringId];
+        page.contentY = item.y;
     }
-
 
     ContentSection {
         icon: "mobile_layout"
@@ -37,8 +36,8 @@ ContentPage {
             ConfigListView {
                 barSection: 0
                 listModel: Config.options.bar.layouts.left
-                onUpdated: (newList) => {
-                    Config.options.bar.layouts.left = newList
+                onUpdated: newList => {
+                    Config.options.bar.layouts.left = newList;
                 }
             }
         }
@@ -48,8 +47,8 @@ ContentPage {
             ConfigListView {
                 barSection: 1
                 listModel: Config.options.bar.layouts.center
-                onUpdated: (newList) => {
-                    Config.options.bar.layouts.center = newList
+                onUpdated: newList => {
+                    Config.options.bar.layouts.center = newList;
                 }
             }
         }
@@ -59,8 +58,8 @@ ContentPage {
             ConfigListView {
                 barSection: 2
                 listModel: Config.options.bar.layouts.right
-                onUpdated: (newList) => {
-                    Config.options.bar.layouts.right = newList
+                onUpdated: newList => {
+                    Config.options.bar.layouts.right = newList;
                 }
             }
         }
@@ -230,17 +229,17 @@ ContentPage {
                 onSelected: newValue => {
                     Config.options.bar.barBackgroundStyle = newValue;
                 }
-                options: [ 
+                options: [
                     {
                         displayName: Translation.tr("Visible"),
                         icon: "visibility",
                         value: 1
-                    }, 
+                    },
                     {
                         displayName: Translation.tr("Adaptive"),
                         icon: "masked_transitions",
                         value: 2
-                    },        
+                    },
                     {
                         displayName: Translation.tr("Transparent"),
                         icon: "opacity",
@@ -250,7 +249,7 @@ ContentPage {
             }
         }
     }
-    
+
     ContentSection {
         id: activeWindow
         icon: "ad"
@@ -280,7 +279,7 @@ ContentPage {
                 onCheckedChanged: {
                     Config.options.bar.mediaPlayer.useFixedSize = checked;
                 }
-            }   
+            }
 
             ConfigSpinBox {
                 enabled: !Config.options.bar.vertical && Config.options.bar.mediaPlayer.useFixedSize
@@ -322,7 +321,7 @@ ContentPage {
                 }
             }
         }
-        
+
         ContentSubsection {
             title: Translation.tr("Lyrics")
 
@@ -348,7 +347,7 @@ ContentPage {
                     Layout.fillWidth: false
                     currentValue: Config.options.bar.mediaPlayer.lyrics.style
                     onSelected: newValue => {
-                        Config.options.bar.mediaPlayer.lyrics.style = newValue
+                        Config.options.bar.mediaPlayer.lyrics.style = newValue;
                     }
                     options: [
                         {
@@ -374,11 +373,8 @@ ContentPage {
                     Config.options.bar.mediaPlayer.lyrics.useGradientMask = checked;
                 }
             }
-            
         }
-
     }
-    
 
     ContentSection {
         icon: "notifications"
@@ -406,7 +402,7 @@ ContentPage {
                 Config.options.tray.invertPinnedItems = checked;
             }
         }
-        
+
         ConfigSwitch {
             buttonIcon: "colors"
             text: Translation.tr('Tint icons')
@@ -445,7 +441,7 @@ ContentPage {
                 }
             }
         }
-        
+
         ContentSubsection {
             title: Translation.tr("Record")
 
@@ -643,7 +639,7 @@ ContentPage {
             ConfigSelectionArray {
                 currentValue: JSON.stringify(Config.options.bar.workspaces.numberMap)
                 onSelected: newValue => {
-                    Config.options.bar.workspaces.numberMap = JSON.parse(newValue)
+                    Config.options.bar.workspaces.numberMap = JSON.parse(newValue);
                 }
                 options: [
                     {
