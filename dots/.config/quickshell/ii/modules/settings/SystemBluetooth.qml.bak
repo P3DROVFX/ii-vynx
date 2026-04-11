@@ -1,0 +1,412 @@
+import QtQuick
+import QtQuick.Layouts
+import qs
+import qs.modules.common.functions as CF
+import QtQuick.Controls
+import qs.modules.common
+import qs.modules.common.widgets
+import qs.services
+import Quickshell
+import Quickshell.Bluetooth
+
+ColumnLayout {
+    id: page
+    spacing: 30
+    width: parent ? parent.width : implicitWidth
+
+    ContentSection {
+        icon: "bluetooth"
+        title: Translation.tr("Bluetooth")
+
+        ConfigSwitch {
+            buttonIcon: BluetoothStatus.enabled ? "bluetooth" : "bluetooth_disabled"
+            text: Translation.tr("Enable Bluetooth")
+            checked: BluetoothStatus.enabled
+            onCheckedChanged: {
+                if (Bluetooth.defaultAdapter) {
+                    Bluetooth.defaultAdapter.enabled = checked;
+                }
+            }
+        }
+
+        ContentSubsection {
+            title: Translation.tr("Saved Devices")
+            visible: BluetoothStatus.enabled && (BluetoothStatus.connectedDevices.length > 0 || BluetoothStatus.pairedButNotConnectedDevices.length > 0)
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 8
+
+                Repeater {
+                    model: BluetoothStatus.connectedDevices
+                    
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: deviceCol.implicitHeight
+                        color: {
+                            if (modelData.connected) return CF.ColorUtils.mix(Appearance.colors.colLayer1Base, Appearance.colors.colPrimary, 0.85);
+                            return Appearance.colors.colLayer1Base;
+                        }
+                        radius: 12
+
+                        property bool expanded: false
+
+                        ColumnLayout {
+                            id: deviceCol
+                            width: parent.width
+                            spacing: 0
+
+                            RippleButton {
+                                Layout.fillWidth: true
+                                implicitHeight: 60
+                                buttonRadius: 12
+                                colBackground: "transparent"
+                                onClicked: modelData.connected ? modelData.disconnect() : modelData.connect()
+
+                                RowLayout {
+                                    width: parent.width
+                                    anchors.margins: 12
+                                    spacing: 12
+
+                                    MaterialSymbol {
+                                        text: {
+                                            const type = modelData.deviceType;
+                                            if (type === "phone") return "smartphone";
+                                            if (type === "computer") return "computer";
+                                            if (type === "audio-card") return "headset";
+                                            return "bluetooth";
+                                        }
+                                        iconSize: 24
+                                        color: modelData.connected ? Appearance.colors.colPrimary : Appearance.colors.colSubtext
+                                    }
+
+                                    ColumnLayout {
+                                        Layout.fillWidth: true
+                                        spacing: 0
+                                        StyledText {
+                                            text: modelData.name || modelData.address
+                                            font.pixelSize: Appearance.font.pixelSize.normal
+                                            font.weight: modelData.connected ? Font.DemiBold : Font.Normal
+                                            color: Appearance.colors.colOnLayer1
+                                            elide: Text.ElideRight
+                                            Layout.fillWidth: true
+                                        }
+                                        StyledText {
+                                            text: {
+                                                if (modelData.connected) return "Connected" + (modelData.batteryAvailable ? " · " + Math.round(modelData.battery * 100) + "%" : "");
+                                                if (modelData.pairing) return "Pairing...";
+                                                if (modelData.paired || modelData.trusted) return "Paired";
+                                                return "Available";
+                                            }
+                                            font.pixelSize: Appearance.font.pixelSize.small
+                                            color: Appearance.colors.colSubtext
+                                            Layout.fillWidth: true
+                                        }
+                                    }
+
+                                    RippleButton {
+                                        implicitWidth: 32
+                                        implicitHeight: 32
+                                        buttonRadius: 16
+                                        colBackground: "transparent"
+                                        onClicked: expanded = !expanded
+                                        
+                                        MaterialSymbol {
+                                            anchors.centerIn: parent
+                                            text: "keyboard_arrow_down"
+                                            iconSize: 20
+                                            color: Appearance.colors.colSubtext
+                                            rotation: expanded ? 180 : 0
+                                            Behavior on rotation { NumberAnimation { duration: 200 } }
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Expanded Menu
+                            Rectangle {
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: expanded ? expansionActions.implicitHeight + 24 : 0
+                                color: Appearance.colors.colLayer2Base
+                                radius: 12
+                                clip: true
+                                opacity: expanded ? 1 : 0
+                                Behavior on Layout.preferredHeight { NumberAnimation { duration: 200 } }
+                                Behavior on opacity { NumberAnimation { duration: 200 } }
+
+                                RowLayout {
+                                    id: expansionActions
+                                    anchors.left: parent.left
+                                    anchors.right: parent.right
+                                    anchors.top: parent.top
+                                    anchors.margins: 12
+                                    spacing: 12
+
+                                    StyledText {
+                                        text: "Address: " + modelData.address
+                                        font.pixelSize: Appearance.font.pixelSize.smaller
+                                        color: Appearance.colors.colSubtext
+                                        Layout.alignment: Qt.AlignVCenter
+                                    }
+                                    
+                                    Item { Layout.fillWidth: true }
+
+                                    RippleButton {
+                                        visible: (modelData.paired || modelData.trusted) && !modelData.connected
+                                        buttonText: "Forget"
+                                        implicitWidth: 90
+                                        implicitHeight: 36
+                                        buttonRadius: Appearance.rounding.full
+                                        colBackground: Appearance.m3colors.m3error
+                                        colText: Appearance.m3colors.m3onError
+                                        onClicked: {
+                                            if (modelData.forget) modelData.forget();
+                                            else if (modelData.unpair) modelData.unpair();
+                                            modelData.trusted = false;
+                                            expanded = false;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Repeater {
+                    model: BluetoothStatus.pairedButNotConnectedDevices
+                    
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: deviceCol2.implicitHeight
+                        color: {
+                            if (modelData.connected) return CF.ColorUtils.mix(Appearance.colors.colLayer1Base, Appearance.colors.colPrimary, 0.85);
+                            return Appearance.colors.colLayer1Base;
+                        }
+                        radius: 12
+
+                        property bool expanded: false
+
+                        ColumnLayout {
+                            id: deviceCol2
+                            width: parent.width
+                            spacing: 0
+
+                            RippleButton {
+                                Layout.fillWidth: true
+                                implicitHeight: 60
+                                buttonRadius: 12
+                                colBackground: "transparent"
+                                onClicked: modelData.connected ? modelData.disconnect() : modelData.connect()
+
+                                RowLayout {
+                                    width: parent.width
+                                    anchors.margins: 12
+                                    spacing: 12
+
+                                    MaterialSymbol {
+                                        text: {
+                                            const type = modelData.deviceType;
+                                            if (type === "phone") return "smartphone";
+                                            if (type === "computer") return "computer";
+                                            if (type === "audio-card") return "headset";
+                                            return "bluetooth";
+                                        }
+                                        iconSize: 24
+                                        color: modelData.connected ? Appearance.colors.colPrimary : Appearance.colors.colSubtext
+                                    }
+
+                                    ColumnLayout {
+                                        Layout.fillWidth: true
+                                        spacing: 0
+                                        StyledText {
+                                            text: modelData.name || modelData.address
+                                            font.pixelSize: Appearance.font.pixelSize.normal
+                                            font.weight: modelData.connected ? Font.DemiBold : Font.Normal
+                                            color: Appearance.colors.colOnLayer1
+                                            elide: Text.ElideRight
+                                            Layout.fillWidth: true
+                                        }
+                                        StyledText {
+                                            text: {
+                                                if (modelData.connected) return "Connected" + (modelData.batteryAvailable ? " · " + Math.round(modelData.battery * 100) + "%" : "");
+                                                if (modelData.pairing) return "Pairing...";
+                                                if (modelData.paired || modelData.trusted) return "Paired";
+                                                return "Available";
+                                            }
+                                            font.pixelSize: Appearance.font.pixelSize.small
+                                            color: Appearance.colors.colSubtext
+                                            Layout.fillWidth: true
+                                        }
+                                    }
+
+                                    RippleButton {
+                                        implicitWidth: 32
+                                        implicitHeight: 32
+                                        buttonRadius: 16
+                                        colBackground: "transparent"
+                                        onClicked: expanded = !expanded
+                                        
+                                        MaterialSymbol {
+                                            anchors.centerIn: parent
+                                            text: "keyboard_arrow_down"
+                                            iconSize: 20
+                                            color: Appearance.colors.colSubtext
+                                            rotation: expanded ? 180 : 0
+                                            Behavior on rotation { NumberAnimation { duration: 200 } }
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Expanded Menu
+                            Rectangle {
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: expanded ? expansionActions2.implicitHeight + 24 : 0
+                                color: Appearance.colors.colLayer2Base
+                                radius: 12
+                                clip: true
+                                opacity: expanded ? 1 : 0
+                                Behavior on Layout.preferredHeight { NumberAnimation { duration: 200 } }
+                                Behavior on opacity { NumberAnimation { duration: 200 } }
+
+                                RowLayout {
+                                    id: expansionActions2
+                                    anchors.left: parent.left
+                                    anchors.right: parent.right
+                                    anchors.top: parent.top
+                                    anchors.margins: 12
+                                    spacing: 12
+
+                                    StyledText {
+                                        text: "Address: " + modelData.address
+                                        font.pixelSize: Appearance.font.pixelSize.smaller
+                                        color: Appearance.colors.colSubtext
+                                        Layout.alignment: Qt.AlignVCenter
+                                    }
+                                    
+                                    Item { Layout.fillWidth: true }
+
+                                    RippleButton {
+                                        visible: (modelData.paired || modelData.trusted) && !modelData.connected
+                                        buttonText: "Forget"
+                                        implicitWidth: 90
+                                        implicitHeight: 36
+                                        buttonRadius: Appearance.rounding.full
+                                        colBackground: Appearance.m3colors.m3error
+                                        colText: Appearance.m3colors.m3onError
+                                        onClicked: {
+                                            if (modelData.forget) modelData.forget();
+                                            else if (modelData.unpair) modelData.unpair();
+                                            modelData.trusted = false;
+                                            expanded = false;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    ContentSection {
+        icon: "add_circle"
+        title: Translation.tr("Pair new device")
+        visible: BluetoothStatus.enabled
+        
+        ConfigRow {
+            uniform: true
+            RippleButtonWithIcon {
+                Layout.fillWidth: true
+                buttonRadius: Appearance.rounding.full
+                materialIcon: "search"
+                mainText: Translation.tr("Start Discovery")
+                onClicked: {
+                    if (Bluetooth.defaultAdapter) Bluetooth.defaultAdapter.discovering = true;
+                }
+                MaterialSymbol {
+                    anchors.right: parent.right
+                    anchors.rightMargin: 12
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "autorenew"
+                    iconSize: 20
+                    color: Appearance.colors.colOnLayer1
+                    visible: Bluetooth.defaultAdapter ? Bluetooth.defaultAdapter.discovering : false
+                    RotationAnimation on rotation {
+                        from: 0
+                        to: 360
+                        duration: 1000
+                        loops: Animation.Infinite
+                        running: Bluetooth.defaultAdapter ? Bluetooth.defaultAdapter.discovering : false
+                    }
+                }
+            }
+        }
+
+        ContentSubsection {
+            title: Translation.tr("Available Devices")
+            visible: BluetoothStatus.unpairedDevices.length > 0
+            
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 8
+                Repeater {
+                    model: BluetoothStatus.unpairedDevices
+                    
+                    RippleButton {
+                        Layout.fillWidth: true
+                        implicitHeight: 60
+                        buttonRadius: 12
+                        colBackground: Appearance.colors.colLayer1Base
+                        onClicked: modelData.pair()
+
+                        RowLayout {
+                            width: parent.width
+                            anchors.margins: 12
+                            spacing: 12
+
+                            MaterialSymbol {
+                                text: {
+                                    const type = modelData.deviceType;
+                                    if (type === "phone") return "smartphone";
+                                    if (type === "computer") return "computer";
+                                    if (type === "audio-card") return "headset";
+                                    return "bluetooth";
+                                }
+                                iconSize: 24
+                                color: Appearance.colors.colSubtext
+                            }
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 0
+                                StyledText {
+                                    text: modelData.name || modelData.address
+                                    font.pixelSize: Appearance.font.pixelSize.normal
+                                    font.weight: Font.Normal
+                                    color: Appearance.colors.colOnLayer1
+                                    elide: Text.ElideRight
+                                    Layout.fillWidth: true
+                                }
+                            }
+                            
+                            MaterialSymbol {
+                                text: "autorenew"
+                                iconSize: 20
+                                color: Appearance.colors.colPrimary
+                                RotationAnimation on rotation {
+                                    from: 0
+                                    to: 360
+                                    duration: 1000
+                                    loops: Animation.Infinite
+                                    running: true
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

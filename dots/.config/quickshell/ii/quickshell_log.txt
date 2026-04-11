@@ -1,0 +1,158 @@
+[32m  INFO[0m: Launching config: "/home/pedro/.config/quickshell/ii/shell.qml"
+[32m  INFO[0m: Shell ID: "76d274969eac68cddbfc49b5d8700aa0" Path ID "76d274969eac68cddbfc49b5d8700aa0"
+[32m  INFO[0m: Saving logs to "/run/user/1000/quickshell/by-id/cc4l9x8dt/log.qslog"
+[33m  WARN[0m: --- WARNING ---
+[33m  WARN[0m: WAYLAND_DISPLAY is present but QT_QPA_PLATFORM is "xcb"
+[33m  WARN[0m: If you are actually running wayland, set QT_QPA_PLATFORM to "wayland" or most functionality will be broken.
+[33m  WARN[0m: The active compositor does not support hyprland_global_shortcuts_v1.
+[33m  WARN[0m: GlobalShortcut will not work.
+[33m  WARN[0m: The active compositor does not support hyprland_global_shortcuts_v1.
+[33m  WARN[0m: GlobalShortcut will not work.
+[32m  INFO[0m: Configuration Loaded
+[33m  WARN[97m qt.qpa.services[0m: Failed to register with host portal QDBusError("org.freedesktop.portal.Error.Failed", "Could not register app ID: Connection already associated with an application ID")
+[33m  WARN[0m: Compositor does not support hyprland-toplevel-mapping-v1.It will not be possible to derive hyprland addresses from toplevels.
+[33m  WARN[0m: The active compositor does not support hyprland_global_shortcuts_v1.
+[33m  WARN[0m: GlobalShortcut will not work.
+[33m  WARN[0m: The active compositor does not support hyprland_global_shortcuts_v1.
+[33m  WARN[0m: GlobalShortcut will not work.
+[33m  WARN[0m: Failed to create LazyLoader component
+[33m  WARN[0m: qs:@/qs/modules/ii/sidebarDashboard/SidebarDashboard.qml:29:9: Could not create attached properties object 'qs::wayland::layershell::WlrLayershell'
+[33m  WARN[0m: The active compositor does not support hyprland_global_shortcuts_v1.
+[33m  WARN[0m: GlobalShortcut will not work.
+[33m  WARN[0m: The active compositor does not support hyprland_global_shortcuts_v1.
+[33m  WARN[0m: GlobalShortcut will not work.
+[33m  WARN[0m: The active compositor does not support hyprland_global_shortcuts_v1.
+[33m  WARN[0m: GlobalShortcut will not work.
+[33m  WARN[0m: The active compositor does not support hyprland_global_shortcuts_v1.
+[33m  WARN[0m: GlobalShortcut will not work.
+[33m  WARN[97m scene[0m: @modules/ii/sidebarPolicies/SidebarPolicies.qml[114:13]: Could not create attached properties object 'qs::wayland::layershell::WlrLayershell'
+[33m  WARN[97m scene[0m: @services/Ai.qml[394:-1]: TypeError: Property 'addUserModels' of object Ai_QMLTYPE_0(0x7f6f97a3c400) is not a function
+[33m  WARN[97m scene[0m: @modules/ii/sidebarPolicies/SidebarPolicies.qml[70:-1]: TypeError: Cannot read property 'contentParent' of null
+[33m  WARN[97m scene[0m: @services/WallpaperBrowser.qml[19:-1]: TypeError: Cannot read property 'wallpapers_unsplash' of undefined
+[33m  WARN[0m: The active compositor does not support hyprland_global_shortcuts_v1.
+[33m  WARN[0m: GlobalShortcut will not work.
+[33m  WARN[0m: The active compositor does not support hyprland_global_shortcuts_v1.
+[33m  WARN[0m: GlobalShortcut will not work.
+[33m  WARN[0m: The active compositor does not support hyprland_global_shortcuts_v1.
+[33m  WARN[0m: GlobalShortcut will not work.
+[33m  WARN[0m: The active compositor does not support hyprland_global_shortcuts_v1.
+[33m  WARN[0m: GlobalShortcut will not work.
+[33m  WARN[0m: The active compositor does not support hyprland_global_shortcuts_v1.
+[33m  WARN[0m: GlobalShortcut will not work.
+[33m  WARN[0m: The active compositor does not support hyprland_global_shortcuts_v1.
+[33m  WARN[0m: GlobalShortcut will not work.
+[33m  WARN[0m: qs:@/qs/modules/ii/screenCorners/ScreenCorners.qml:34 Could not create attached properties object 'qs::wayland::layershell::WlrLayershell'
+
+[33m  WARN[0m: failed to create variant with object QVariant(QObject*, 0x7f6f9d2e70a0)
+[33m  WARN[0m: QQmlComponent: Component is not ready
+[33m  WARN[0m: qs:@/qs/modules/ii/screenCorners/ScreenCorners.qml:34 Could not create attached properties object 'qs::wayland::layershell::WlrLayershell'
+
+[33m  WARN[0m: failed to create variant with object QVariant(QObject*, 0x7f6f9d2e70a0)
+[33m  WARN[97m scene[0m: @modules/common/widgets/RoundCorner.qml[65:17]: Unable to assign [undefined] to double
+[33m  WARN[97m scene[0m: @modules/common/widgets/RoundCorner.qml[53:13]: Unable to assign [undefined] to double
+[33m  WARN[97m scene[0m: @modules/common/widgets/RoundCorner.qml[47:13]: Unable to assign [undefined] to double
+[33m  WARN[0m: The active compositor does not support hyprland_global_shortcuts_v1.
+[33m  WARN[0m: GlobalShortcut will not work.
+[33m  WARN[0m: The active compositor does not support hyprland_global_shortcuts_v1.
+[33m  WARN[0m: GlobalShortcut will not work.
+[33m  WARN[0m: The active compositor does not support hyprland_global_shortcuts_v1.
+[33m  WARN[0m: GlobalShortcut will not work.
+[33m  WARN[0m: The active compositor does not support hyprland_global_shortcuts_v1.
+[33m  WARN[0m: GlobalShortcut will not work.
+[33m  WARN[0m: The active compositor does not support hyprland_global_shortcuts_v1.
+[33m  WARN[0m: GlobalShortcut will not work.
+[33m  WARN[0m: The active compositor does not support hyprland_global_shortcuts_v1.
+[33m  WARN[0m: GlobalShortcut will not work.
+[33m  WARN[0m: The active compositor does not support hyprland_global_shortcuts_v1.
+[33m  WARN[0m: GlobalShortcut will not work.
+[33m  WARN[0m: The active compositor does not support hyprland_global_shortcuts_v1.
+[33m  WARN[0m: GlobalShortcut will not work.
+[33m  WARN[0m: The active compositor does not support hyprland_global_shortcuts_v1.
+[33m  WARN[0m: GlobalShortcut will not work.
+[33m  WARN[0m: The active compositor does not support hyprland_global_shortcuts_v1.
+[33m  WARN[0m: GlobalShortcut will not work.
+[33m  WARN[0m: The active compositor does not support hyprland_global_shortcuts_v1.
+[33m  WARN[0m: GlobalShortcut will not work.
+[33m  WARN[0m: The active compositor does not support hyprland_global_shortcuts_v1.
+[33m  WARN[0m: GlobalShortcut will not work.
+[33m  WARN[0m: The active compositor does not support hyprland_global_shortcuts_v1.
+[33m  WARN[0m: GlobalShortcut will not work.
+[33m  WARN[0m: The active compositor does not support hyprland_global_shortcuts_v1.
+[33m  WARN[0m: GlobalShortcut will not work.
+[33m  WARN[0m: The active compositor does not support hyprland_global_shortcuts_v1.
+[33m  WARN[0m: GlobalShortcut will not work.
+[33m  WARN[0m: The active compositor does not support hyprland_global_shortcuts_v1.
+[33m  WARN[0m: GlobalShortcut will not work.
+[33m  WARN[0m: The active compositor does not support hyprland_global_shortcuts_v1.
+[33m  WARN[0m: GlobalShortcut will not work.
+[33m  WARN[0m: The active compositor does not support hyprland_global_shortcuts_v1.
+[33m  WARN[0m: GlobalShortcut will not work.
+[33m  WARN[0m: Failed to create LazyLoader component
+[33m  WARN[0m: qs:@/qs/modules/ii/notificationPopup/NotificationPopup.qml:19:9: Could not create attached properties object 'qs::wayland::layershell::WlrLayershell'
+[33m  WARN[0m: The active compositor does not support hyprland_global_shortcuts_v1.
+[33m  WARN[0m: GlobalShortcut will not work.
+[33m  WARN[0m: The active compositor does not support hyprland_global_shortcuts_v1.
+[33m  WARN[0m: GlobalShortcut will not work.
+[33m  WARN[0m: The active compositor does not support hyprland_global_shortcuts_v1.
+[33m  WARN[0m: GlobalShortcut will not work.
+[33m  WARN[0m: The active compositor does not support hyprland_global_shortcuts_v1.
+[33m  WARN[0m: GlobalShortcut will not work.
+[33m  WARN[0m: The active compositor does not support hyprland_global_shortcuts_v1.
+[33m  WARN[0m: GlobalShortcut will not work.
+[33m  WARN[97m quickshell.desktopentry[0m: Illegal escape sequence in desktop entry exec string: sh -c "if [ -n \"\\$*\" ]; then exec swappy -f \"\\$@\"; else grim -g \"\\$(slurp)\" - | swappy -f -; fi" placeholder %F
+[33m  WARN[97m quickshell.desktopentry[0m: Illegal escape sequence in desktop entry exec string: sh -c "if [ -n \"\\$*\" ]; then exec swappy -f \"\\$@\"; else grim -g \"\\$(slurp)\" - | swappy -f -; fi" placeholder %F
+[33m  WARN[97m quickshell.desktopentry[0m: Illegal escape sequence in desktop entry exec string: sh -c "if [ -n \"\\$*\" ]; then exec swappy -f \"\\$@\"; else grim -g \"\\$(slurp)\" - | swappy -f -; fi" placeholder %F
+[33m  WARN[97m quickshell.desktopentry[0m: Illegal escape sequence in desktop entry exec string: sh -c "if [ -n \"\\$*\" ]; then exec swappy -f \"\\$@\"; else grim -g \"\\$(slurp)\" - | swappy -f -; fi" placeholder %F
+[33m  WARN[97m quickshell.desktopentry[0m: Illegal escape sequence in desktop entry exec string: sh -c "if [ -n \"\\$*\" ]; then exec swappy -f \"\\$@\"; else grim -g \"\\$(slurp)\" - | swappy -f -; fi" placeholder %F
+[33m  WARN[97m quickshell.desktopentry[0m: Illegal escape sequence in desktop entry exec string: sh -c "if [ -n \"\\$*\" ]; then exec swappy -f \"\\$@\"; else grim -g \"\\$(slurp)\" - | swappy -f -; fi" placeholder %F
+[33m  WARN[0m: qs:@/qs/modules/ii/dock/Dock.qml:107 Could not create attached properties object 'qs::wayland::layershell::WlrLayershell'
+
+[33m  WARN[0m: failed to create variant with object QVariant(QObject*, 0x7f6f9d2e70a0)
+[33m  WARN[0m: QQmlComponent: Component is not ready
+[33m  WARN[0m: qs:@/qs/modules/ii/dock/Dock.qml:107 Could not create attached properties object 'qs::wayland::layershell::WlrLayershell'
+
+[33m  WARN[0m: failed to create variant with object QVariant(QObject*, 0x7f6f9d2e70a0)
+[33m  WARN[97m scene[0m: @modules/ii/dock/Dock.qml[60:13]: Unable to assign [undefined] to QuickshellScreenInfo*
+[33m  WARN[0m: The active compositor does not support hyprland_global_shortcuts_v1.
+[33m  WARN[0m: GlobalShortcut will not work.
+[33m  WARN[0m: The active compositor does not support hyprland_global_shortcuts_v1.
+[33m  WARN[0m: GlobalShortcut will not work.
+[33m  WARN[0m: The active compositor does not support hyprland_global_shortcuts_v1.
+[33m  WARN[0m: GlobalShortcut will not work.
+[33m  WARN[0m: The active compositor does not support hyprland_global_shortcuts_v1.
+[33m  WARN[0m: GlobalShortcut will not work.
+[33m  WARN[97m scene[0m: QML QQuickImage* at @modules/ii/background/widgets/media/MediaWidget.qml[149:9]: Binding loop detected for property "sourceSize.height":
+qs:@/qs/modules/ii/background/widgets/media/MediaWidget.qml:154:13
+[33m  WARN[97m scene[0m: @modules/ii/background/widgets/media/MediaWidget.qml[102:-1]: Error: Cannot assign [undefined] to QString
+[33m  WARN[0m: qs:@/qs/modules/ii/background/Background.qml:97 Could not create attached properties object 'qs::wayland::layershell::WlrLayershell'
+
+[33m  WARN[0m: failed to create variant with object QVariant(QObject*, 0x7f6f9d2e70a0)
+[33m  WARN[0m: QQmlComponent: Component is not ready
+[33m  WARN[0m: qs:@/qs/modules/ii/background/Background.qml:97 Could not create attached properties object 'qs::wayland::layershell::WlrLayershell'
+
+[33m  WARN[0m: failed to create variant with object QVariant(QObject*, 0x7f6f9d2e70a0)
+[33m  WARN[97m scene[0m: @modules/ii/background/Background.qml[74:-1]: TypeError: Cannot read property 'layout' of undefined
+[33m  WARN[97m scene[0m: @modules/ii/background/Background.qml[182:-1]: ReferenceError: status is not defined
+[33m  WARN[97m scene[0m: @modules/ii/background/Background.qml[204:-1]: TypeError: Cannot read property 'activeWorkspace' of null
+[33m  WARN[97m scene[0m: @modules/ii/background/Background.qml[56:-1]: TypeError: Cannot read property 'height' of undefined
+[33m  WARN[97m scene[0m: @modules/ii/background/Background.qml[95:9]: Unable to assign [undefined] to QuickshellScreenInfo*
+[33m  WARN[97m scene[0m: @modules/ii/background/Background.qml[55:-1]: TypeError: Cannot read property 'width' of undefined
+[33m  WARN[0m: The active compositor does not support hyprland_global_shortcuts_v1.
+[33m  WARN[0m: GlobalShortcut will not work.
+[33m  WARN[0m: The active compositor does not support hyprland_global_shortcuts_v1.
+[33m  WARN[0m: GlobalShortcut will not work.
+[33m  WARN[0m: The active compositor does not support hyprland_global_shortcuts_v1.
+[33m  WARN[0m: GlobalShortcut will not work.
+[33m  WARN[97m scene[0m: QML JsonAdapter at @modules/common/Persistent.qml[56:18]: Failed to deserialize property popupRect: expected QRectF but got std::nullptr_t
+[33m  WARN[97m scene[0m: @modules/common/widgets/ToolbarTabBar.qml[60:9]: Unable to assign [undefined] to QQuickItem*
+[33m  WARN[97m scene[0m: QML TranslationReader at @services/Translation.qml[68:5]: Read of /home/pedro/.config/illogical-impulse/translations/en_US.json failed: File does not exist.
+[33m  WARN[97m scene[0m: @modules/common/widgets/ToolbarTabBar.qml[60:9]: Unable to assign [undefined] to QQuickItem*
+[33m  WARN[97m scene[0m: @modules/ii/background/Background.qml[33:-1]: TypeError: Cannot read property 'name' of null
+[33m  WARN[97m scene[0m: @modules/ii/screenCorners/ScreenCorners.qml[149:-1]: TypeError: Cannot read property 'name' of null
+[33m  WARN[0m: Could not attach Keys property to:  XPanelInterface_QML_2992(0x7f6f78297480)  is not an Item
+[33m  WARN[0m: Failed to create LazyLoader component
+[33m  WARN[0m: qs:@/qs/modules/ii/overview/Overview.qml:43:17: Could not create attached properties object 'qs::wayland::layershell::WlrLayershell'
+[33m  WARN[0m: Failed to create LazyLoader component
+[33m  WARN[0m: qs:@/qs/modules/ii/bar/Bar.qml:80:17: Could not create attached properties object 'qs::wayland::layershell::WlrLayershell'
+[33m  WARN[97m scene[0m: @services/WallpaperBrowser.qml[19:-1]: TypeError: Cannot read property 'wallpapers_unsplash' of undefined
+[33m  WARN[97m scene[0m: QML JsonAdapter at @modules/common/Persistent.qml[56:18]: Failed to deserialize property popupRect: expected QRectF but got std::nullptr_t

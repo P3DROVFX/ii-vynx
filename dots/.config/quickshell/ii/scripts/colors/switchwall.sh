@@ -187,7 +187,7 @@ switch() {
     cursorposy=$(bc <<< "scale=0; ($cursorposy - $screeny) * $scale / 1")
     cursorposy_inverted=$((screensizey - cursorposy))
 
-    matugen_args=(--source-color-index 0)
+    matugen_args=()
 
     if [[ "$color_flag" == "1" ]]; then
         matugen_args+=(color hex "$color")

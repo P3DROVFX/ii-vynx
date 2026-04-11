@@ -8,7 +8,6 @@ import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.common.functions
 
-
 RippleButton {
     id: root
     readonly property string builtInThemeDirectory: Directories.defaultThemes
@@ -23,7 +22,7 @@ RippleButton {
 
     property bool customTheme: false
     readonly property string customThemeFilePath: customThemeDirectory + "/" + colorScheme + ".json"
-    readonly property string customThemeCommand: ` jq -r '.primary, .primary_container, .secondary' ${customThemeFilePath}`  
+    readonly property string customThemeCommand: ` jq -r '.primary, .primary_container, .secondary' ${customThemeFilePath}`
 
     property color accentColor
     readonly property bool toggled: Config.options.appearance.palette.type === root.colorScheme
@@ -34,7 +33,7 @@ RippleButton {
     property string scriptArguments: ` --scheme ${root.colorScheme} --debug | ${root.grepCommand}`
 
     property string fullCommand: `source ~/.local/state/quickshell/.venv/bin/activate && python3 ${root.scriptPath} --color "$(${root.accentColorCommand})" ${root.scriptArguments}`
-    readonly property string accentColorCommand: `source ~/.local/state/quickshell/.venv/bin/activate && python3 ${root.scriptPath} --path ${Config.options.background.wallpaperPath} --debug | awk '/Accent color/ {print $NF}'`
+    readonly property string accentColorCommand: `source ~/.local/state/quickshell/.venv/bin/activate && python3 ${root.scriptPath} --path "${Config.options.background.wallpaperPath}" --debug | awk '/Accent color/ {print $NF}'`
 
     property color primaryColor: "transparent"
     property color secondaryColor: "transparent"
@@ -63,7 +62,7 @@ RippleButton {
             Quickshell.execDetached(["bash", "-c", `cp ${root.builtInThemeFilePath} ${Directories.generatedMaterialThemePath}`]);
         } else {
             Config.options.appearance.palette.type = root.colorScheme;
-            Quickshell.execDetached(["bash", "-c", `${Directories.wallpaperSwitchScriptPath} --noswitch`]);
+            Quickshell.execDetached(["bash", "-c", `${Directories.wallpaperSwitchScriptPath} --noswitch --type ${root.colorScheme}`]);
         }
     }
 
@@ -71,22 +70,22 @@ RippleButton {
 
     onShouldLoadChanged: {
         if (shouldLoad && !loaded) {
-            colorFetchProccess.running = true
+            colorFetchProccess.running = true;
         }
     }
 
     Process {
         id: colorFetchProccess
         running: false
-        command: [ "bash", "-c", root.effectiveCommand ]
+        command: ["bash", "-c", root.effectiveCommand]
         stdout: StdioCollector {
             onStreamFinished: {
-                const colors = this.text.split("\n")
-                root.primaryColor   = colors[0]?.trim()
-                root.secondaryColor = colors[1]?.trim()
-                root.tertiaryColor  = colors[2]?.trim()
+                const colors = this.text.split("\n");
+                root.primaryColor = colors[0]?.trim();
+                root.secondaryColor = colors[1]?.trim();
+                root.tertiaryColor = colors[2]?.trim();
                 root.loaded = true;
-                myCanvas.requestPaint()
+                myCanvas.requestPaint();
             }
         }
     }
@@ -114,10 +113,10 @@ RippleButton {
             anchors {
                 centerIn: parent
                 margins: 8
-            }    
+            }
             implicitWidth: root.implicitHeight - 16
             implicitHeight: root.implicitHeight - 16
-            
+
             antialiasing: true
 
             onPaint: {
@@ -168,7 +167,5 @@ RippleButton {
                 }
             }
         }
-
     }
-
 }

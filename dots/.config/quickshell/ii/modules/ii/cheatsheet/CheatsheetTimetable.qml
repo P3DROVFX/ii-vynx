@@ -30,7 +30,7 @@ Item {
     property real currentTimeY: -1
     property bool initialScrollApplied: false
     readonly property real dayColumnWidth: Math.min(180, (maxContentWidth - timeColumnWidth - (days.length + 1) * spacing) / days.length)
-    readonly property int currentDayIndex: (DateTime.clock.date.getDay() - Config.options.time.firstDayOfWeek+ 6)%7
+    readonly property int currentDayIndex: (DateTime.clock.date.getDay() - Config.options.time.firstDayOfWeek + 6) % 7
 
     implicitWidth: Math.min(maxContentWidth, timeColumnWidth + (dayColumnWidth * days.length) + ((days.length + 1) * spacing))
     implicitHeight: Math.min(headerHeight + contentHeight, maxHeight)
@@ -192,23 +192,25 @@ Item {
         let start = event.start || "";
         let end = event.end || "";
 
-        return (start === "00:00" && end === "23:59") ||
-               (start === "00:00" && end === "00:00") ||
-               (!event.start && !event.end);
+        return (start === "00:00" && end === "23:59") || (start === "00:00" && end === "00:00") || (!event.start && !event.end);
     }
 
     function getAllDayEvents(events) {
         if (!events || !events.length)
             return [];
 
-        return events.filter(function(evt) { return root.isAllDayEvent(evt); });
+        return events.filter(function (evt) {
+            return root.isAllDayEvent(evt);
+        });
     }
 
     function getTimedEvents(events) {
         if (!events || !events.length)
             return [];
 
-        return events.filter(function(evt) { return !root.isAllDayEvent(evt); });
+        return events.filter(function (evt) {
+            return !root.isAllDayEvent(evt);
+        });
     }
 
     function formatEventTooltip(event) {
@@ -224,7 +226,7 @@ Item {
         let startTotal = root.parseTimeToMinutes(event.start);
         let endTotal = root.parseTimeToMinutes(event.end);
 
-        let formatTime = (totalMinutes) => {
+        let formatTime = totalMinutes => {
             if (totalMinutes === null)
                 return "";
             let hour = Math.floor(totalMinutes / 60);
@@ -237,7 +239,7 @@ Item {
         let startStr = formatTime(startTotal) || event.start || "";
         let endStr = formatTime(endTotal) || event.end || "";
         let range = startStr && endStr ? startStr + " - " + endStr : startStr || endStr;
-        return range ? description ? "•  " + title + "\n•  " + range + "\n•  " + description : "•  " +  title + "\n•  " + range : "•  " + title;
+        return range ? description ? "•  " + title + "\n•  " + range + "\n•  " + description : "•  " + title + "\n•  " + range : "•  " + title;
     }
 
     function parseTimeToMinutes(timeStr) {
@@ -375,7 +377,7 @@ Item {
                     width: root.dayColumnWidth
                     height: root.headerHeight
 
-                    property var allDayEvents: root.getAllDayEvents(modelData.events) 
+                    property var allDayEvents: root.getAllDayEvents(modelData.events)
 
                     Rectangle {
                         property bool isToday: index === root.currentDayIndex
@@ -393,14 +395,13 @@ Item {
                             color: allDayEvents.length > 0 ? Appearance.colors.colOnPrimaryContainer : parent.isToday ? Appearance.colors.colOnPrimary : Appearance.colors.colOnSurfaceVariant
                             text: modelData.name
                             elide: Text.ElideRight
-                          }
-                            
-                         HoverHandler {
-                            id: allDayHover
-                          }
-        
+                        }
 
-                         Column {
+                        HoverHandler {
+                            id: allDayHover
+                        }
+
+                        Column {
                             anchors.horizontalCenter: parent.horizontalCenter
                             width: parent.width - 4
                             spacing: root.allDayChipSpacing
@@ -410,9 +411,8 @@ Item {
                                 delegate: Rectangle {
                                     width: parent.width
                                     height: root.allDayChipHeight
-                                    color: 'transparent' 
+                                    color: 'transparent'
 
-                                   
                                     StyledToolTip {
                                         extraVisibleCondition: allDayHover.hovered
                                         text: root.formatEventTooltip(modelData)
@@ -424,8 +424,6 @@ Item {
                 }
             }
         }
-
-     
 
         // Subtle separator
         Rectangle {
@@ -496,7 +494,7 @@ Item {
                             width: root.dayColumnWidth
                             height: parent.height
                             clip: true
-                            
+
                             property bool isToday: index === root.currentDayIndex
                             property var timedEvents: root.getTimedEvents(modelData.events)
                             property int dayIdx: index
@@ -518,7 +516,7 @@ Item {
                                 cursorShape: root.ghostVisible && root.ghostDayIndex === dayIdx ? Qt.ArrowCursor : Qt.CrossCursor
                                 z: 0
 
-                                onPressed: function(mouse) {
+                                onPressed: function (mouse) {
                                     // Don't start drag if ghost is visible (handled by ghost interactions)
                                     if (root.ghostVisible)
                                         return;
@@ -532,13 +530,13 @@ Item {
                                     root.dragCurrentY = mouse.y;
                                 }
 
-                                onPositionChanged: function(mouse) {
+                                onPositionChanged: function (mouse) {
                                     if (root.isDragging && root.dragDayIndex === dayIdx) {
                                         root.dragCurrentY = Math.max(0, Math.min(mouse.y, root.contentHeight));
                                     }
                                 }
 
-                                onReleased: function(mouse) {
+                                onReleased: function (mouse) {
                                     // Re-enable Flickable scrolling
                                     styledFlickable.interactive = true;
 
@@ -572,7 +570,7 @@ Item {
                                 }
 
                                 // Forward wheel events so scroll still works
-                                onWheel: function(wheel) {
+                                onWheel: function (wheel) {
                                     wheel.accepted = false;
                                 }
                             }
@@ -663,10 +661,10 @@ Item {
                             // ─── Existing event blocks ────────────────
                             Repeater {
                                 model: timedEvents
-                                
+
                                 Rectangle {
                                     id: eventBlock
-                                    
+
                                     property int eventStartMinutes: {
                                         let parts = modelData.start.split(":");
                                         return parseInt(parts[0]) * 60 + parseInt(parts[1]);
@@ -678,7 +676,7 @@ Item {
                                             endTotal = 24 * 60;
                                         return endTotal;
                                     }
-                                    
+
                                     width: parent.width - 10
                                     anchors.horizontalCenter: parent.horizontalCenter
                                     radius: Appearance.rounding.normal
@@ -749,7 +747,7 @@ Item {
 
                                         StyledText {
                                             text: {
-                                                let formatTime = (mins) => {
+                                                let formatTime = mins => {
                                                     let h = Math.floor(mins / 60) % 24;
                                                     let m = mins % 60;
                                                     let d = new Date();
@@ -810,7 +808,7 @@ Item {
         anchors.fill: parent
         z: 50
 
-        onEventCreated: function(title, description) {
+        onEventCreated: function (title, description) {
             let topMin = root.snapToGrid(root.yToMinutes(root.ghostTopY));
             let botMin = root.snapToGrid(root.yToMinutes(root.ghostTopY + root.ghostHeight));
             let startTimeKhal = root.minutesToKhalTimeStr(topMin);
@@ -821,16 +819,18 @@ Item {
             root.cancelGhost();
         }
 
-        onEventUpdated: function(oldTitle, title, description) {
+        onEventUpdated: function (oldTitle, title, description) {
             // Remove old event and create new one with updated info
             // Note: khal doesn't support updating events directly, so we delete and recreate
             let eventData = eventPopup.editEventData;
-            if (!eventData) return;
+            if (!eventData)
+                return;
 
             let startMin = root.parseTimeToMinutes(eventData.start);
             let endMin = root.parseTimeToMinutes(eventData.end);
-            if (endMin === 0 && startMin > 0) endMin = 24 * 60;
-            
+            if (endMin === 0 && startMin > 0)
+                endMin = 24 * 60;
+
             let startTimeKhal = root.minutesToKhalTimeStr(startMin);
             let endTimeKhal = root.minutesToKhalTimeStr(endMin);
             let eventDate = root.getDateForDayIndex(eventPopup.dayIndex);
@@ -844,7 +844,7 @@ Item {
             CalendarService.addEvent(eventDate, startTimeKhal, endTimeKhal, title, description);
         }
 
-        onEventDeleted: function(title) {
+        onEventDeleted: function (title) {
             let eventData = eventPopup.editEventData;
             if (eventData && eventData.uid) {
                 CalendarService.removeEventByUid(eventData.uid);

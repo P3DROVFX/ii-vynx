@@ -421,6 +421,7 @@ Singleton {
             }
 
             property JsonObject battery: JsonObject {
+                property string style: "default"
                 property int low: 20
                 property int critical: 5
                 property int full: 101
@@ -442,6 +443,7 @@ Singleton {
                 property bool splitButtons: false
                 property bool useMouseSymbol: false
                 property bool useFnSymbol: false
+                property bool filterUnbinds: false
                 property JsonObject fontSize: JsonObject {
                     property int key: Appearance.font.pixelSize.smaller
                     property int comment: Appearance.font.pixelSize.smaller

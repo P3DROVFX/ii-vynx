@@ -97,7 +97,9 @@ ProgressBar {
         Rectangle { // Stop point
             readonly property real remainingTrackWidth: (1 - root.visualPosition) * contentItem.width - root.valueBarGap
             readonly property real availableSize: remainingTrackWidth - 2 * root.stopPointMargin
-            readonly property real effectiveSize: Math.min(root.stopPointSize, Math.max(0, availableSize))
+            readonly property int trackGap: Math.max(1, Math.round((parent.height - root.stopPointSize) / 2))
+            readonly property real alignedStopPointSize: parent.height - (trackGap * 2)
+            readonly property real effectiveSize: Math.min(alignedStopPointSize, Math.max(0, availableSize))
             visible: effectiveSize >= 2
             anchors.rightMargin: root.stopPointMargin
             anchors.right: parent.right

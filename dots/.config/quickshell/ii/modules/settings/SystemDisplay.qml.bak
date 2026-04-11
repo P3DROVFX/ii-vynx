@@ -1,0 +1,148 @@
+import QtQuick
+import QtQuick.Layouts
+import qs
+import QtQuick.Controls
+import qs.modules.common
+import qs.modules.common.widgets
+import qs.services
+import Quickshell
+
+ColumnLayout {
+    id: page
+    spacing: 30
+    width: parent ? parent.width : implicitWidth
+
+    ContentSection {
+        icon: "monitor"
+        title: Translation.tr("Monitors")
+
+        ContentSubsection {
+            title: Translation.tr("Attached Displays")
+            visible: HyprlandData.monitors.length > 0
+            
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 8
+                Repeater {
+                    model: HyprlandData.monitors
+                    
+                    Rectangle {
+                        property var monitorObj: modelData
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: monitorCol.implicitHeight
+                        color: Appearance.colors.colLayer1Base
+                        radius: 12
+
+                        property bool expanded: false
+
+                        ColumnLayout {
+                            id: monitorCol
+                            width: parent.width
+                            spacing: 0
+
+                            RippleButton {
+                                Layout.fillWidth: true
+                                implicitHeight: 60
+                                buttonRadius: 12
+                                colBackground: "transparent"
+                                onClicked: expanded = !expanded
+
+                                RowLayout {
+                                    width: parent.width
+                                    anchors.margins: 12
+                                    spacing: 12
+
+                                    MaterialSymbol {
+                                        text: (monitorObj.name === "eDP-1" || monitorObj.name.includes("eDP")) ? "laptop_mac" : "desktop_windows"
+                                        iconSize: 24
+                                        color: Appearance.colors.colPrimary
+                                    }
+
+                                    ColumnLayout {
+                                        Layout.fillWidth: true
+                                        spacing: 0
+                                        StyledText {
+                                            text: monitorObj.description || monitorObj.name
+                                            font.pixelSize: Appearance.font.pixelSize.normal
+                                            font.weight: Font.DemiBold
+                                            color: Appearance.colors.colOnLayer1
+                                            elide: Text.ElideRight
+                                            Layout.fillWidth: true
+                                        }
+                                        StyledText {
+                                            text: monitorObj.width + "x" + monitorObj.height + " @ " + Math.round(monitorObj.refreshRate) + "Hz · " + (monitorObj.scale * 100) + "%"
+                                            font.pixelSize: Appearance.font.pixelSize.small
+                                            color: Appearance.colors.colSubtext
+                                            Layout.fillWidth: true
+                                        }
+                                    }
+
+                                    RippleButton {
+                                        implicitWidth: 32
+                                        implicitHeight: 32
+                                        buttonRadius: 16
+                                        colBackground: "transparent"
+                                        
+                                        MaterialSymbol {
+                                            anchors.centerIn: parent
+                                            text: "keyboard_arrow_down"
+                                            iconSize: 20
+                                            color: Appearance.colors.colSubtext
+                                            rotation: expanded ? 180 : 0
+                                            Behavior on rotation { NumberAnimation { duration: 200 } }
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Expanded properties
+                            Rectangle {
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: expanded ? expCol.implicitHeight + 24 : 0
+                                color: Appearance.colors.colLayer2Base
+                                radius: 12
+                                clip: true
+                                opacity: expanded ? 1 : 0
+                                Behavior on Layout.preferredHeight { NumberAnimation { duration: 200 } }
+                                Behavior on opacity { NumberAnimation { duration: 200 } }
+
+                                ColumnLayout {
+                                    id: expCol
+                                    anchors.left: parent.left
+                                    anchors.right: parent.right
+                                    anchors.top: parent.top
+                                    anchors.margins: 12
+                                    spacing: 12
+
+                                    RowLayout {
+                                        StyledText {
+                                            text: Translation.tr("Scale")
+                                            color: Appearance.colors.colOnLayer1
+                                            Layout.alignment: Qt.AlignVCenter
+                                        }
+                                        Item { Layout.fillWidth: true }
+                                        Repeater {
+                                            model: [1.0, 1.25, 1.5, 2.0]
+                                            RippleButton {
+                                                implicitWidth: 60
+                                                implicitHeight: 32
+                                                buttonRadius: Appearance.rounding.full
+                                                buttonText: (modelData * 100) + "%"
+                                                colBackground: Math.abs(modelData - (monitorObj.scale || 1.0)) < 0.01 ? Appearance.colors.colPrimary : Appearance.colors.colLayer1Base
+                                                colText: Math.abs(modelData - (monitorObj.scale || 1.0)) < 0.01 ? Appearance.colors.colOnPrimary : Appearance.colors.colOnLayer1
+                                                onClicked: {
+                                                    Quickshell.execDetached(["hyprctl", "keyword", "monitor", `${monitorObj.name},${monitorObj.width}x${monitorObj.height}@${monitorObj.refreshRate},${monitorObj.x}x${monitorObj.y},${modelData}`]);
+                                                    HyprlandData.updateMonitors();
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

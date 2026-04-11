@@ -25,8 +25,7 @@ Scope { // Scope
         {
             "icon": "experiment",
             "name": Translation.tr("Elements")
-          },
-        
+        },
     ]
 
     Loader {
@@ -60,16 +59,13 @@ Scope { // Scope
                 item: cheatsheetBackground
             }
 
-            Component.onCompleted: {
-                GlobalFocusGrab.addDismissable(cheatsheetRoot);
-            }
-            Component.onDestruction: {
-                GlobalFocusGrab.removeDismissable(cheatsheetRoot);
-            }
-            Connections {
-                target: GlobalFocusGrab
-                function onDismissed() {
-                    cheatsheetRoot.hide();
+            HyprlandFocusGrab { // Click outside to close
+                id: grab
+                windows: [cheatsheetRoot]
+                active: cheatsheetRoot.visible
+                onCleared: () => {
+                    if (!active)
+                        cheatsheetRoot.hide();
                 }
             }
 
@@ -91,6 +87,9 @@ Scope { // Scope
                 Keys.onPressed: event => { // Esc to close
                     if (event.key === Qt.Key_Escape) {
                         cheatsheetRoot.hide();
+                    } else if (event.key === Qt.Key_Slash) {
+                        swipeView.currentItem.forceActiveFocus();
+                        event.accepted = true;
                     }
                     if (event.modifiers === Qt.ControlModifier) {
                         if (event.key === Qt.Key_PageDown) {
@@ -176,10 +175,11 @@ Scope { // Scope
                             }
                         }
 
-                        CheatsheetTimetable { id: cheatsheetTimetable }
+                        CheatsheetTimetable {
+                            id: cheatsheetTimetable
+                        }
                         CheatsheetKeybinds {}
                         CheatsheetPeriodicTable {}
-                        
                     }
                 }
             }

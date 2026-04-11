@@ -37,12 +37,26 @@ MouseArea {
     }
 
     implicitWidth: Appearance.sizes.baseVerticalBarWidth
-    implicitHeight: batteryContainer.height + 12
+    implicitHeight: Config.options.battery.style === "android16" ? (14 * 2) + 12 : batteryContainer.height + 12
 
     hoverEnabled: !Config.options.bar.tooltips.clickToShow
 
+    anchors.horizontalCenter: parent ? parent.horizontalCenter : undefined
+
+    Loader {
+        anchors.centerIn: parent
+        active: Config.options.battery.style === "android16"
+        sourceComponent: Android16Battery {
+            height: 14
+            width: height * 2
+            batteryLevel: Math.round(root.percentage * 100)
+            isCharging: root.isCharging || root.isPluggedIn
+            isPowerSaving: false
+        }    }
+
     Item {
         id: batteryContainer
+        visible: Config.options.battery.style !== "android16"
         anchors.centerIn: parent
         height: 14
         width: height * (28 / 13)
