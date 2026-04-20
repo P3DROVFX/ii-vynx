@@ -221,25 +221,30 @@ Item {
             color: Appearance.colors.colLayer1
             readonly property int fullRadius: Config.options.appearance.sharpMode ? Appearance.rounding.full : height / 2
             radius: fullRadius
-            implicitWidth: uptimeRow.implicitWidth + 24
-            implicitHeight: uptimeRow.implicitHeight + 8
+            implicitWidth: uptimeRow.implicitWidth + 28
+            implicitHeight: uptimeRow.implicitHeight + 4
             
             Row {
                 id: uptimeRow
-                anchors.centerIn: parent
-                spacing: 8
+                anchors {
+                    left: parent.left
+                    verticalCenter: parent.verticalCenter
+                    leftMargin: 6
+                    }
+                spacing: 4
 
-                // Foto de perfil circular
+                // PROFILE PICTURE
                 Item {
                     id: profilePicContainer
+                    
                     anchors.verticalCenter: parent.verticalCenter
-                    width: 28
-                    height: 28
+                    width: 40
+                    height: 40
 
                     Image {
                         id: profilePicSource
                         anchors.fill: parent
-                        source: "file://" + Quickshell.env("HOME") + "/.config/quickshell/ii/assets/profile.png"
+                        source: "file://" + Quickshell.env("HOME") + "/.config/quickshell/ii/assets/profile.png" // PROFILE PICTURE PATH
                         sourceSize.width: parent.width
                         sourceSize.height: parent.height
                         fillMode: Image.PreserveAspectCrop
@@ -260,30 +265,12 @@ Item {
                     }
                 }
 
-                CustomIcon {
-                    id: distroIcon
+                StyledText {
                     anchors.verticalCenter: parent.verticalCenter
-                    width: 25
-                    height: 25
-                    source: SystemInfo.distroIcon
-                    colorize: true
+                    font.pixelSize: Appearance.font.pixelSize.small
                     color: Appearance.colors.colOnLayer0
-                }
-                ColumnLayout {
-                    anchors.verticalCenter: parent.verticalCenter
-                    spacing: -4
-                    StyledText {
-                        font.pixelSize: Appearance.font.pixelSize.small
-                        color: Appearance.colors.colOnLayer0
-                        text: Translation.tr("Up")
-                        textFormat: Text.MarkdownText
-                    }
-                    StyledText {
-                        font.pixelSize: Appearance.font.pixelSize.smaller
-                        color: Appearance.colors.colSubtext
-                        text: DateTime.uptime
-                        textFormat: Text.MarkdownText
-                    }
+                    text: "Olá, P3DROVFX"
+                    font.bold: true
                 }
                 
             }
@@ -334,6 +321,7 @@ Item {
                 id: updateButton
                 toggled: confirm
                 property bool confirm: false
+                property string updateScript: Quickshell.env("HOME") + "/.local/share/ii-vynx/update-with-customs.sh"
                 buttonIcon: confirm ? "check" : "download"
                 Timer {
                     id: confirmTimer
@@ -346,7 +334,18 @@ Item {
                 onClicked: {
                     if (confirm) {
                         GlobalStates.sidebarRightOpen = false;
-                        Quickshell.execDetached(["bash", "-c", Config.options.update.scriptPath + " " + Config.options.update.scriptFlags ]);
+                        // Wrapper: roda dry-run primeiro, se exit 0 aplica de verdade
+                        const script = updateScript;
+                        const wrapperCmd = [
+                            `echo '━━━ ii-vynx: Verificando conflitos (dry-run)... ━━━'`,
+                            `bash '${script}' --dry-run -v`,
+                            `echo ''`,
+                            `echo '━━━ Sem conflitos! Aplicando update... ━━━'`,
+                            `echo ''`,
+                            `bash '${script}' -v`,
+                        ].join(" && ");
+                        const fullCmd = `${wrapperCmd} || echo -e '\\n⚠ Conflitos ou erro detectado. Update NÃO aplicado.'`;
+                        Quickshell.execDetached([Config.options.apps.terminal, "-e", "bash", "-c", fullCmd + "; echo ''; echo 'Pressione Enter para fechar...'; read"]);
                     } else {
                         confirm = true
                         confirmTimer.start()
@@ -354,7 +353,7 @@ Item {
                     
                 }
                 StyledToolTip {
-                    text: Translation.tr("Update the ii-vynx, make sure to set script path in settings")
+                    text: Translation.tr("Update ii-vynx (preserving your customizations)")
                 }
             }
             QuickToggleButton {

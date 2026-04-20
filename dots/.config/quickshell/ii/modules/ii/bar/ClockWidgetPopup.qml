@@ -1,16 +1,21 @@
 import qs.modules.common
 import qs.modules.common.widgets
+import "./cards"
 import qs.services
 import QtQuick
 import QtQuick.Layouts
 
 StyledPopup {
     id: root
+    popupRadius: Appearance.rounding.large
+
     property string formattedDate: Qt.locale().toString(DateTime.clock.date, "MMMM dd, dddd")
     property string formattedTime: DateTime.time
     property string formattedUptime: DateTime.uptime
     property string todosSection: getUpcomingTodos(Todo.list)
     property bool todosEmpty: todosSection === ""
+
+    property bool stopwatchPaused: !TimerService.stopwatchRunning && TimerService.stopwatchTime > 0
 
     function getUpcomingTodos(todos) {
         const unfinishedTodos = todos.filter(function (item) {
@@ -39,236 +44,145 @@ StyledPopup {
         return m + ":" + (s < 10 ? "0" : "") + s;
     }
 
+    function getDayProgressPercent() {
+        const date = DateTime.clock.date
+        const secondsPassed = date.getHours() * 3600 + date.getMinutes() * 60 +date.getSeconds()
+
+        return Math.floor((secondsPassed / 86400) * 100)
+    }
+
     ColumnLayout {
         id: columnLayout
         anchors.centerIn: parent
         spacing: 12
 
-        // Hero date time card
-        Rectangle {
-            Layout.fillWidth: true
-            Layout.minimumWidth: 320
-            implicitHeight: 160
-            color: Appearance.colors.colPrimaryContainer
-            radius: Appearance.rounding.normal
+        HeroCard {
+            id: clockHero
+            icon: "schedule"
+            adaptiveWidth: true
 
-            RowLayout {
-                anchors.fill: parent
-                anchors.margins: 16
-                spacing: 16
+            title: root.formattedTime
+            subtitle: root.formattedDate
 
-                MaterialShape {
-                    shapeString: "Cookie9Sided"
-                    implicitSize: 96
-                    color: Appearance.colors.colPrimary
-
-                    MaterialSymbol {
-                        anchors.centerIn: parent
-                        text: "schedule"
-                        iconSize: 48
-                        color: Appearance.colors.colOnPrimary
-                    }
-                }
-
-                Item {
-                    Layout.fillWidth: true
-                }
-
-                ColumnLayout {
-                    spacing: -8
-                    Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
-
-                    StyledText {
-                        text: root.formattedTime
-                        font.pixelSize: Appearance.font.pixelSize.hugeass * 2.5
-                        font.family: Appearance.font.family.title
-                        font.weight: Font.Black
-                        color: Appearance.colors.colOnPrimaryContainer
-                        horizontalAlignment: Text.AlignRight
-                        Layout.alignment: Qt.AlignRight
-                    }
-
-                    StyledText {
-                        text: root.formattedDate
-                        font.pixelSize: Appearance.font.pixelSize.normal
-                        font.family: Appearance.font.family.main
-                        font.weight: Font.DemiBold
-                        color: Appearance.colors.colOnPrimaryContainer
-                        horizontalAlignment: Text.AlignRight
-                        Layout.alignment: Qt.AlignRight
-                    }
-                }
-            }
+            pillText: getDayProgressPercent() + "%"
+            pillIcon: "clock_loader_60"
         }
 
-        // 2 middle shapes
         ColumnLayout {
             Layout.fillWidth: true
             spacing: 12
 
-            // Uptime pill
-            Rectangle {
-                Layout.fillWidth: true
-                implicitHeight: 64
-                radius: 32
-                color: Appearance.colors.colSecondaryContainer
+            InfoPill {
+                text: root.formattedUptime
 
-                RowLayout {
+                shapeContent: CustomIcon {
                     anchors.centerIn: parent
-                    spacing: 12
-
-                    MaterialShape {
-                        shapeString: "Circle"
-                        implicitSize: 40
-                        color: Appearance.colors.colSecondary
-
-                        CustomIcon {
-                            anchors.centerIn: parent
-                            width: 24
-                            height: 24
-                            source: SystemInfo.distroIcon
-                            colorize: true
-                            color: Appearance.colors.colOnSecondary
-                        }
-                    }
-
-                    StyledText {
-                        text: root.formattedUptime
-                        font.pixelSize: Appearance.font.pixelSize.large
-                        font.family: Appearance.font.family.title
-                        font.weight: Font.Bold
-                        color: Appearance.colors.colOnSecondaryContainer
-                    }
-
-                    Item {
-                        width: 8
-                    }
+                    width: 24
+                    height: 24
+                    source: SystemInfo.distroIcon
+                    colorize: true
+                    color: Appearance.colors.colOnSecondary
                 }
             }
 
-            // Timer Pill
-            Rectangle {
-                Layout.fillWidth: true
-                implicitHeight: 64
-                radius: 32 // Full Pill shape
-                color: TimerService.pomodoroBreak ? Appearance.colors.colTertiaryContainer : (TimerService.pomodoroRunning || TimerService.stopwatchRunning ? Appearance.colors.colPrimaryContainer : Appearance.colors.colSecondaryContainer)
-
-                RowLayout {
+            InfoPill {
+                textContent: Loader {
                     anchors.centerIn: parent
-                    spacing: 12
+                    sourceComponent: TimerService.pomodoroRunning ? pomodoroText : (TimerService.stopwatchTime > 0 ? stopwatchText : timerOffText)
+                }
+                
+                containerColor: TimerService.pomodoroBreak ? Appearance.colors.colTertiaryContainer : (TimerService.pomodoroRunning || TimerService.stopwatchRunning ? Appearance.colors.colPrimaryContainer : Appearance.colors.colSecondaryContainer)
+                color: containerColor
+                shapeColor: TimerService.pomodoroBreak ? Appearance.colors.colTertiary : (TimerService.pomodoroRunning || TimerService.stopwatchRunning ? Appearance.colors.colPrimary : Appearance.colors.colSecondary)
+                symbolColor: TimerService.pomodoroBreak ? Appearance.colors.colOnTertiary : (TimerService.pomodoroRunning || TimerService.stopwatchRunning ? Appearance.colors.colOnPrimary : Appearance.colors.colOnSecondary)
+                textColor: TimerService.pomodoroBreak ? Appearance.colors.colOnTertiaryContainer : (TimerService.pomodoroRunning || TimerService.stopwatchRunning ? Appearance.colors.colOnPrimaryContainer : Appearance.colors.colOnSecondaryContainer)
+                icon: TimerService.pomodoroBreak ? "coffee" : root.stopwatchPaused ? "timer_pause" : TimerService.stopwatchRunning ? "timer_play" : "timer"
+            }
+        }
 
-                    MaterialShape {
-                        shapeString: "Circle"
-                        implicitSize: 40
-                        color: TimerService.pomodoroBreak ? Appearance.colors.colTertiary : (TimerService.pomodoroRunning || TimerService.stopwatchRunning ? Appearance.colors.colPrimary : Appearance.colors.colSecondary)
+        Component {
+            id: timerOffText
+            StyledText {
+                text: Translation.tr("Timer Off")
+                font.pixelSize: Appearance.font.pixelSize.large
+                font.family: Appearance.font.family.title
+                font.weight: Font.Bold
+            }
+        }
 
-                        MaterialSymbol {
-                            anchors.centerIn: parent
-                            text: TimerService.pomodoroBreak ? "coffee" : "timer"
-                            iconSize: Appearance.font.pixelSize.large
-                            color: TimerService.pomodoroBreak ? Appearance.colors.colOnTertiary : (TimerService.pomodoroRunning || TimerService.stopwatchRunning ? Appearance.colors.colOnPrimary : Appearance.colors.colOnSecondary)
-                        }
+        Component {
+            id: pomodoroText
+            StyledText {
+                visible: TimerService.pomodoroRunning
+                text: root.formatTimerDisplay(TimerService.pomodoroSecondsLeft)
+                font.pixelSize: Appearance.font.pixelSize.large
+                font.family: Appearance.font.family.title
+                font.weight: Font.Bold
+            }
+        }
+
+        Component {
+            id: stopwatchText
+            RowLayout {
+                id: textLayout
+                visible: TimerService.stopwatchTime > 0
+                width: 70 // To prevent shakiness
+                anchors.centerIn: parent
+                spacing: 0
+
+                SequentialAnimation {
+                    running: root.stopwatchPaused
+                    loops: Animation.Infinite
+
+                    ScriptAction { script: textLayout.visible = true }
+                    PauseAnimation { duration: 700 }
+                    ScriptAction { script: textLayout.visible = false }
+                    PauseAnimation { duration: 700 }
+
+                    onStopped: {
+                        if (TimerService.stopwatchTime <= 0) return
+                        textLayout.visible = true
                     }
+                }
 
-                    StyledText {
-                        text: TimerService.pomodoroRunning ? root.formatTimerDisplay(TimerService.pomodoroSecondsLeft) : (TimerService.stopwatchRunning ? root.formatTimerDisplay(TimerService.stopwatchTime) : Translation.tr("Timer Off"))
-                        font.pixelSize: Appearance.font.pixelSize.large
-                        font.family: Appearance.font.family.title
-                        font.weight: Font.Bold
-                        color: TimerService.pomodoroBreak ? Appearance.colors.colOnTertiaryContainer : (TimerService.pomodoroRunning || TimerService.stopwatchRunning ? Appearance.colors.colOnPrimaryContainer : Appearance.colors.colOnSecondaryContainer)
+                StyledText {
+                    color: Appearance.m3colors.m3onSurface
+                    font.pixelSize: Appearance.font.pixelSize.large
+                    font.family: Appearance.font.family.title
+                    font.weight: Font.Bold
+
+                    text: {
+                        let totalSeconds = Math.floor(TimerService.stopwatchTime) / 100
+                        let minutes = Math.floor(totalSeconds / 60).toString().padStart(2, '0')
+                        let seconds = Math.floor(totalSeconds % 60).toString().padStart(2, '0')
+                        return `${minutes}:${seconds}`
                     }
+                }
 
-                    Item {
-                        width: 8
+                StyledText {
+                    Layout.fillWidth: true
+                    color: Appearance.colors.colSubtext
+                    font.pixelSize: Appearance.font.pixelSize.large
+                    font.family: Appearance.font.family.title
+                    font.weight: Font.Bold
+
+                    text: {
+                        return `:<sub>${(Math.floor(TimerService.stopwatchTime) % 100).toString().padStart(2, '0')}</sub>`
                     }
                 }
             }
         }
 
-        // To-dos List Card
-        Rectangle {
-            Layout.fillWidth: true
-            implicitHeight: todosLayout.implicitHeight + 32
-            color: Appearance.colors.colSurfaceContainerHigh
-            radius: Appearance.rounding.large
+        SectionCard {
+            title: Translation.tr("To-Do Tasks")
+            icon: "checklist"
+            subtitle: root.todosSection
 
-            ColumnLayout {
-                id: todosLayout
-                anchors.top: parent.top
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.margins: 16
-                spacing: 12
-
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 12
-
-                    MaterialShape {
-                        shapeString: "Slanted"
-                        implicitSize: 36
-                        color: Appearance.colors.colTertiaryContainer
-
-                        MaterialSymbol {
-                            anchors.centerIn: parent
-                            text: "checklist"
-                            iconSize: Appearance.font.pixelSize.normal
-                            color: Appearance.colors.colOnTertiaryContainer
-                        }
-                    }
-
-                    StyledText {
-                        Layout.fillWidth: true
-                        text: Translation.tr("To-Do Tasks")
-                        font.family: Appearance.font.family.expressive
-                        font.pixelSize: Appearance.font.pixelSize.large
-                        font.weight: Font.Bold
-                        color: Appearance.colors.colOnSurface
-                    }
-                }
-
-                Rectangle {
-                    Layout.fillWidth: true
-                    height: 2
-                    color: Appearance.colors.colSurfaceContainerHighest
-                    radius: 1
-                }
-
-                StyledText {
-                    visible: !root.todosEmpty
-                    Layout.fillWidth: true
-                    horizontalAlignment: Text.AlignLeft
-                    wrapMode: Text.Wrap
-                    font.pixelSize: Appearance.font.pixelSize.normal
-                    color: Appearance.colors.colOnSurfaceVariant
-                    text: root.todosSection
-                    lineHeight: 1.4
-                }
-
-                // using loading indicator on empty state for now
-                Rectangle {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 120
-                    visible: root.todosEmpty
-                    color: "transparent"
-
-                    ColumnLayout {
-                        anchors.centerIn: parent
-                        spacing: 8
-
-                        MaterialLoadingIndicator {
-                            Layout.alignment: Qt.AlignHCenter
-                            loading: true
-                        }
-
-                        StyledText {
-                            Layout.alignment: Qt.AlignHCenter
-                            text: Translation.tr("No pending tasks")
-                            font.pixelSize: Appearance.font.pixelSize.small
-                            color: Appearance.colors.colOnSurfaceVariant
-                        }
-                    }
-                }
+            LoadingPlaceholder {
+                Layout.preferredHeight: 120
+                visible: root.todosEmpty
+                loading: false
+                emptyText: Translation.tr("No pending tasks")
             }
         }
     }

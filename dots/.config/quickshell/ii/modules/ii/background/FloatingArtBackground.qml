@@ -3,6 +3,7 @@ import QtQuick.Effects
 import qs
 import qs.modules.common
 import qs.modules.common.widgets
+import Qt5Compat.GraphicalEffects
 
 Item {
     id: root
@@ -36,13 +37,18 @@ Item {
         NumberAnimation { duration: 600; easing.type: Easing.OutCubic }
     }
 
+    GaussianBlur {
+        anchors.fill: parent
+        source: img
+        radius: Config.options.background.mediaMode.backgroundBlurRadius
+        samples: radius * 2 + 1
+    }
+
     TransitionImage {
         id: img
         anchors.fill: parent
         imageSource: root.artFilePath
-
-        layer.enabled: true
-        layer.effect: StyledBlurEffect { source: img }
+        visible: false
 
         Rectangle { anchors.fill: parent; color: root.overlayColor }
 

@@ -15,12 +15,24 @@ Singleton {
 	property real memoryFree: 0
 	property real memoryUsed: memoryTotal - memoryFree
     property real memoryUsedPercentage: memoryUsed / memoryTotal
+    property real diskTotal: 1
+    property real diskFree: 0
+    property real diskUsed: 0
+    property real diskUsedPercentage: diskTotal > 0 ? (diskUsed / diskTotal) : 0
     property real swapTotal: 1
 	property real swapFree: 0
 	property real swapUsed: swapTotal - swapFree
     property real swapUsedPercentage: swapTotal > 0 ? (swapUsed / swapTotal) : 0
     property real cpuUsage: 0
     property var previousCpuStats
+    property real cpuTemp: 0
+    property real cpuFreqMhz: 0
+    property real gpuUsage: 0
+    property real gpuPowerW: 0
+    property real gpuTemp: 0
+
+    property string cpuModel: "--"
+    property string gpuModel: "--"
 
     property string maxAvailableMemoryString: kbToGbString(ResourceUsage.memoryTotal)
     property string maxAvailableSwapString: kbToGbString(ResourceUsage.swapTotal)
@@ -112,6 +124,78 @@ Singleton {
             id: outputCollector
             onStreamFinished: {
                 root.maxAvailableCpuString = (parseFloat(outputCollector.text) / 1000).toFixed(0) + " GHz"
+            }
+        }
+    }
+
+    Process {
+        id: cpuModelProc
+        environment: ({ LANG: "C", LC_ALL: "C" })
+        command: ["bash", "-c", "grep -m1 'model name' /proc/cpuinfo | sed 's/model name\\s*:\\s*//'"]
+        running: true
+        stdout: StdioCollector {
+            id: cpuModelCollector
+            onStreamFinished: {
+                const model = cpuModelCollector.text.trim()
+                if (model.length > 0) root.cpuModel = model
+            }
+        }
+    }
+
+    Process {
+        id: gpuModelProc
+        environment: ({ LANG: "C", LC_ALL: "C" })
+        command: ["bash", "-c", "nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null || (lspci | grep -i 'vga\\|3d' | head -1 | sed 's/.*: //')"]
+        running: true
+        stdout: StdioCollector {
+            id: gpuModelCollector
+            onStreamFinished: {
+                const model = gpuModelCollector.text.trim()
+                if (model.length > 0) root.gpuModel = model
+            }
+        }
+    }
+
+    Process {
+        id: diskSpaceProc
+        environment: ({ LANG: "C", LC_ALL: "C" })
+        command: ["bash", "-c", "while true; do df -B1 / | awk 'NR==2{print $2, $3, $4}'; sleep 5; done"]
+        running: true
+        stdout: SplitParser {
+            onRead: data => {
+                const parts = data.trim().split(/\s+/)
+                if (parts.length >= 3) {
+                    root.diskTotal = Number(parts[0])
+                    root.diskUsed = Number(parts[1])
+                    root.diskFree = Number(parts[2])
+                }
+            }
+        }
+    }
+
+    Process {
+        id: hardwareMonitorProc
+        environment: ({ LANG: "C", LC_ALL: "C" })
+        command: ["bash", "-c", 
+            "while true; do " + 
+            "cpu_freq=$(awk '/cpu MHz/ {s+=$4; n++} END {if(n>0) print int(s/n)}' /proc/cpuinfo); " +
+            "cpu_temp_file=$(grep -l x86_pkg_temp /sys/class/thermal/thermal_zone*/type 2>/dev/null | head -1 | sed 's/type/temp/'); " +
+            "if [ -n \"$cpu_temp_file\" ] && [ -f \"$cpu_temp_file\" ]; then cpu_temp=$(cat \"$cpu_temp_file\"); else cpu_temp=0; fi; " +
+            "gpu_stats=$(nvidia-smi --query-gpu=utilization.gpu,power.draw,temperature.gpu --format=csv,noheader,nounits 2>/dev/null || echo \"0, 0, 0\"); " +
+            "echo \"${cpu_freq:-0} ${cpu_temp:-0} $gpu_stats\"; " + 
+            "sleep 3; done"
+        ]
+        running: true
+        stdout: SplitParser {
+            onRead: data => {
+                const parts = data.trim().split(/[\s,]+/)
+                if (parts.length >= 5) {
+                    root.cpuFreqMhz = Number(parts[0])
+                    root.cpuTemp = Number(parts[1]) / 1000
+                    root.gpuUsage = Number(parts[2]) / 100
+                    root.gpuPowerW = Number(parts[3])
+                    root.gpuTemp = Number(parts[4])
+                }
             }
         }
     }

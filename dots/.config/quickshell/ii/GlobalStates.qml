@@ -26,11 +26,41 @@ Singleton {
     property bool screenLocked: false
     property bool screenLockContainsCharacters: false
     property bool screenUnlockFailed: false
+    property bool screenTranslatorOpen: false
     property bool sessionOpen: false
     property bool superDown: false
     property bool superReleaseMightTrigger: true
     property bool wallpaperSelectorOpen: false
     property bool workspaceShowNumbers: false
+
+    // Bluetooth connection popup
+    property bool bluetoothConnectionPopupOpen: false
+    property var bluetoothConnectionPopupDevice: null
+
+    // Color Picker Popup
+    property bool colorPickerPopupOpen: false
+    property string colorPickerPopupColor: ""
+
+    function pickColor(hex) {
+        if (hex && hex.startsWith("#")) {
+            root.colorPickerPopupColor = hex;
+            root.colorPickerPopupOpen = false;
+            Qt.callLater(() => {
+                root.colorPickerPopupOpen = true;
+            });
+        }
+    }
+
+    function launchColorPicker() {
+        Quickshell.execDetached(["qs", "-c", "ii", "ipc", "call", "colorPickerLaunch", "trigger"]);
+    }
+
+    IpcHandler {
+        target: "pickColor"
+        function handle(hex: string): void {
+            root.pickColor(hex);
+        }
+    }
 
     property bool dashboardPanelOpen: false // formerly sidebarRightOpen
     property bool policiesPanelOpen: false  // formerly sidebarLeftOpen

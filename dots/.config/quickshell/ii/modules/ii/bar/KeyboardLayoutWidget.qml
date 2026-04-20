@@ -4,13 +4,17 @@ import qs.modules.common.widgets
 import qs.services
 import QtQuick
 import QtQuick.Layouts
+import Quickshell
+import Quickshell.Io
 
 MouseArea {
     id: root
     property bool vertical: false
 
-    // Hide entirely if there is only 1 layout and we're not vertical
-    visible: HyprlandXkb.layoutCodes.length > 1
+    readonly property bool hasMultipleLayouts: HyprlandXkb.layoutCodes.length > 1
+
+    // Visible if there is at least 1 layout registered
+    visible: HyprlandXkb.layoutCodes.length >= 1
 
     implicitWidth: visible ? layout.implicitWidth + 16 : 0
     implicitHeight: visible ? Appearance.sizes.barHeight : 0
@@ -18,11 +22,24 @@ MouseArea {
     hoverEnabled: !Config.options.bar.tooltips.clickToShow
 
     function abbreviateLayoutCode(fullCode) {
-        if (!fullCode) return "";
+        if (!fullCode)
+            return "";
         return fullCode.split(':').map(layout => {
             const baseLayout = layout.split('-')[0];
-            return baseLayout.slice(0, 4);
+            return baseLayout.slice(0, 2);
         }).join('\n').toUpperCase();
+    }
+
+    Process {
+        id: switchProc
+        command: ["bash", "-c", "hyprctl switchxkblayout all next"]
+    }
+
+    onClicked: {
+        if (hasMultipleLayouts) {
+            switchProc.running = false;
+            switchProc.running = true;
+        }
     }
 
     RowLayout {

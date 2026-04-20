@@ -107,12 +107,13 @@ Singleton {
 
 
       function getEventsInWeek() {
-        const d = new Date();
-        const num_day_today = d.getDay();
         let result = [];
+        const now = new Date();
+        const currentConfiguredDayIndex = (now.getDay() - Config.options.time.firstDayOfWeek + 6) % 7;
+
         for (let i = 0; i < root.weekdays.length; i++) {
-            const dayOffset = (i + Config.options.time.firstDayOfWeek+1); 
-            d.setDate(d.getDate() - d.getDay() + dayOffset %7);
+            const d = new Date(now);
+            d.setDate(d.getDate() - currentConfiguredDayIndex + i);
             const events = this.getTasksByDate(d);
             const name_weekday = root.weekdays[d.getDay()];
             let obj = {
@@ -128,7 +129,9 @@ Singleton {
                     "end": end_time,
                     "title": title,
                     "color": evt['color'],
-                    "description": evt['description']
+                    "description": evt['description'],
+                    "uid": evt['uid'],
+                    "calendar": evt['calendar']
                 });
               });
               result.push(obj)
@@ -138,15 +141,33 @@ Singleton {
         return result;
       }
 
+    // Simple color list for events
+    property var eventColors: [
+        Appearance.m3colors.m3primary,
+        Appearance.m3colors.m3secondary,
+        Appearance.m3colors.m3tertiary,
+        Appearance.colors.colPrimary,
+        Appearance.colors.colSecondary,
+        Appearance.colors.colTertiary
+    ]
+    property int colorCounter: 0
+
+    function getNextEventColor() {
+        let color = eventColors[colorCounter % eventColors.length];
+        colorCounter++;
+        return color;
+    }
+
     // Process for loading events
     Process {
       id: getEventsProcess
       running: false
-        // get events for 3 months
-        command: ["khal", "list", "--json", "title", "--json", "start-date", "--json" ,"start-time", "--json" ,"end-time", "--json", "description",    Qt.formatDate((() => { let d = new Date(); d.setMonth(d.getMonth() - 3); return d; })(), "dd/MM/yyyy") ,Qt.formatDate((() => { let d = new Date(); d.setMonth(d.getMonth() + 3); return d; })(), "dd/MM/yyyy")]
+        // get events for 3 months - fetch uid for unique identification
+        command: ["khal", "list", "--json", "title", "--json", "start-date", "--json" ,"start-time", "--json" ,"end-time", "--json", "description", "--json", "calendar", "--json", "uid", Qt.formatDate((() => { let d = new Date(); d.setMonth(d.getMonth() - 3); return d; })(), "dd/MM/yyyy") ,Qt.formatDate((() => { let d = new Date(); d.setMonth(d.getMonth() + 3); return d; })(), "dd/MM/yyyy")]
         stdout: StdioCollector {
 
           onStreamFinished:{
+            root.colorCounter = 0;  // Reset color counter for each reload
             let events = []
             let lines = this.text.split('\n')
              for(let line of lines){
@@ -177,12 +198,17 @@ Singleton {
                                            parseInt(endTimeParts[0]), 
                                            parseInt(endTimeParts[1]))
 
+                  // Simple rotating color assignment
+                  let eventColor = root.getNextEventColor();
+
                   events.push({
                       "content": event['title'],
                       "startDate": startDate,
                       "endDate": endDate,
-                      "color": ColorUtils.stringToColor(event['title']), 
-                      "description": event['description'] ?? ""
+                      "color": eventColor, 
+                      "description": event['description'] ?? "",
+                      "calendar": event['calendar'] || '',
+                      "uid": event['uid'] || ''
                   })
                 }
               }
@@ -209,8 +235,23 @@ Singleton {
 
       
       Process {
+        id: vdirsyncerProcess
+        command: ["vdirsyncer", "sync"]
+        running: false
+      }
+
+      Process {
         id: khalAddTaskProcess
         running: false
+        onExited: (exitCode) => {
+          if (exitCode === 0) {
+            console.log("[CalendarService] Event added successfully");
+            vdirsyncerProcess.running = true;
+            getEventsProcess.running = true;
+          } else {
+            console.log("[CalendarService] Failed to add event, exit code: " + exitCode);
+          }
+        }
       }
 
 
@@ -222,10 +263,42 @@ Singleton {
         khalAddTaskProcess.running = true
       }
 
+      // Create a timed event with start/end times
+      // date: JS Date object for the day
+      // startTime: string "HH:MM"
+      // endTime: string "HH:MM"
+      // title: string
+      // description: string (optional)
+      function addEvent(date, startTime, endTime, title, description) {
+        if (!root.khalAvailable) {
+          console.log("[CalendarService] khal not available, cannot create event");
+          return;
+        }
+
+        let formattedDate = Qt.formatDate(date, "dd/MM/yyyy");
+        let summary = title;
+        if (description && description.length > 0) {
+          summary = title + " :: " + description;
+        }
+
+        khalAddTaskProcess.command = ["khal", "new", formattedDate, startTime, endTime, summary];
+        console.log("[CalendarService] Creating event:", khalAddTaskProcess.command.join(" "));
+        khalAddTaskProcess.running = true;
+      }
+
 
     Process {
         id: khalRemoveProcess
         running: false
+        onExited: (exitCode) => {
+          if (exitCode === 0) {
+            console.log("[CalendarService] Event removed successfully");
+            vdirsyncerProcess.running = true;
+            getEventsProcess.running = true;
+          } else {
+            console.log("[CalendarService] Failed to remove event, exit code: " + exitCode);
+          }
+        }
       }
 
       function removeItem(item){
@@ -242,5 +315,28 @@ Singleton {
           console.log(khalRemoveProcess.command)
 
 
+    }
+
+    // Remove a timed event by UID (unique identifier)
+    function removeEventByUid(uid) {
+      if (!uid || uid.length === 0) return;
+
+      khalRemoveProcess.command = [
+        "bash", "-c",
+        "find ~/.calendars -type f -name '*.ics' -exec grep -l 'UID:" + uid + "' {} + | xargs -r rm -f; sqlite3 ~/.local/share/khal/khal.db \"DELETE FROM events WHERE item LIKE '%UID:" + uid + "%';\""
+      ];
+      console.log("[CalendarService] Removing event by UID:", uid);
+      khalRemoveProcess.running = true;
+    }
+
+    function removeEvent(title) {
+      if (!title || title.length === 0) return;
+
+      khalRemoveProcess.command = [
+        "bash", "-c",
+        "find ~/.calendars -type f -name '*.ics' -exec grep -l 'SUMMARY:" + title + "' {} + | xargs -r rm -f; sqlite3 ~/.local/share/khal/khal.db \"DELETE FROM events WHERE item LIKE '%SUMMARY:" + title + "%';\""
+      ];
+      console.log("[CalendarService] Removing event:", title);
+      khalRemoveProcess.running = true;
     }
 }

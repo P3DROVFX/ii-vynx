@@ -57,6 +57,9 @@ post_process() {
 
     handle_kde_material_you_colors &
     "$SCRIPT_DIR/code/material-code-set-color.sh" &
+    
+    # Generate YouTube Music theme via matugen native template
+    "$SCRIPT_DIR/../ytmusic/generate-ytmusic-theme.sh" "$wallpaper_path" > /dev/null 2>&1 &
 }
 
 check_and_prompt_upscale() {
@@ -187,7 +190,7 @@ switch() {
     cursorposy=$(bc <<< "scale=0; ($cursorposy - $screeny) * $scale / 1")
     cursorposy_inverted=$((screensizey - cursorposy))
 
-    matugen_args=(--source-color-index 0)
+    matugen_args=()
 
     if [[ "$color_flag" == "1" ]]; then
         matugen_args+=(color hex "$color")
@@ -420,13 +423,9 @@ main() {
         imgpath="$(kdialog --getopenfilename . --title 'Choose wallpaper')"
     fi
 
-    if [[ -n "$imgpath" && -z "$noswitch_flag" ]]; then
-        set_accent_color ""
-        color_flag=""
-        color=""
-    fi
-
-    if [[ -n "$imgpath" && -z "$noswitch_flag" ]]; then
+    # Only clear accent color if a NEW image is provided and noswitch is NOT set
+    current_wallpaper=$(jq -r '.background.wallpaperPath' "$SHELL_CONFIG_FILE" 2>/dev/null || echo "")
+    if [[ -n "$imgpath" && -z "$noswitch_flag" && "$imgpath" != "$current_wallpaper" ]]; then
         set_accent_color ""
         color_flag=""
         color=""

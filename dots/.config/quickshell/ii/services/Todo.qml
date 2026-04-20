@@ -12,19 +12,30 @@ import qs.modules.common.functions
 /**
  * Simple to-do list manager.
  * Each item is an object with "content" and "done" properties.
+ * When TickTick is available, syncs with the TickTick API.
  */
 Singleton {
     id: root
     property var filePath: Directories.todoPath
-    property var list: []
-    
-    function addItem(item) {
-        
-          list.push(item)
-          // Reassign to trigger onListChanged
-          root.list = list.slice(0)
 
-          todoFileView.setText(JSON.stringify(root.list))
+    // Use TickTick if available
+    readonly property bool useTickTick: TickTickService.available
+
+    // Unified task list: either from TickTick or local file
+    property var list: root.useTickTick ? TickTickService.tasks : root.localList
+    property var localList: []
+
+    // Sync state (for UI indicator)
+    readonly property bool syncing: TickTickService.syncing
+
+    function addItem(item) {
+        if (root.useTickTick) {
+            TickTickService.createTask(item.content);
+            return;
+        }
+        localList.push(item)
+        root.localList = localList.slice(0)
+        todoFileView.setText(JSON.stringify(root.localList))
     }
 
     function addTask(desc) {
@@ -33,12 +44,11 @@ Singleton {
             "done": false,
         }
         addItem(item)
-      }
-
+    }
 
     function getTasksByDate(currentDate) {
         const res = [];
-        
+
         const currentDay = currentDate.getDate();
         const currentMonth = currentDate.getMonth();
         const currentYear = currentDate.getFullYear();
@@ -57,49 +67,60 @@ Singleton {
         return res;
     }
 
-
-
-
     function markDone(index) {
-        if (index >= 0 && index < list.length) {
-            list[index].done = true
-            // Reassign to trigger onListChanged
-            root.list = list.slice(0)
-
-            todoFileView.setText(JSON.stringify(root.list))
-
-           
+        if (root.useTickTick) {
+            let task = root.list[index];
+            if (task && task.id) {
+                TickTickService.completeTask(task.id, task.projectId);
+            }
+            return;
+        }
+        if (index >= 0 && index < localList.length) {
+            localList[index].done = true
+            root.localList = localList.slice(0)
+            todoFileView.setText(JSON.stringify(root.localList))
         }
     }
 
     function markUnfinished(index) {
-        if (index >= 0 && index < list.length) {
-            list[index].done = false
-            // Reassign to trigger onListChanged
-            root.list = list.slice(0)
+        if (root.useTickTick) {
+            // TickTick API doesn't have a simple "uncomplete" — refresh instead
+            TickTickService.refresh();
+            return;
+        }
+        if (index >= 0 && index < localList.length) {
+            localList[index].done = false
+            root.localList = localList.slice(0)
 
-            if(CalendarService.khalAvailable){ //kahl does not support saving mark
+            if(CalendarService.khalAvailable){
               return
             }
-            todoFileView.setText(JSON.stringify(root.list))
+            todoFileView.setText(JSON.stringify(root.localList))
         }
     }
 
     function deleteItem(index) {
-      if (index >= 0 && index < list.length) {
-            let item = list[index]
-            list.splice(index, 1)
-            // Reassign to trigger onListChanged
-            root.list = list.slice(0)
-
-          todoFileView.setText(JSON.stringify(root.list))
- 
+        if (root.useTickTick) {
+            let task = root.list[index];
+            if (task && task.id) {
+                TickTickService.deleteTask(task.id, task.projectId);
+            }
+            return;
+        }
+        if (index >= 0 && index < localList.length) {
+            let item = localList[index]
+            localList.splice(index, 1)
+            root.localList = localList.slice(0)
+            todoFileView.setText(JSON.stringify(root.localList))
         }
     }
 
     function refresh() {
+        if (root.useTickTick) {
+            TickTickService.refresh();
+            return;
+        }
         todoFileView.reload()
-
     }
 
     Component.onCompleted: {
@@ -111,10 +132,10 @@ Singleton {
         path: Qt.resolvedUrl(root.filePath)
         onLoaded: {
             const fileContents = todoFileView.text()
-            root.list = JSON.parse(fileContents)
+            root.localList = JSON.parse(fileContents)
 
-            for (let i=0; i< root.list.length; i++){ //parse date as date object
-              root.list[i]['date'] = new Date(root.list[i]['date'])
+            for (let i=0; i< root.localList.length; i++){
+              root.localList[i]['date'] = new Date(root.localList[i]['date'])
             }
 
             console.log("[To Do] File loaded")
@@ -122,12 +143,11 @@ Singleton {
         onLoadFailed: (error) => {
             if(error == FileViewError.FileNotFound) {
                 console.log("[To Do] File not found, creating new file.")
-                root.list = []
-                todoFileView.setText(JSON.stringify(root.list))
+                root.localList = []
+                todoFileView.setText(JSON.stringify(root.localList))
             } else {
                 console.log("[To Do] Error loading file: " + error)
             }
         }
     }
 }
-

@@ -715,6 +715,16 @@ ContentPage {
             }
 
             ConfigSwitch {
+                buttonIcon: "backlight_low"
+                text: Translation.tr("Gamma")
+                enabled: Config.options.sidebar.quickSliders.enable
+                checked: Config.options.sidebar.quickSliders.showGamma
+                onCheckedChanged: {
+                    Config.options.sidebar.quickSliders.showGamma = checked;
+                }
+            }
+
+            ConfigSwitch {
                 buttonIcon: "volume_up"
                 text: Translation.tr("Volume")
                 enabled: Config.options.sidebar.quickSliders.enable

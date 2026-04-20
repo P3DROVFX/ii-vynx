@@ -67,7 +67,7 @@ Scope {
             Wallpapers.openFallbackPicker(Appearance.m3colors.darkmode);
             return;
         }
-        GlobalStates.wallpaperSelectorOpen = !GlobalStates.wallpaperSelectorOpen
+        GlobalStates.wallpaperSelectorOpen = !GlobalStates.wallpaperSelectorOpen;
     }
 
     IpcHandler {

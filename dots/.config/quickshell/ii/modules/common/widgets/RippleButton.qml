@@ -158,6 +158,8 @@ Button {
         }
 
         layer.enabled: true
+        layer.samples: 8
+        layer.smooth: true
         layer.effect: OpacityMask {
             maskSource: Rectangle {
                 width: buttonBackground.width
@@ -166,6 +168,7 @@ Button {
                 topRightRadius: root.topRightRadius
                 bottomLeftRadius: root.bottomLeftRadius
                 bottomRightRadius: root.bottomRightRadius
+                antialiasing: true
             }
         }
 

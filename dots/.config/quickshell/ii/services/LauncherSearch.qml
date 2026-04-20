@@ -108,7 +108,7 @@ Singleton {
         {
             action: "wallpaper",
             execute: () => {
-                GlobalStates.wallpaperSelectorOpen = true;
+                Quickshell.execDetached(["qs", "-c", "ii", "ipc", "call", "wallpaperSelector", "toggle"]);
             }
         },
         {

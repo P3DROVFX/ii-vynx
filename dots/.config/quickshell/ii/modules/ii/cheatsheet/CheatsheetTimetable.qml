@@ -10,7 +10,8 @@ import qs.modules.common.functions
 Item {
     id: root
     property real spacing: 8
-    property color backgroundColor: "transparent"
+
+    readonly property bool eventPopupVisible: eventPopup.visible
 
     property int startHour: 0
     property int startMinute: 0
@@ -25,11 +26,11 @@ Item {
     readonly property int contentHeight: totalSlots * slotHeight
 
     property real maxHeight: 700
-    property real headerHeight: 64 // Material 3 standard header height
+    property real headerHeight: 64 + (hasAllDayEvents ? maxAllDayEventCount * (allDayChipHeight + allDayChipSpacing) + 8 : 0) // Dynamic height for all-day events
     property real currentTimeY: -1
     property bool initialScrollApplied: false
     readonly property real dayColumnWidth: Math.min(180, (maxContentWidth - timeColumnWidth - (days.length + 1) * spacing) / days.length)
-    readonly property int currentDayIndex: (DateTime.clock.date.getDay() - Config.options.time.firstDayOfWeek+ 6)%7
+    readonly property int currentDayIndex: (DateTime.clock.date.getDay() - Config.options.time.firstDayOfWeek + 6) % 7
 
     implicitWidth: Math.min(maxContentWidth, timeColumnWidth + (dayColumnWidth * days.length) + ((days.length + 1) * spacing))
     implicitHeight: Math.min(headerHeight + contentHeight, maxHeight)
@@ -62,6 +63,10 @@ Item {
     readonly property color dayBackgroundFill: withOpacity(Appearance.colors.colSecondary, 0.04)
     readonly property color dayBackgroundFillVariant: withOpacity(Appearance.colors.colSecondary, 0.08)
 
+    // ─── Next Event & Gradient state ──────────────────────────────
+    property var nextEventData: null
+    property real maxLogicalDistance: 1.0
+
     // ─── Drag-to-create state ─────────────────────────────────────
     property bool isDragging: false
     property int dragDayIndex: -1
@@ -73,11 +78,6 @@ Item {
     property int ghostDayIndex: -1
     property real ghostTopY: 0
     property real ghostHeight: 0
-    property bool ghostMoving: false
-    property bool ghostResizingTop: false
-    property bool ghostResizingBottom: false
-    property real ghostMoveStartMouseY: 0
-    property real ghostMoveStartTopY: 0
 
     // Snap interval in minutes
     readonly property int snapInterval: 15
@@ -112,8 +112,8 @@ Item {
 
     function getDateForDayIndex(dayIndex) {
         let d = new Date();
-        let dayOffset = (dayIndex + Config.options.time.firstDayOfWeek + 1);
-        d.setDate(d.getDate() - d.getDay() + dayOffset % 7);
+        let currentConfigDayIndex = (d.getDay() - Config.options.time.firstDayOfWeek + 6) % 7;
+        d.setDate(d.getDate() - currentConfigDayIndex + dayIndex);
         return d;
     }
 
@@ -151,6 +151,22 @@ Item {
         root.ghostDayIndex = -1;
     }
 
+    // ─── Edit mode helpers ────────────────────────────────────────
+    function openPopupForEdit(event, dayIndex) {
+        let startMin = root.parseTimeToMinutes(event.start);
+        let endMin = root.parseTimeToMinutes(event.end);
+        let startStr = root.minutesToTimeStr(startMin);
+        let endStr = root.minutesToTimeStr(endMin);
+        let eventDate = root.getDateForDayIndex(dayIndex);
+
+        // Position popup near event
+        let colX = root.timeColumnWidth + (dayIndex * (root.dayColumnWidth + root.spacing)) + root.dayColumnWidth;
+        let evtY = root.minutesToY(startMin);
+        let colY = evtY + root.headerHeight - styledFlickable.contentY + 20;
+
+        eventPopup.openForEdit(startStr, endStr, eventDate, dayIndex, colX, colY, event);
+    }
+
     // ──────────────────────────────────────────────────────────────
 
     function updateCurrentTimeLine() {
@@ -180,23 +196,25 @@ Item {
         let start = event.start || "";
         let end = event.end || "";
 
-        return (start === "00:00" && end === "23:59") ||
-               (start === "00:00" && end === "00:00") ||
-               (!event.start && !event.end);
+        return (start === "00:00" && end === "23:59") || (start === "00:00" && end === "00:00") || (!event.start && !event.end);
     }
 
     function getAllDayEvents(events) {
         if (!events || !events.length)
             return [];
 
-        return events.filter(function(evt) { return root.isAllDayEvent(evt); });
+        return events.filter(function (evt) {
+            return root.isAllDayEvent(evt);
+        });
     }
 
     function getTimedEvents(events) {
         if (!events || !events.length)
             return [];
 
-        return events.filter(function(evt) { return !root.isAllDayEvent(evt); });
+        return events.filter(function (evt) {
+            return !root.isAllDayEvent(evt);
+        });
     }
 
     function formatEventTooltip(event) {
@@ -212,20 +230,10 @@ Item {
         let startTotal = root.parseTimeToMinutes(event.start);
         let endTotal = root.parseTimeToMinutes(event.end);
 
-        let formatTime = (totalMinutes) => {
-            if (totalMinutes === null)
-                return "";
-            let hour = Math.floor(totalMinutes / 60);
-            let minute = totalMinutes % 60;
-            let date = new Date();
-            date.setHours(hour, minute, 0, 0);
-            return Qt.formatTime(date, Config.options?.time.format ?? "hh:mm");
-        };
-
-        let startStr = formatTime(startTotal) || event.start || "";
-        let endStr = formatTime(endTotal) || event.end || "";
+        let startStr = root.minutesToTimeStr(startTotal) || event.start || "";
+        let endStr = root.minutesToTimeStr(endTotal) || event.end || "";
         let range = startStr && endStr ? startStr + " - " + endStr : startStr || endStr;
-        return range ? description ? "•  " + title + "\n•  " + range + "\n•  " + description : "•  " +  title + "\n•  " + range : "•  " + title;
+        return range ? description ? "•  " + title + "\n•  " + range + "\n•  " + description : "•  " + title + "\n•  " + range : "•  " + title;
     }
 
     function parseTimeToMinutes(timeStr) {
@@ -239,6 +247,146 @@ Item {
         if (isNaN(hour) || isNaN(minute))
             return null;
         return hour * 60 + minute;
+    }
+
+    function updateNextEvent() {
+        if (!root.days || root.days.length === 0) {
+            root.nextEventData = null;
+            root.maxLogicalDistance = 1.0;
+            return;
+        }
+
+        let now = DateTime.clock.date;
+        let currentDayIdx = root.currentDayIndex;
+        let currentMins = now.getHours() * 60 + now.getMinutes();
+        let nowTotalMins = currentDayIdx * 24 * 60 + currentMins;
+
+        let bestDiff = Infinity;
+        let nextEvt = null;
+
+        for (let i = 0; i < root.days.length; i++) {
+            let day = root.days[i];
+            if (!day || !day.events) continue;
+            
+            let events = root.getTimedEvents(day.events);
+            for (let j = 0; j < events.length; j++) {
+                let evt = events[j];
+                let startMins = root.parseTimeToMinutes(evt.start);
+                let endMins = root.parseTimeToMinutes(evt.end);
+                if (startMins === null) continue;
+                if (endMins === null || (endMins === 0 && startMins > 0)) endMins = 24 * 60;
+                
+                let evtStartTotal = i * 24 * 60 + startMins;
+                let evtEndTotal = i * 24 * 60 + endMins;
+
+                if (evtEndTotal > nowTotalMins) {
+                    let diff = evtStartTotal - nowTotalMins;
+                    if (diff < 0) diff = 0;
+                    
+                    if (diff < bestDiff) {
+                        bestDiff = diff;
+                        nextEvt = {
+                            dayIndex: i,
+                            startMinutes: startMins,
+                            endMinutes: endMins
+                        };
+                    }
+                }
+            }
+        }
+        
+        if (!nextEvt) {
+            let earliestTotal = Infinity;
+            for (let i = 0; i < root.days.length; i++) {
+                let day = root.days[i];
+                if (!day || !day.events) continue;
+                
+                let events = root.getTimedEvents(day.events);
+                for (let j = 0; j < events.length; j++) {
+                    let evt = events[j];
+                    let startMins = root.parseTimeToMinutes(evt.start);
+                    if (startMins === null) continue;
+                    
+                    let evtStartTotal = i * 24 * 60 + startMins;
+                    if (evtStartTotal < earliestTotal) {
+                        earliestTotal = evtStartTotal;
+                        nextEvt = {
+                            dayIndex: i,
+                            startMinutes: startMins,
+                            endMinutes: root.parseTimeToMinutes(evt.end)
+                        };
+                    }
+                }
+            }
+        }
+
+        root.nextEventData = nextEvt;
+
+        let maxDist = 0;
+        if (nextEvt) {
+            for (let i = 0; i < root.days.length; i++) {
+                let day = root.days[i];
+                if (!day || !day.events) continue;
+                
+                let events = root.getTimedEvents(day.events);
+                for (let j = 0; j < events.length; j++) {
+                    let evt = events[j];
+                    let startMins = root.parseTimeToMinutes(evt.start);
+                    if (startMins === null) continue;
+                    
+                    let dx = i - nextEvt.dayIndex;
+                    let dy = (startMins - nextEvt.startMinutes) / 60.0;
+                    let dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist > maxDist) maxDist = dist;
+                }
+            }
+        }
+        root.maxLogicalDistance = Math.max(1.0, maxDist);
+    }
+
+    function lerpColor(color1, color2, factor) {
+        let c1 = Qt.color(color1);
+        let c2 = Qt.color(color2);
+        let f = Math.max(0, Math.min(1, factor));
+        let r = c1.r + (c2.r - c1.r) * f;
+        let g = c1.g + (c2.g - c1.g) * f;
+        let b = c1.b + (c2.b - c1.b) * f;
+        let a = c1.a + (c2.a - c1.a) * f;
+        return Qt.rgba(r, g, b, a);
+    }
+
+    function getEventColorRadial(dayIndex, startMinutes, nextEvtData, maxDist) {
+        if (!nextEvtData) return Appearance.colors.colSurfaceContainerHigh;
+
+        let nextDay = nextEvtData.dayIndex;
+        let nextStart = nextEvtData.startMinutes;
+
+        let dx = dayIndex - nextDay;
+        let dy = (startMinutes - nextStart) / 60.0;
+        
+        if (dx === 0 && dy === 0) {
+            return Appearance.colors.colPrimary;
+        }
+
+        let distance = Math.sqrt(dx * dx + dy * dy);
+        let normalizedDist = Math.min(1.0, distance / maxDist);
+
+        let c1, c2, ratio;
+        if (normalizedDist < 0.33) {
+            c1 = Appearance.colors.colPrimary;
+            c2 = Appearance.colors.colSecondary;
+            ratio = normalizedDist / 0.33;
+        } else if (normalizedDist < 0.66) {
+            c1 = Appearance.colors.colSecondary;
+            c2 = Appearance.colors.colTertiary;
+            ratio = (normalizedDist - 0.33) / 0.33;
+        } else {
+            c1 = Appearance.colors.colTertiary;
+            c2 = Appearance.colors.colSurfaceContainerHighest;
+            ratio = (normalizedDist - 0.66) / 0.34;
+        }
+
+        return root.lerpColor(c1, c2, ratio);
     }
 
     function earliestEventStartMinutes() {
@@ -301,18 +449,21 @@ Item {
         target: DateTime.clock
         function onDateChanged() {
             root.updateCurrentTimeLine();
+            root.updateNextEvent();
         }
     }
 
     Connections {
         target: CalendarService
         function onEventsInWeekChanged() {
+            root.updateNextEvent();
             Qt.callLater(root.maybeApplyInitialScroll);
         }
     }
 
     Component.onCompleted: {
         root.updateCurrentTimeLine();
+        root.updateNextEvent();
         Qt.callLater(root.maybeApplyInitialScroll);
     }
 
@@ -363,12 +514,15 @@ Item {
                     width: root.dayColumnWidth
                     height: root.headerHeight
 
-                    property var allDayEvents: root.getAllDayEvents(modelData.events) 
+                    property var allDayEvents: root.getAllDayEvents(modelData.events)
 
                     Rectangle {
+                        id: dayTitleRect
                         property bool isToday: index === root.currentDayIndex
 
-                        anchors.centerIn: parent
+                        anchors.top: parent.top
+                        anchors.topMargin: 12
+                        anchors.horizontalCenter: parent.horizontalCenter
                         width: parent.width - 4
                         height: 40
                         radius: Appearance.rounding.large
@@ -381,30 +535,46 @@ Item {
                             color: allDayEvents.length > 0 ? Appearance.colors.colOnPrimaryContainer : parent.isToday ? Appearance.colors.colOnPrimary : Appearance.colors.colOnSurfaceVariant
                             text: modelData.name
                             elide: Text.ElideRight
-                          }
-                            
-                         HoverHandler {
+                        }
+
+                        HoverHandler {
                             id: allDayHover
-                          }
-        
+                        }
+                    }
 
-                         Column {
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            width: parent.width - 4
-                            spacing: root.allDayChipSpacing
+                    Column {
+                        anchors.top: dayTitleRect.bottom
+                        anchors.topMargin: root.allDayChipSpacing
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        width: parent.width - 4
+                        spacing: root.allDayChipSpacing
 
-                            Repeater {
-                                model: allDayEvents
-                                delegate: Rectangle {
-                                    width: parent.width
-                                    height: root.allDayChipHeight
-                                    color: 'transparent' 
+                        Repeater {
+                            model: allDayEvents
+                            delegate: Rectangle {
+                                width: parent.width
+                                height: root.allDayChipHeight
+                                color: Appearance.colors.colSecondaryContainer
+                                radius: Appearance.rounding.verysmall
+                                border.width: 1
+                                border.color: withOpacity(Appearance.colors.colOnSecondaryContainer, 0.1)
 
-                                   
-                                    StyledToolTip {
-                                        extraVisibleCondition: allDayHover.hovered
-                                        text: root.formatEventTooltip(modelData)
-                                    }
+                                StyledText {
+                                    anchors.fill: parent
+                                    anchors.leftMargin: 8
+                                    anchors.rightMargin: 8
+                                    verticalAlignment: Text.AlignVCenter
+                                    horizontalAlignment: Text.AlignHCenter
+                                    text: modelData.title
+                                    font.pixelSize: Appearance.font.pixelSize.smallest
+                                    font.weight: Font.Medium
+                                    color: Appearance.colors.colOnSecondaryContainer
+                                    elide: Text.ElideRight
+                                }
+
+                                StyledToolTip {
+                                    extraVisibleCondition: allDayHover.hovered
+                                    text: root.formatEventTooltip(modelData)
                                 }
                             }
                         }
@@ -412,8 +582,6 @@ Item {
                 }
             }
         }
-
-     
 
         // Subtle separator
         Rectangle {
@@ -452,13 +620,7 @@ Item {
                             StyledText {
                                 text: {
                                     let totalMinutes = root.startMinute + (index * root.slotDuration);
-                                    let hour = root.startHour + Math.floor(totalMinutes / 60);
-                                    let minute = totalMinutes % 60;
-
-                                    // Format time based on DateTime format
-                                    let testDate = new Date();
-                                    testDate.setHours(hour, minute, 0);
-                                    return Qt.formatTime(testDate, Config.options?.time.format ?? "hh:mm");
+                                    return root.minutesToTimeStr(totalMinutes);
                                 }
                                 anchors.top: parent.top
                                 anchors.topMargin: -font.pixelSize / 2
@@ -484,7 +646,7 @@ Item {
                             width: root.dayColumnWidth
                             height: parent.height
                             clip: true
-                            
+
                             property bool isToday: index === root.currentDayIndex
                             property var timedEvents: root.getTimedEvents(modelData.events)
                             property int dayIdx: index
@@ -498,14 +660,15 @@ Item {
                             }
 
                             // ─── Drag-to-create MouseArea ─────────────
+                            // This has z: 0 so event blocks (z: 3+) are on top
                             MouseArea {
                                 id: dayDragArea
                                 anchors.fill: parent
                                 hoverEnabled: true
                                 cursorShape: root.ghostVisible && root.ghostDayIndex === dayIdx ? Qt.ArrowCursor : Qt.CrossCursor
-                                z: 1
+                                z: 0
 
-                                onPressed: function(mouse) {
+                                onPressed: function (mouse) {
                                     // Don't start drag if ghost is visible (handled by ghost interactions)
                                     if (root.ghostVisible)
                                         return;
@@ -519,13 +682,13 @@ Item {
                                     root.dragCurrentY = mouse.y;
                                 }
 
-                                onPositionChanged: function(mouse) {
+                                onPositionChanged: function (mouse) {
                                     if (root.isDragging && root.dragDayIndex === dayIdx) {
                                         root.dragCurrentY = Math.max(0, Math.min(mouse.y, root.contentHeight));
                                     }
                                 }
 
-                                onReleased: function(mouse) {
+                                onReleased: function (mouse) {
                                     // Re-enable Flickable scrolling
                                     styledFlickable.interactive = true;
 
@@ -558,10 +721,7 @@ Item {
                                     root.dragDayIndex = -1;
                                 }
 
-                                // Forward wheel events so scroll still works
-                                onWheel: function(wheel) {
-                                    wheel.accepted = false;
-                                }
+
                             }
 
                             // ─── Drag preview (during drag) ───────────
@@ -645,189 +805,53 @@ Item {
                                         color: Appearance.colors.colOnPrimary
                                     }
                                 }
-
-                                // ─── Ghost move area ──────────────────
-                                MouseArea {
-                                    id: ghostMoveArea
-                                    anchors.fill: parent
-                                    anchors.topMargin: 8
-                                    anchors.bottomMargin: 8
-                                    cursorShape: Qt.SizeAllCursor
-                                    z: 2
-
-                                    onPressed: function(mouse) {
-                                        styledFlickable.interactive = false;
-                                        root.ghostMoving = true;
-                                        root.ghostMoveStartMouseY = mouse.y + root.ghostTopY;
-                                        root.ghostMoveStartTopY = root.ghostTopY;
-                                    }
-
-                                    onPositionChanged: function(mouse) {
-                                        if (!root.ghostMoving) return;
-                                        let globalMouseY = mouse.y + root.ghostTopY;
-                                        let delta = globalMouseY - root.ghostMoveStartMouseY;
-                                        let newTopY = root.ghostMoveStartTopY + delta;
-
-                                        // Snap position
-                                        let topMin = root.snapToGrid(root.yToMinutes(newTopY));
-                                        newTopY = root.minutesToY(topMin);
-
-                                        // Clamp
-                                        newTopY = Math.max(0, Math.min(newTopY, root.contentHeight - root.ghostHeight));
-                                        root.ghostTopY = newTopY;
-                                    }
-
-                                    onReleased: {
-                                        styledFlickable.interactive = true;
-                                        root.ghostMoving = false;
-                                    }
-                                }
-
-                                // ─── Top resize handle ────────────────
-                                Rectangle {
-                                    id: topResizeHandle
-                                    width: parent.width
-                                    height: 8
-                                    anchors.top: parent.top
-                                    anchors.horizontalCenter: parent.horizontalCenter
-                                    color: "transparent"
-                                    z: 3
-
-                                    Rectangle {
-                                        anchors.centerIn: parent
-                                        width: 30
-                                        height: 4
-                                        radius: 2
-                                        color: withOpacity(Appearance.colors.colOnPrimary, 0.6)
-                                    }
-
-                                    MouseArea {
-                                        anchors.fill: parent
-                                        cursorShape: Qt.SizeVerCursor
-                                        property real startMouseY: 0
-                                        property real startTopY: 0
-
-                                        onPressed: function(mouse) {
-                                            styledFlickable.interactive = false;
-                                            root.ghostResizingTop = true;
-                                            startMouseY = mapToItem(dayColumnDelegate, mouse.x, mouse.y).y;
-                                            startTopY = root.ghostTopY;
-                                        }
-
-                                        onPositionChanged: function(mouse) {
-                                            if (!root.ghostResizingTop) return;
-                                            let currentGlobalY = mapToItem(dayColumnDelegate, mouse.x, mouse.y).y;
-                                            let delta = currentGlobalY - startMouseY;
-                                            let newTopY = startTopY + delta;
-
-                                            let topMin = root.snapToGrid(root.yToMinutes(newTopY));
-                                            newTopY = root.minutesToY(topMin);
-
-                                            let bottomY = root.ghostTopY + root.ghostHeight;
-                                            let minTopY = root.minutesToY(root.snapToGrid(root.yToMinutes(bottomY)) - root.snapInterval);
-                                            newTopY = Math.max(0, Math.min(newTopY, minTopY));
-
-                                            let heightDelta = root.ghostTopY - newTopY;
-                                            root.ghostTopY = newTopY;
-                                            root.ghostHeight = root.ghostHeight + heightDelta;
-                                        }
-
-                                        onReleased: {
-                                            styledFlickable.interactive = true;
-                                            root.ghostResizingTop = false;
-                                        }
-                                    }
-                                }
-
-                                // ─── Bottom resize handle ─────────────
-                                Rectangle {
-                                    id: bottomResizeHandle
-                                    width: parent.width
-                                    height: 8
-                                    anchors.bottom: parent.bottom
-                                    anchors.horizontalCenter: parent.horizontalCenter
-                                    color: "transparent"
-                                    z: 3
-
-                                    Rectangle {
-                                        anchors.centerIn: parent
-                                        width: 30
-                                        height: 4
-                                        radius: 2
-                                        color: withOpacity(Appearance.colors.colOnPrimary, 0.6)
-                                    }
-
-                                    MouseArea {
-                                        anchors.fill: parent
-                                        cursorShape: Qt.SizeVerCursor
-                                        property real startMouseY: 0
-                                        property real startHeight: 0
-
-                                        onPressed: function(mouse) {
-                                            styledFlickable.interactive = false;
-                                            root.ghostResizingBottom = true;
-                                            startMouseY = mapToItem(dayColumnDelegate, mouse.x, mouse.y).y;
-                                            startHeight = root.ghostHeight;
-                                        }
-
-                                        onPositionChanged: function(mouse) {
-                                            if (!root.ghostResizingBottom) return;
-                                            let currentGlobalY = mapToItem(dayColumnDelegate, mouse.x, mouse.y).y;
-                                            let delta = currentGlobalY - startMouseY;
-                                            let newHeight = startHeight + delta;
-
-                                            let botMin = root.snapToGrid(root.yToMinutes(root.ghostTopY + newHeight));
-                                            let topMin = root.snapToGrid(root.yToMinutes(root.ghostTopY));
-                                            if (botMin - topMin < root.snapInterval)
-                                                botMin = topMin + root.snapInterval;
-
-                                            newHeight = root.minutesToY(botMin) - root.ghostTopY;
-
-                                            // Clamp bottom
-                                            let maxBot = root.contentHeight;
-                                            if (root.ghostTopY + newHeight > maxBot)
-                                                newHeight = maxBot - root.ghostTopY;
-
-                                            root.ghostHeight = Math.max(root.minutesToY(root.snapInterval), newHeight);
-                                        }
-
-                                        onReleased: {
-                                            styledFlickable.interactive = true;
-                                            root.ghostResizingBottom = false;
-                                        }
-                                    }
-                                }
-
-                                // (Popup opens immediately, no confirm/cancel buttons needed)
                             }
 
                             // ─── Existing event blocks ────────────────
                             Repeater {
                                 model: timedEvents
+
                                 Rectangle {
+                                    id: eventBlock
+
+                                    property bool isNextEvent: root.nextEventData && root.nextEventData.dayIndex === dayIdx && root.nextEventData.startMinutes === eventStartMinutes
+
+                                    property int eventStartMinutes: {
+                                        let parts = modelData.start.split(":");
+                                        return parseInt(parts[0]) * 60 + parseInt(parts[1]);
+                                    }
+                                    property int eventEndMinutes: {
+                                        let parts = modelData.end.split(":");
+                                        let endTotal = parseInt(parts[0]) * 60 + parseInt(parts[1]);
+                                        if (endTotal === 0 && eventStartMinutes > 0)
+                                            endTotal = 24 * 60;
+                                        return endTotal;
+                                    }
+
                                     width: parent.width - 10
                                     anchors.horizontalCenter: parent.horizontalCenter
                                     radius: Appearance.rounding.normal
                                     clip: true
-                                    z: 3
-                                    y: {
-                                        let startHr = parseInt(modelData.start.split(":")[0]);
-                                        let startMin = parseInt(modelData.start.split(":")[1]);
-                                        let baseTotalMinutes = root.startHour * 60 + root.startMinute;
-                                        let eventTotalMinutes = startHr * 60 + startMin;
-                                        let diffMinutes = eventTotalMinutes - baseTotalMinutes;
-                                        return diffMinutes * root.pixelsPerMinute;
-                                    }
-                                    height: {
-                                        let startHr = parseInt(modelData.start.split(":")[0]);
-                                        let endHr = parseInt(modelData.end.split(":")[0]);
-                                        let startMin = parseInt(modelData.start.split(":")[1]);
-                                        let endMin = parseInt(modelData.end.split(":")[1]);
-                                        let totalMins = (endHr * 60 + endMin) - (startHr * 60 + startMin);
-                                        return Math.max(totalMins * root.pixelsPerMinute - 4, 48); // Minimum height for touch targets
-                                    }
+                                    z: isNextEvent ? 4 : 3
+                                    color: root.getEventColorRadial(dayIdx, eventStartMinutes, root.nextEventData, root.maxLogicalDistance)
+                                    border.width: isNextEvent ? 2 : 0
+                                    border.color: isNextEvent ? root.withOpacity(Appearance.colors.colOnPrimary, 0.8) : "transparent"
+                                    y: root.minutesToY(eventStartMinutes)
+                                    height: Math.max((eventEndMinutes - eventStartMinutes) * root.pixelsPerMinute - 4, 48)
 
-                                    color: modelData.color || Appearance.colors.colTertiaryContainer
+                                    // Decorative watermark icon for the next event
+                                    MaterialSymbol {
+                                        anchors.right: parent.right
+                                        anchors.bottom: parent.bottom
+                                        anchors.margins: -10
+                                        text: "event_upcoming"
+                                        font.pixelSize: Math.min(parent.height, parent.width) * 0.8
+                                        color: ColorUtils.getContrastingTextColor(eventBlock.color)
+                                        opacity: 0.15
+                                        visible: isNextEvent
+                                        z: 0
+                                        antialiasing: true
+                                    }
 
                                     HoverHandler {
                                         id: eventHover
@@ -838,7 +862,14 @@ Item {
                                         text: root.formatEventTooltip(modelData)
                                     }
 
-                                    // Delete button on hover
+                                    // Click to edit
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: root.openPopupForEdit(modelData, dayIdx)
+                                    }
+
+                                    // Delete button
                                     RippleButton {
                                         anchors.right: parent.right
                                         anchors.top: parent.top
@@ -847,59 +878,83 @@ Item {
                                         implicitHeight: 24
                                         buttonRadius: Appearance.rounding.full
                                         buttonColor: withOpacity(Appearance.colors.colOnSurface, 0.15)
-                                        visible: eventHover.hovered
-                                        z: 5
+                                        opacity: eventHover.hovered ? 1 : 0
+                                        visible: opacity > 0
+                                        z: 15
+
+                                        Behavior on opacity {
+                                            NumberAnimation {
+                                                duration: Appearance.animation.elementMoveFast.duration
+                                                easing.type: Appearance.animation.elementMoveFast.type
+                                                easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
+                                            }
+                                        }
 
                                         onClicked: {
-                                            CalendarService.removeEvent(modelData.title);
+                                            if (modelData.uid) {
+                                                CalendarService.removeEventByUid(modelData.uid);
+                                            } else {
+                                                CalendarService.removeEvent(modelData.title);
+                                            }
                                         }
 
                                         contentItem: MaterialSymbol {
                                             anchors.centerIn: parent
                                             horizontalAlignment: Text.AlignHCenter
-                                            font.pixelSize: 14
+                                            font.pixelSize: Appearance.font.pixelSize.smallie
                                             text: "close"
-                                            color: ColorUtils.getContrastingTextColor(modelData.color || Appearance.colors.colTertiaryContainer)
+                                            color: ColorUtils.getContrastingTextColor(eventBlock.color)
                                         }
                                     }
 
+                                    // Event content
                                     Column {
-                                        anchors {
-                                            fill: parent
-                                            margins: 8
-                                        }
+                                        anchors.fill: parent
+                                        anchors.margins: 8
                                         spacing: 4
+                                        z: 1
 
                                         StyledText {
                                             text: modelData.title
-
                                             font.weight: Font.DemiBold
                                             elide: Text.ElideRight
-                                            width: parent.width
-                                            color: ColorUtils.getContrastingTextColor(modelData.color)
+                                            width: parent.width - 28
+                                            color: ColorUtils.getContrastingTextColor(eventBlock.color)
                                         }
 
-                                        StyledText {
-                                            text: {
-                                                let startHr = parseInt(modelData.start.split(":")[0]);
-                                                let startMin = parseInt(modelData.start.split(":")[1]);
-                                                let endHr = parseInt(modelData.end.split(":")[0]);
-                                                let endMin = parseInt(modelData.end.split(":")[1]);
-
-                                                let formatTime = (hour, minute) => {
-                                                    let testDate = new Date();
-                                                    testDate.setHours(hour, minute, 0);
-                                                    return Qt.formatTime(testDate, Config.options?.time.format ?? "hh:mm");
-                                                };
-
-                                                return formatTime(startHr, startMin) + " - " + formatTime(endHr, endMin);
-                                            }
-                                            font.weight: Font.Medium
+                                        Row {
+                                            spacing: 6
                                             width: parent.width
-                                            wrapMode: Text.NoWrap
-                                            color: ColorUtils.getContrastingTextColor(modelData.color)
-                                            elide: Text.ElideRight
-                                            visible: !truncated
+                                            // Show row if it's the next event OR if there is enough height for the time
+                                            visible: eventBlock.isNextEvent || eventBlock.height > 60
+
+                                            Rectangle {
+                                                visible: eventBlock.isNextEvent
+                                                width: nextText.implicitWidth + 8
+                                                height: nextText.implicitHeight + 2
+                                                color: ColorUtils.getContrastingTextColor(eventBlock.color)
+                                                radius: Appearance.rounding.full
+                                                anchors.verticalCenter: parent.verticalCenter
+
+                                                StyledText {
+                                                    id: nextText
+                                                    anchors.centerIn: parent
+                                                    text: "NEXT"
+                                                    font.pixelSize: Appearance.font.pixelSize.smallest
+                                                    font.weight: Font.Bold
+                                                    color: eventBlock.color
+                                                }
+                                            }
+
+                                            StyledText {
+                                                text: root.minutesToTimeStr(eventBlock.eventStartMinutes) + " - " + root.minutesToTimeStr(eventBlock.eventEndMinutes)
+                                                font.weight: Font.Medium
+                                                color: ColorUtils.getContrastingTextColor(eventBlock.color)
+                                                elide: Text.ElideRight
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                // Only hide the text itself if not enough space and it's NOT the next event
+                                                visible: eventBlock.height > 60 || eventBlock.isNextEvent
+                                            }
                                         }
                                     }
                                 }
@@ -928,7 +983,7 @@ Item {
                     radius: Appearance.rounding.normal
                     color: Appearance.colors.colPrimary
 
-                    Text {
+                    StyledText {
                         id: timeText
                         anchors.centerIn: parent
                         text: DateTime.time
@@ -941,13 +996,63 @@ Item {
         }
     }
 
+    // ─── Floating Indicator for Next Event ────────────────────────
+    Rectangle {
+        id: nextEventIndicator
+        
+        property real nextEventY: root.nextEventData ? root.minutesToY(root.nextEventData.startMinutes) : -1
+        property bool isAbove: root.nextEventData && (nextEventY + 20 < styledFlickable.contentY)
+        property bool isBelow: root.nextEventData && (nextEventY > styledFlickable.contentY + styledFlickable.height - 40)
+        
+        visible: root.nextEventData !== null && (isAbove || isBelow)
+        
+        width: 40
+        height: 40
+        radius: Appearance.rounding.full
+        color: Appearance.colors.colPrimary
+        border.width: 1
+        border.color: root.withOpacity(Appearance.colors.colOnPrimary, 0.3)
+        z: 100
+        antialiasing: true
+        
+        x: {
+            if (!root.nextEventData) return 0;
+            return root.timeColumnWidth + root.spacing + (root.nextEventData.dayIndex * (root.dayColumnWidth + root.spacing)) + (root.dayColumnWidth / 2) - (width / 2);
+        }
+        
+        y: isAbove ? root.headerHeight + 20 : parent.height - height - 20
+        
+        MaterialSymbol {
+            anchors.centerIn: parent
+            text: parent.isAbove ? "arrow_upward" : "arrow_downward"
+            font.pixelSize: Appearance.font.pixelSize.larger
+            color: Appearance.colors.colOnPrimary
+            antialiasing: true
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            cursorShape: Qt.PointingHandCursor
+            onClicked: {
+                if (root.nextEventData) {
+                    let targetY = nextEventIndicator.nextEventY - styledFlickable.height / 3;
+                    targetY = Math.max(0, targetY);
+                    let maxScroll = Math.max(0, styledFlickable.contentHeight - styledFlickable.height);
+                    styledFlickable.contentY = Math.min(targetY, maxScroll);
+                }
+            }
+        }
+
+
+    }
+
     // ─── Event Creation Popup ─────────────────────────────────────
     EventCreationPopup {
         id: eventPopup
         anchors.fill: parent
         z: 50
 
-        onEventCreated: function(title, description, eventColor) {
+        onEventCreated: function (title, description) {
             let topMin = root.snapToGrid(root.yToMinutes(root.ghostTopY));
             let botMin = root.snapToGrid(root.yToMinutes(root.ghostTopY + root.ghostHeight));
             let startTimeKhal = root.minutesToKhalTimeStr(topMin);
@@ -958,8 +1063,38 @@ Item {
             root.cancelGhost();
         }
 
-        onEventDeleted: function(title) {
-            CalendarService.removeEvent(title);
+        onEventUpdated: function (oldTitle, title, description) {
+            // Remove old event and create new one with updated info
+            // Note: khal doesn't support updating events directly, so we delete and recreate
+            let eventData = eventPopup.editEventData;
+            if (!eventData)
+                return;
+
+            let startMin = root.parseTimeToMinutes(eventData.start);
+            let endMin = root.parseTimeToMinutes(eventData.end);
+            if (endMin === 0 && startMin > 0)
+                endMin = 24 * 60;
+
+            let startTimeKhal = root.minutesToKhalTimeStr(startMin);
+            let endTimeKhal = root.minutesToKhalTimeStr(endMin);
+            let eventDate = root.getDateForDayIndex(eventPopup.dayIndex);
+
+            // Use UID if available for precise deletion
+            if (eventData.uid) {
+                CalendarService.removeEventByUid(eventData.uid);
+            } else {
+                CalendarService.removeEvent(oldTitle);
+            }
+            CalendarService.addEvent(eventDate, startTimeKhal, endTimeKhal, title, description);
+        }
+
+        onEventDeleted: function (title) {
+            let eventData = eventPopup.editEventData;
+            if (eventData && eventData.uid) {
+                CalendarService.removeEventByUid(eventData.uid);
+            } else {
+                CalendarService.removeEvent(title);
+            }
             root.cancelGhost();
         }
 

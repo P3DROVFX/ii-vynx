@@ -16,7 +16,6 @@ RippleButton { // Right sidebar button
     implicitWidth: indicatorsColumnLayout.implicitWidth + 6 * 2
 
     buttonRadius: Appearance.rounding.full
-    colBackground: Appearance.colors.colLayer1Hover
     colBackgroundHover: Appearance.colors.colLayer1Hover
     colRipple: Appearance.colors.colLayer1Active
     colBackgroundToggled: Appearance.colors.colSecondaryContainer
@@ -39,6 +38,20 @@ RippleButton { // Right sidebar button
         property real realSpacing: 6
         spacing: 0
 
+        Revealer {
+            vertical: true
+            reveal: Idle.inhibit ?? false
+            Layout.fillHeight: true
+            Layout.bottomMargin: reveal ? indicatorsColumnLayout.realSpacing : 0
+            Behavior on Layout.bottomMargin {
+                animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+            }
+            MaterialSymbol {
+                text: "coffee"
+                iconSize: Appearance.font.pixelSize.larger
+                color: rightSidebarButton.colText
+            }
+        }
         Revealer {
             vertical: true
             reveal: Audio.sink?.audio?.muted ?? false
@@ -66,12 +79,6 @@ RippleButton { // Right sidebar button
                 iconSize: Appearance.font.pixelSize.larger
                 color: rightSidebarButton.colText
             }
-        }
-        HyprlandXkbIndicator {
-            vertical: true
-            Layout.alignment: Qt.AlignHCenter
-            Layout.bottomMargin: indicatorsColumnLayout.realSpacing
-            color: rightSidebarButton.colText
         }
         Revealer {
             vertical: true

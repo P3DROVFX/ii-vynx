@@ -16,6 +16,7 @@ GroupButton {
     property string buttonIcon
     property string buttonShape
     property string buttonSymbol
+    property string buttonColor
     property bool leftmost: false
     property bool rightmost: false
     
@@ -55,7 +56,7 @@ GroupButton {
                 implicitWidth: Appearance.font.pixelSize.larger
                 implicitHeight: Appearance.font.pixelSize.larger
                 shapeString: root.buttonShape
-                color: root.toggled ? Appearance.colors.colOnPrimary : Appearance.colors.colOnSecondaryContainer
+                color: root.buttonColor !== "" ? root.buttonColor : root.toggled ? Appearance.colors.colOnPrimary : Appearance.colors.colOnSecondaryContainer
             }
         }
 

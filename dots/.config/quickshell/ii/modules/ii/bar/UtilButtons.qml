@@ -67,7 +67,7 @@ Item {
             visible: Config.options.bar.utilButtons.showColorPicker
             sourceComponent: CircleUtilButton {
                 Layout.alignment: Qt.AlignVCenter
-                onClicked: Quickshell.execDetached(["hyprpicker", "-a"])
+                onClicked: GlobalStates.launchColorPicker()
                 MaterialSymbol {
                     horizontalAlignment: Qt.AlignHCenter
                     fill: 1

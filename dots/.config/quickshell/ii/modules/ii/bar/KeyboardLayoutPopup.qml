@@ -13,13 +13,40 @@ StyledPopup {
         anchors.centerIn: parent
         spacing: 16
 
-        // Title
-        StyledText {
-            Layout.alignment: Qt.AlignLeft
-            text: Translation.tr("Keyboards")
-            font.weight: Font.Bold
-            font.pixelSize: Appearance.font.pixelSize.large
-            color: Appearance.colors.colOnSurface
+        // Header
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 8
+
+            MaterialShape {
+                shapeString: "Circle"
+                implicitSize: 32
+                color: Appearance.colors.colPrimaryContainer
+
+                MaterialSymbol {
+                    anchors.centerIn: parent
+                    text: "keyboard"
+                    iconSize: Appearance.font.pixelSize.normal
+                    color: Appearance.colors.colOnPrimaryContainer
+                }
+            }
+
+            StyledText {
+                Layout.fillWidth: true
+                font.pixelSize: Appearance.font.pixelSize.large
+                font.family: Appearance.font.family.expressive
+                font.weight: Font.Bold
+                text: Translation.tr("Keyboards")
+                color: Appearance.colors.colOnSurface
+            }
+        }
+
+        // Divider
+        Rectangle {
+            Layout.fillWidth: true
+            height: 2
+            color: Appearance.colors.colSurfaceContainerHighest
+            radius: 1
         }
 
         // Cards Row
@@ -28,7 +55,7 @@ StyledPopup {
 
             Repeater {
                 model: HyprlandXkb.layoutCodes
-                
+
                 delegate: Rectangle {
                     id: layoutCard
                     readonly property string layoutCodeString: modelData.trim()
@@ -36,8 +63,8 @@ StyledPopup {
 
                     Layout.preferredWidth: 180
                     Layout.preferredHeight: 140
-                    radius: Appearance.rounding.large
-                    
+                    radius: Appearance.rounding.normal
+
                     color: isActive ? Appearance.colors.colPrimary : Appearance.colors.colLayer4
                     border.width: isActive ? 2 : 0
                     border.color: isActive ? Appearance.colors.colOnPrimary : "transparent"
@@ -56,7 +83,7 @@ StyledPopup {
 
                         StyledText {
                             // Convert like "BR" to "BR\nABNT" or simply capitalize
-                            // We use a helper function to simulate the multiline split visually 
+                            // We use a helper function to simulate the multiline split visually
                             text: {
                                 // Default logic: simple upper. Better: attempt abbreviation match.
                                 // E.g.: "br" -> "BR"
@@ -83,9 +110,12 @@ StyledPopup {
                             proc.running = true;
                         }
                     }
-                    
+
                     Behavior on color {
-                        ColorAnimation { duration: 150; easing.type: Easing.OutCubic }
+                        ColorAnimation {
+                            duration: 150
+                            easing.type: Easing.OutCubic
+                        }
                     }
                 }
             }

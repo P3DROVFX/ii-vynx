@@ -180,7 +180,7 @@ Item {
         NumberAnimation on currentX {
             from: -150
             to: lyricsList.width + 150
-            duration: isCurrent ? LyricsService.getLineDuration(index) * 1000 : 0
+            duration: isCurrent ? LyricsService.getLineDuration(index) * 1300 : 0
             running: isCurrent && root.isPlaying
             easing.type: Easing.Linear
         }
@@ -204,7 +204,7 @@ Item {
         NumberAnimation on currentY {
             from: -20
             to: lyricText.height + 20
-            duration: isCurrent ? LyricsService.getLineDuration(index) * 1000 : 0
+            duration: isCurrent ? LyricsService.getLineDuration(index) * 1500 : 0
             running: isCurrent && root.isPlaying
             easing.type: Easing.Linear
         }

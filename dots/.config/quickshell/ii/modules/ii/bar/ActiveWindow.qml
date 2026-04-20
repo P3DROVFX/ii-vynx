@@ -52,6 +52,7 @@ Item {
 
         StyledText {
             id: classText
+            Layout.leftMargin: 6
             visible: !root.vertical
             Layout.fillWidth: true
             font.pixelSize: Appearance.font.pixelSize.smaller
@@ -62,6 +63,7 @@ Item {
 
         StyledText {
             id: titleText
+            Layout.leftMargin: root.vertical ? 0 : 6
             Layout.fillWidth: true
             font.pixelSize: Appearance.font.pixelSize.small
             color: Appearance.colors.colOnLayer0

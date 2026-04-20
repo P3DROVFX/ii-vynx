@@ -66,5 +66,23 @@ Switch {
         Behavior on color {
             animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
         }
+
+        MaterialSymbol {
+            anchors.centerIn: parent
+            text: root.checked ? "check" : "close"
+            iconSize: (root.checked || root.pressed || root.down) ? (18 * root.scale) : (16 * root.scale)
+            color: root.checked ? root.activeColor : root.inactiveColor
+
+            Behavior on iconSize {
+                NumberAnimation {
+                    duration: Appearance.animationCurves.expressiveFastSpatialDuration
+                    easing.type: Easing.BezierSpline
+                    easing.bezierCurve: Appearance.animationCurves.expressiveFastSpatial
+                }
+            }
+            Behavior on color {
+                animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+            }
+        }
     }
 }

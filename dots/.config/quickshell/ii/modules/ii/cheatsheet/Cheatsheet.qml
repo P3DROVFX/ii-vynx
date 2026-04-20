@@ -25,8 +25,11 @@ Scope { // Scope
         {
             "icon": "experiment",
             "name": Translation.tr("Elements")
-          },
-        
+        },
+        {
+            "icon": "mail",
+            "name": Translation.tr("Mail")
+        }
     ]
 
     Loader {
@@ -53,22 +56,20 @@ Scope { // Scope
             WlrLayershell.namespace: "quickshell:cheatsheet"
             // Hyprland 0.49: Focus is always exclusive and setting this breaks mouse focus grab
             // WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
+            WlrLayershell.keyboardFocus: cheatsheetTimetable.eventPopupVisible ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
             color: "transparent"
 
             mask: Region {
                 item: cheatsheetBackground
             }
 
-            Component.onCompleted: {
-                GlobalFocusGrab.addDismissable(cheatsheetRoot);
-            }
-            Component.onDestruction: {
-                GlobalFocusGrab.removeDismissable(cheatsheetRoot);
-            }
-            Connections {
-                target: GlobalFocusGrab
-                function onDismissed() {
-                    cheatsheetRoot.hide();
+            HyprlandFocusGrab { // Click outside to close
+                id: grab
+                windows: [cheatsheetRoot]
+                active: cheatsheetRoot.visible
+                onCleared: () => {
+                    if (!active)
+                        cheatsheetRoot.hide();
                 }
             }
 
@@ -90,6 +91,9 @@ Scope { // Scope
                 Keys.onPressed: event => { // Esc to close
                     if (event.key === Qt.Key_Escape) {
                         cheatsheetRoot.hide();
+                    } else if (event.key === Qt.Key_Slash) {
+                        swipeView.currentItem.forceActiveFocus();
+                        event.accepted = true;
                     }
                     if (event.modifiers === Qt.ControlModifier) {
                         if (event.key === Qt.Key_PageDown) {
@@ -175,10 +179,12 @@ Scope { // Scope
                             }
                         }
 
-                        CheatsheetTimetable {}
+                        CheatsheetTimetable {
+                            id: cheatsheetTimetable
+                        }
                         CheatsheetKeybinds {}
                         CheatsheetPeriodicTable {}
-                        
+                        CheatsheetMail {}
                     }
                 }
             }

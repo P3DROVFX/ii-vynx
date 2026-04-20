@@ -27,7 +27,7 @@ Rectangle {
         {
             "type": "todo",
             "name": Translation.tr("To Do"),
-            "icon": "done_outline",
+            "icon": "check_circle",
             "widget": "todo/TodoWidget.qml"
         },
         {

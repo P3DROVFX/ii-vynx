@@ -40,7 +40,7 @@ Item {
     property real iconRatio: 0.8
     property bool showIcons: Config.options.bar.workspaces.showAppIcons
 
-    readonly property bool isScrollingLayout: GlobalStates.isScrollingLayout
+    readonly property bool isScrollingLayout: Persistent.states.hyprland.layout === "scrolling"
     property int maxWindowCount: isScrollingLayout ? Config.options.bar.workspaces.maxWindowCount : 1
 
     readonly property bool dynamicWorkspaces: Config.options.bar.workspaces.dynamicWorkspaces

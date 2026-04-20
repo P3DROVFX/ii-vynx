@@ -4,6 +4,8 @@ import qs.services
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls
+import QtQuick.Controls.Material
+import qs.modules.common.functions
 
 Item {
     id: popup
@@ -22,21 +24,13 @@ Item {
 
     // Edit mode (for existing events)
     property bool isEditMode: false
-    property string editEventTitle: ""
+    property var editEventData: null
 
     // Output
-    signal eventCreated(string title, string description, color eventColor)
+    signal eventCreated(string title, string description)
+    signal eventUpdated(string oldTitle, string title, string description)
     signal eventDeleted(string title)
     signal cancelled
-
-    // Preset colors
-    readonly property var colorOptions: [Appearance.m3colors.m3primary, Appearance.m3colors.m3secondary, Appearance.m3colors.m3tertiary, Appearance.m3colors.m3error, "#4CAF50"  // Green
-        , "#FF9800"  // Orange
-        , "#9C27B0"  // Purple
-        , "#00BCD4"  // Cyan
-        ,]
-
-    property color selectedColor: colorOptions[0]
 
     function open(startTime, endTime, date, dayIdx, posX, posY) {
         popup.startTimeStr = startTime;
@@ -46,10 +40,24 @@ Item {
         popup.anchorX = posX;
         popup.anchorY = posY;
         popup.isEditMode = false;
-        popup.editEventTitle = "";
-        popup.selectedColor = colorOptions[0];
+        popup.editEventData = null;
         titleField.text = "";
         descriptionField.text = "";
+        popup.visible = true;
+        titleField.forceActiveFocus();
+    }
+
+    function openForEdit(startTime, endTime, date, dayIdx, posX, posY, eventData) {
+        popup.startTimeStr = startTime;
+        popup.endTimeStr = endTime;
+        popup.eventDate = date;
+        popup.dayIndex = dayIdx;
+        popup.anchorX = posX;
+        popup.anchorY = posY;
+        popup.isEditMode = true;
+        popup.editEventData = eventData;
+        titleField.text = eventData.title || "";
+        descriptionField.text = eventData.description || "";
         popup.visible = true;
         titleField.forceActiveFocus();
     }
@@ -60,85 +68,151 @@ Item {
         descriptionField.text = "";
     }
 
-    // Backdrop — tap outside to dismiss
-    MouseArea {
+    // Scrim background — blocks all events behind the dialog
+    Rectangle {
         anchors.fill: parent
-        onClicked: {
-            popup.cancelled();
-            popup.close();
+        radius: Appearance.rounding.small
+        color: popup.visible ? Appearance.colors.colScrim : "transparent"
+        opacity: popup.visible ? 1 : 0
+
+        Behavior on opacity {
+            NumberAnimation { duration: Appearance.animation.elementMoveFast.duration }
+        }
+
+        MouseArea {
+            hoverEnabled: true
+            anchors.fill: parent
+            preventStealing: true
+            propagateComposedEvents: false
+            onClicked: {
+                popup.cancelled();
+                popup.close();
+            }
         }
     }
 
-    // Balloon card — positioned near ghost block
+    // Dialog card
     Rectangle {
         id: card
-        width: 280
-        height: cardContent.implicitHeight + 32
+        width: 320
+        height: cardContent.implicitHeight + 48
 
-        // Position: try to show to the right of the ghost, otherwise left
+        // Centered with offset based on anchor
         x: {
-            let targetX = popup.anchorX + 8;
-            if (targetX + width > popup.width)
-                targetX = popup.anchorX - width - 8;
-            return Math.max(4, Math.min(targetX, popup.width - width - 4));
+            let targetX = popup.anchorX - width / 2;
+            return Math.max(16, Math.min(targetX, popup.width - width - 16));
         }
         y: {
             let targetY = popup.anchorY;
-            if (targetY + height > popup.height)
-                targetY = popup.height - height - 4;
-            return Math.max(4, targetY);
+            if (targetY + height > popup.height - 16)
+                targetY = popup.height - height - 16;
+            return Math.max(16, targetY);
         }
 
         radius: Appearance.rounding.large
-        color: Appearance.colors.colLayer1Base
-        border.width: 1
-        border.color: Appearance.colors.colLayer1Border
+        color: Appearance.m3colors.m3surfaceContainerHigh
         opacity: popup.visible ? 1 : 0
-        scale: popup.visible ? 1 : 0.9
+        scale: popup.visible ? 1 : 0.92
+        layer.enabled: true
+        layer.smooth: true
 
         Behavior on opacity {
-            NumberAnimation {
-                duration: 120
+            NumberAnimation { 
+                duration: Appearance.animation.elementMoveFast.duration
+                easing.type: Appearance.animation.elementMoveFast.type
+                easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
             }
         }
         Behavior on scale {
-            NumberAnimation {
-                duration: 150
-                easing.type: Easing.OutCubic
+            NumberAnimation { 
+                duration: Appearance.animation.elementMoveFast.duration
+                easing.type: Appearance.animation.elementMoveFast.type
+                easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
+            }
+        }
+        Behavior on y {
+            NumberAnimation { 
+                duration: Appearance.animation.elementMoveFast.duration
+                easing.type: Appearance.animation.elementMoveFast.type
+                easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
             }
         }
 
-        // Prevent clicks on card from closing
+        // Card-level MouseArea: intercepts presses on non-interactive areas
+        // (header, margins, separators) so they don't fall through to the scrim.
+        // Using z: -1 so it sits behind the ColumnLayout children (TextFields, buttons).
         MouseArea {
             anchors.fill: parent
             z: -1
+            onPressed: function(mouse) {
+                // Accept the press so the scrim doesn't get it,
+                // but immediately give focus back to title field
+                mouse.accepted = true;
+                titleField.forceActiveFocus();
+            }
         }
 
         ColumnLayout {
             id: cardContent
             anchors {
                 fill: parent
-                margins: 16
+                margins: 24
             }
-            spacing: 10
+            spacing: 16
 
-            // Time chip
+            // Header with icon
             RowLayout {
-                spacing: 6
+                Layout.fillWidth: true
+                spacing: 12
 
-                MaterialSymbol {
-                    text: "schedule"
-                    font.pixelSize: Appearance.font.pixelSize.small
-                    color: Appearance.colors.colOnSurfaceVariant
+                Rectangle {
+                    width: 40
+                    height: 40
+                    radius: Appearance.rounding.full
+                    color: Appearance.m3colors.m3primary
+
+                    MaterialSymbol {
+                        anchors.centerIn: parent
+                        text: popup.isEditMode ? "edit_calendar" : "event"
+                        font.pixelSize: 20
+                        color: Appearance.m3colors.m3onPrimary
+                    }
                 }
 
-                StyledText {
-                    text: popup.startTimeStr + " — " + popup.endTimeStr
-                    font.pixelSize: Appearance.font.pixelSize.small
-                    font.weight: Font.Medium
-                    color: Appearance.colors.colOnSurface
+                ColumnLayout {
                     Layout.fillWidth: true
+                    spacing: 2
+
+                    StyledText {
+                        text: popup.isEditMode ? Translation.tr("Edit event") : Translation.tr("New event")
+                        font.pixelSize: Appearance.font.pixelSize.large
+                        font.weight: Font.DemiBold
+                        color: Appearance.colors.colOnSurface
+                    }
+
+                    RowLayout {
+                        spacing: 4
+
+                        MaterialSymbol {
+                            text: "schedule"
+                            font.pixelSize: Appearance.font.pixelSize.small
+                            color: Appearance.colors.colOnSurfaceVariant
+                        }
+
+                        StyledText {
+                            text: popup.startTimeStr + " — " + popup.endTimeStr
+                            font.pixelSize: Appearance.font.pixelSize.small
+                            color: Appearance.colors.colOnSurfaceVariant
+                        }
+                    }
                 }
+            }
+
+            // Separator
+            Rectangle {
+                Layout.fillWidth: true
+                height: 1
+                color: Appearance.colors.colOutlineVariant
             }
 
             // Title field
@@ -146,18 +220,21 @@ Item {
                 id: titleField
                 Layout.fillWidth: true
                 placeholderText: Translation.tr("Event title")
-                font.pixelSize: Appearance.font.pixelSize.small
+                font.pixelSize: Appearance.font.pixelSize.normal
+                focus: popup.visible
 
-                Keys.onReturnPressed: {
+                onAccepted: {
                     if (titleField.text.length > 0) {
-                        popup.eventCreated(titleField.text, descriptionField.text, popup.selectedColor);
-                        popup.close();
+                        submitEvent();
                     }
                 }
 
                 Keys.onEscapePressed: {
                     popup.cancelled();
                     popup.close();
+                }
+                Keys.onTabPressed: {
+                    descriptionField.forceActiveFocus();
                 }
             }
 
@@ -165,15 +242,7 @@ Item {
             MaterialTextField {
                 id: descriptionField
                 Layout.fillWidth: true
-                placeholderText: Translation.tr("Description (optional)")
-                font.pixelSize: Appearance.font.pixelSize.smaller
-
-                Keys.onReturnPressed: {
-                    if (titleField.text.length > 0) {
-                        popup.eventCreated(titleField.text, descriptionField.text, popup.selectedColor);
-                        popup.close();
-                    }
-                }
+                placeholderText: Translation.tr("Add description (optional)")
 
                 Keys.onEscapePressed: {
                     popup.cancelled();
@@ -181,100 +250,109 @@ Item {
                 }
             }
 
-            // Color picker row
-            Row {
-                spacing: 6
-                Layout.alignment: Qt.AlignHCenter
-
-                Repeater {
-                    model: popup.colorOptions
-                    delegate: Rectangle {
-                        width: 24
-                        height: 24
-                        radius: Appearance.rounding.full
-                        color: modelData
-                        border.width: popup.selectedColor === modelData ? 2 : 0
-                        border.color: Appearance.colors.colOnSurface
-                        scale: colorMouse.containsMouse ? 1.2 : 1
-
-                        Behavior on scale {
-                            NumberAnimation {
-                                duration: 80
-                            }
-                        }
-
-                        // Checkmark
-                        MaterialSymbol {
-                            anchors.centerIn: parent
-                            text: "check"
-                            font.pixelSize: 14
-                            color: ColorUtils.getContrastingTextColor(modelData)
-                            visible: popup.selectedColor === modelData
-                        }
-
-                        MouseArea {
-                            id: colorMouse
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: {
-                                popup.selectedColor = modelData;
-                            }
-                        }
-                    }
-                }
+            // Separator
+            Rectangle {
+                Layout.fillWidth: true
+                height: 1
+                color: Appearance.colors.colOutlineVariant
             }
 
             // Action buttons
             RowLayout {
                 Layout.fillWidth: true
-                spacing: 6
+                spacing: 8
 
                 // Delete button (edit mode only)
                 RippleButton {
                     visible: popup.isEditMode
-                    implicitWidth: 32
-                    implicitHeight: 32
+                    implicitWidth: 36
+                    implicitHeight: 36
                     buttonRadius: Appearance.rounding.full
+                    buttonColor: ColorUtils.transparentize(Appearance.m3colors.m3errorContainer, 0.5)
+                    colBackgroundHover: Appearance.m3colors.m3errorContainer
 
                     onClicked: {
-                        popup.eventDeleted(popup.editEventTitle);
+                        popup.eventDeleted(popup.editEventData.title);
                         popup.close();
                     }
 
                     contentItem: MaterialSymbol {
                         anchors.centerIn: parent
                         horizontalAlignment: Text.AlignHCenter
-                        font.pixelSize: Appearance.font.pixelSize.normal
+                        font.pixelSize: 18
                         text: "delete"
                         color: Appearance.m3colors.m3error
                     }
+
+                    StyledToolTip {
+                        extraVisibleCondition: parent.hovered
+                        text: Translation.tr("Delete event")
+                    }
                 }
 
-                Item {
-                    Layout.fillWidth: true
-                }
+                Item { Layout.fillWidth: true }
 
                 // Cancel
-                DialogButton {
-                    buttonText: Translation.tr("Cancel")
+                RippleButton {
+                    implicitWidth: cancelText.implicitWidth + 24
+                    implicitHeight: 36
+                    buttonRadius: Appearance.rounding.full
+                    buttonColor: "transparent"
+                    colBackgroundHover: Appearance.colors.colSurfaceContainerHighest
+
                     onClicked: {
                         popup.cancelled();
                         popup.close();
                     }
+
+                    contentItem: StyledText {
+                        id: cancelText
+                        anchors.centerIn: parent
+                        text: Translation.tr("Cancel")
+                        font.pixelSize: Appearance.font.pixelSize.small
+                        font.weight: Font.Medium
+                        color: Appearance.colors.colOnSurfaceVariant
+                    }
                 }
 
-                // Create
-                DialogButton {
-                    buttonText: Translation.tr("Create")
+                // Save/Create
+                RippleButton {
+                    implicitWidth: saveText.implicitWidth + 32
+                    implicitHeight: 36
+                    buttonRadius: Appearance.rounding.full
+                    buttonColor: Appearance.colors.colPrimary
                     enabled: titleField.text.length > 0
                     opacity: enabled ? 1 : 0.5
-                    onClicked: {
-                        popup.eventCreated(titleField.text, descriptionField.text, popup.selectedColor);
-                        popup.close();
+
+                    onClicked: submitEvent()
+
+                    contentItem: Item {
+                        anchors.fill: parent
+                        
+                        StyledText {
+                            id: saveText
+                            anchors.centerIn: parent
+                            text: popup.isEditMode ? Translation.tr("Save") : Translation.tr("Create")
+                            font.pixelSize: Appearance.font.pixelSize.small
+                            font.weight: Font.Medium
+                            color: Appearance.colors.colOnPrimary
+                        }
                     }
                 }
             }
         }
+    }
+
+
+
+    function submitEvent() {
+        if (titleField.text.length === 0) return;
+
+        if (popup.isEditMode) {
+            popup.eventUpdated(popup.editEventData.title, titleField.text, descriptionField.text);
+        } else {
+            popup.eventCreated(titleField.text, descriptionField.text);
+        }
+        popup.close();
     }
 }

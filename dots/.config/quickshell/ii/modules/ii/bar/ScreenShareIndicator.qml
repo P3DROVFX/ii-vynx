@@ -5,6 +5,7 @@ import QtQuick
 import QtQuick.Shapes
 import QtQuick.Layouts
 import Quickshell.Io
+import "./cards"
 
 MouseArea {
     id: indicator
@@ -49,19 +50,16 @@ MouseArea {
 
     StyledPopup {
         hoverTarget: indicator
-        contentItem: ColumnLayout {
+        contentItem: HeroCard {
+            compactMode: true
             anchors.centerIn: parent
-            RowLayout {
-                MaterialSymbol {
-                    Layout.bottomMargin: 2
-                    text: "cast"
-                }
-                StyledText {
-                    text: Translation.tr("**%1** is using your screen").arg(stateFile.text().trim())
-                    textFormat: Text.MarkdownText
-                }
-            }
-            
+            icon: "cast_connected"
+
+            title: stateFile.text().trim()
+            subtitle: Translation.tr("is using your screen")
+
+            pillText: Translation.tr("Sharing..")
+            pillIcon: "screen_share"
         }
     }
 }

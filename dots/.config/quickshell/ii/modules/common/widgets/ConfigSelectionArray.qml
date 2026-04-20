@@ -20,6 +20,7 @@ Flow {
             "icon": "check",
             "shape": "Arch", // Optional (for material shape)
             "symbol": "google-gemini-symbolic", // Optional (for custom icons)
+            "color": "red", // Optional (for custom shape color)
             "value": 1
         },
         {
@@ -27,6 +28,7 @@ Flow {
             "icon": "close",
             "shape": "Circle", // Optional (for material shape)
             "symbol": "mistral-symbolic", // Optional (for custom icons)
+            "color": "blue", // Optional (for custom shape color)
             "value": 2
         },
     ]
@@ -55,6 +57,7 @@ Flow {
             buttonIcon: modelData.icon || ""
             buttonShape: modelData.shape || ""
             buttonSymbol: modelData.symbol || ""
+            buttonColor: modelData.color || ""
             buttonText: modelData.displayName
             toggled: root.currentValue == modelData.value
             releaseAction: modelData.releaseAction || ""

@@ -64,6 +64,30 @@ ContentPage {
     ContentSection {  
         icon: "battery_android_full"  
         title: Translation.tr("Battery")  
+
+        ConfigRow {
+            uniform: false
+            ContentSubsection {
+                title: Translation.tr("Battery Icon Style")
+                StyledComboBox {
+                    buttonIcon: "style"
+                    textRole: "displayName"
+                    model: [
+                        { displayName: Translation.tr("Windows 11"), value: "windows11" },
+                        { displayName: Translation.tr("Android 16"), value: "android16" }
+                    ]
+                    
+                    currentIndex: {
+                        const index = model.findIndex(item => item.value === Config.options.battery.style);
+                        return index !== -1 ? index : 0;
+                    }
+                    
+                    onActivated: index => {
+                        Config.options.battery.style = model[index].value;
+                    }
+                }
+            }
+        }
   
         ConfigRow {  
             uniform: true  
@@ -352,8 +376,17 @@ ContentPage {
             StyledToolTip {  
                 text: Translation.tr("Enable if you want clocks to show seconds accurately")  
             }  
-        }  
-  
+        }
+
+        ConfigSwitch {
+            buttonIcon: "today"
+            text: Translation.tr("Start week on Monday")
+            checked: Config.options.time.firstDayOfWeek === 0
+            onCheckedChanged: {
+                Config.options.time.firstDayOfWeek = checked ? 0 : 6;
+            }
+        }
+
         ContentSubsection {  
             title: Translation.tr("Format")  
             tooltip: ""  

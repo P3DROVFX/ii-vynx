@@ -10,82 +10,66 @@ Item {
     required property string imageSource
 
     property int animationDuration: 1000
+    property var fillMode: Image.PreserveAspectCrop
+    property bool animated: true
+    property bool imgAIsBack: true
+    
+    property var sourceSize: Qt.size(0, 0)
+    property bool cache: false
+    property bool antialiasing: true
+    property bool asynchronous: true
+    property bool smooth: true
+    property bool mipmap: true
 
-    onImageSourceChanged: {
-        fadeTo(root.imageSource)
-    }
-    Component.onCompleted: {
-        imgOld.source = imageSource
-    }
-
-    Timer {
-        id: revertBackTimer
-        interval: root.animationDuration * 1.5
-        running: true
-        repeat: false
-        onTriggered: {
-            imgNew.animEnabled = false
-            imgOld.animEnabled = false
-            
-            Qt.callLater(() => {
-                imgOld.source = imgNew.source
-                imgOld.opacity = 1
-                imgNewFixTimer.restart()
-            })
-        }
-    }
-
-    Timer {
-        id: imgNewFixTimer
-        interval: 50
-        onTriggered: {
-            imgNew.opacity = 0
-            imgNew.source = ""
-        }
-    }
+    onImageSourceChanged: fadeTo(imageSource)
+    Component.onCompleted: imgA.source = imageSource
 
     function fadeTo(newSrc) {
-        imgNew.source = newSrc
-        imgNew.opacity = 0
-        
-        imgNew.animEnabled = true
-        imgOld.animEnabled = true
+        var back  = imgAIsBack ? imgA : imgB
+        var front = imgAIsBack ? imgB : imgA
 
-        imgNew.opacity = 1    // animasyonu başlatır
-        imgOld.opacity = 0    // animasyonu başlatır
+        if (newSrc === back.source) return
 
-        Qt.callLater(() => {
-            revertBackTimer.restart()
-        })
+        front.source  = newSrc
+        front.z       = 1
+        back.z        = 0
+
+        if (root.animated) {
+            front.opacity = 0
+            fadeAnim.target = front
+            fadeAnim.restart()
+        } else {
+            front.opacity = 1
+            root.imgAIsBack = !root.imgAIsBack
+        }
     }
 
-    Image {
-        id: imgOld
-        anchors.fill: parent
-        opacity: 1.0
-        fillMode: Image.PreserveAspectCrop
-        cache: false; antialiasing: true; asynchronous: true
-        
-        property bool animEnabled: true
+    NumberAnimation {
+        id: fadeAnim
+        property: "opacity"
+        from: 0; to: 1
+        duration: root.animationDuration
+        easing.type: Easing.InOutQuad
 
-        Behavior on opacity {
-            enabled: imgNew.animEnabled
-            NumberAnimation { duration: root.animationDuration }
+        onFinished: {
+            root.imgAIsBack = !root.imgAIsBack
         }
     }
 
     Image {
-        id: imgNew
+        id: imgA
         anchors.fill: parent
-        opacity: 0.0
-        fillMode: Image.PreserveAspectCrop
-        cache: false; antialiasing: true; asynchronous: true
+        fillMode: root.fillMode
+        sourceSize: root.sourceSize
+        cache: root.cache; antialiasing: root.antialiasing; asynchronous: root.asynchronous; smooth: root.smooth; mipmap: root.mipmap
+    }
 
-        property bool animEnabled: true
-
-        Behavior on opacity {
-            enabled: imgNew.animEnabled
-            NumberAnimation { duration: root.animationDuration }
-        }
+    Image {
+        id: imgB
+        anchors.fill: parent
+        opacity: 0
+        fillMode: root.fillMode
+        sourceSize: root.sourceSize
+        cache: root.cache; antialiasing: root.antialiasing; asynchronous: root.asynchronous; smooth: root.smooth; mipmap: root.mipmap
     }
 }
