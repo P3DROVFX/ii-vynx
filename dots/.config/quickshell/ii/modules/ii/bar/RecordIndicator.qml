@@ -44,6 +44,7 @@ MouseArea {
         }
         StyledPopup {
             hoverTarget: indicator
+            animate: false
             contentItem: PopupContent {}
         }
     }
