@@ -12,6 +12,7 @@ LazyLoader {
     default property Item contentItem
     property real popupBackgroundMargin: 0
     property int popupRadius: Appearance.rounding.large
+    property bool animate: true
 
     active: hoverTarget && hoverTarget.containsMouse
 
@@ -27,8 +28,8 @@ LazyLoader {
         anchors.top: Config.options.bar.vertical || (!Config.options.bar.vertical && !Config.options.bar.bottom)
         anchors.bottom: !Config.options.bar.vertical && Config.options.bar.bottom
 
-        implicitWidth: popupBackground.implicitWidth + Appearance.sizes.elevationMargin * 2 + root.popupBackgroundMargin
-        implicitHeight: popupBackground.implicitHeight + Appearance.sizes.elevationMargin * 2 + root.popupBackgroundMargin
+        implicitWidth: popupBackground.targetWidth + Appearance.sizes.elevationMargin * 2 + root.popupBackgroundMargin
+        implicitHeight: popupBackground.targetHeight + Appearance.sizes.elevationMargin * 2 + root.popupBackgroundMargin
 
         mask: Region {
             item: popupBackground
@@ -75,23 +76,89 @@ LazyLoader {
             target: popupBackground
         }
 
+        property real animProgress: 0.0
+        readonly property Item heroItem: {
+            if (!root.contentItem) return null;
+            for (let i = 0; i < root.contentItem.children.length; i++) {
+                let child = root.contentItem.children[i];
+                if (child.visible && child.width > 0) return child;
+            }
+            return null;
+        }
+        readonly property real heroHeight: heroItem ? heroItem.implicitHeight : 0
+        readonly property real totalContentHeight: root.contentItem ? root.contentItem.implicitHeight : 0
+
+        NumberAnimation on animProgress {
+            id: openAnim
+            from: 0
+            to: 1
+            running: true
+            duration: Appearance.animation.elementMove.duration 
+            easing.type: Appearance.animation.elementMove.type
+            easing.bezierCurve: Appearance.animation.elementMove.bezierCurve
+        }
+
         Rectangle {
             id: popupBackground
             readonly property real margin: 10
-
+            
+            readonly property real targetWidth: (root.contentItem?.implicitWidth ?? 0) + margin * 2
+            readonly property real targetHeight: (root.contentItem?.implicitHeight ?? 0) + margin * 2
+            
             anchors {
-                fill: parent
-                leftMargin: Appearance.sizes.elevationMargin + root.popupBackgroundMargin * (!popupWindow.anchors.left)
-                rightMargin: Appearance.sizes.elevationMargin + root.popupBackgroundMargin * (!popupWindow.anchors.right)
-                topMargin: Appearance.sizes.elevationMargin + root.popupBackgroundMargin * (!popupWindow.anchors.top)
-                bottomMargin: Appearance.sizes.elevationMargin + root.popupBackgroundMargin * (!popupWindow.anchors.bottom)
+                top: (!Config.options.bar.vertical && !Config.options.bar.bottom) ? parent.top : undefined
+                bottom: (!Config.options.bar.vertical && Config.options.bar.bottom) ? parent.bottom : undefined
+                verticalCenter: Config.options.bar.vertical ? parent.verticalCenter : undefined
+
+                horizontalCenter: !Config.options.bar.vertical ? parent.horizontalCenter : undefined
+                left: (Config.options.bar.vertical && !Config.options.bar.bottom) ? parent.left : undefined
+                right: (Config.options.bar.vertical && Config.options.bar.bottom) ? parent.right : undefined
+            }
+            
+            width: targetWidth
+            height: {
+                if (!root.animate || !root.contentItem || !heroItem || targetHeight <= heroHeight + margin * 2) return targetHeight;
+                return (heroHeight + margin * 2) + (targetHeight - (heroHeight + margin * 2)) * popupWindow.animProgress;
             }
 
-            implicitWidth: root.contentItem.implicitWidth + margin * 2
-            implicitHeight: root.contentItem.implicitHeight + margin * 2
             color: Appearance.m3colors.m3surfaceContainer
             radius: root.popupRadius
-            children: [root.contentItem]
+            
+            Item {
+                id: contentContainer
+                anchors.fill: parent
+                anchors.margins: popupBackground.margin
+                clip: true
+
+                Component.onCompleted: {
+                    if (root.contentItem) {
+                        root.contentItem.parent = contentContainer;
+                        root.contentItem.anchors.centerIn = undefined;
+                        root.contentItem.anchors.top = contentContainer.top;
+                        root.contentItem.anchors.left = contentContainer.left;
+                        root.contentItem.anchors.right = contentContainer.right;
+
+                        for (let i = 0; i < root.contentItem.children.length; i++) {
+                            let child = root.contentItem.children[i];
+
+                            child.opacity = Qt.binding(() => {
+                                if (!root.animate) return 1.0;
+                                let normalizedDelay = child.y / popupBackground.targetHeight;
+                                let progress = (popupWindow.animProgress - normalizedDelay) / (1.0 - normalizedDelay);
+                                return Math.max(0, Math.min(1.0, progress));
+                            });
+
+                            child.scale = Qt.binding(() => {
+                                if (!root.animate) return 1.0;
+                                let normalizedDelay = child.y / popupBackground.targetHeight;
+                                let progress = (popupWindow.animProgress - normalizedDelay) / (1.0 - normalizedDelay);
+                                return 0.85 + (0.15 * Math.max(0, Math.min(1.0, progress)));
+                            });
+                        }
+                    }
+                }
+            }
+
             border.width: 1
             border.color: Appearance.colors.colLayer0Border
         }

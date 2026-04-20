@@ -326,6 +326,24 @@ Singleton {
             }
         }
 
+        property QtObject elementMoveSlow: QtObject {
+            property int duration: animationCurves.expressiveEffectsDuration * 2.5
+            property int type: Easing.BezierSpline
+            property list<real> bezierCurve: animationCurves.expressiveEffects
+            property int velocity: 850
+            property Component colorAnimation: Component { ColorAnimation {
+                duration: root.animation.elementMoveSlow.duration
+                easing.type: root.animation.elementMoveSlow.type
+                easing.bezierCurve: root.animation.elementMoveSlow.bezierCurve
+            }}
+            property Component numberAnimation: Component { NumberAnimation {
+                alwaysRunToEnd: true
+                duration: root.animation.elementMoveSlow.duration
+                easing.type: root.animation.elementMoveSlow.type
+                easing.bezierCurve: root.animation.elementMoveSlow.bezierCurve
+            }}
+        }
+
         property QtObject elementMoveFast: QtObject {
             property int duration: animationCurves.expressiveEffectsDuration
             property int type: Easing.BezierSpline

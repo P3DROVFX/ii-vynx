@@ -22,18 +22,12 @@ StyledPopup {
         HeroCard {
             id: resourcesHero
             Layout.fillWidth: true
+            adaptiveWidth: true
             icon: "developer_board"
             title: `${Math.round(ResourceUsage.cpuUsage * 100)}%`
             subtitle: ResourceUsage.cpuModel
             pillText: ResourceUsage.cpuTemp
             pillIcon: "device_thermostat"
-        }
-
-        Rectangle {
-            Layout.fillWidth: true
-            height: 2
-            color: Appearance.colors.colSurfaceContainerHighest
-            radius: 1
         }
 
         RowLayout {

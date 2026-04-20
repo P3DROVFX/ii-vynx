@@ -4,7 +4,7 @@ import qs.modules.common
 import qs.modules.common.widgets
 
 SectionCard {
-    id: root
+    id: resourceCardRoot
     
     Layout.fillWidth: true
     Layout.fillHeight: true
@@ -26,26 +26,30 @@ SectionCard {
         RowLayout {
             Layout.fillWidth: true
             StyledText { 
-                text: root.resourceName
+                text: resourceCardRoot.resourceName
                 font.pixelSize: Appearance.font.pixelSize.small
                 color: Appearance.colors.colOnSurfaceVariant 
             }
             Item { Layout.fillWidth: true }
             StyledText { 
-                text: root.resourceValueText
+                text: resourceCardRoot.resourceValueText
                 font.weight: Font.DemiBold
             }
         }
         
         StyledProgressBar {
-            visible: root.resourcePercentage >= 0
+            visible: resourceCardRoot.resourcePercentage >= 0
             Layout.fillWidth: true
-            value: root.resourcePercentage
-            highlightColor: root.highlightColor
+            value: root.active ? resourceCardRoot.resourcePercentage : 0
+            highlightColor: resourceCardRoot.highlightColor
+
+            Behavior on value {
+                animation: Appearance.animation.elementMoveSlow.numberAnimation.createObject(this) 
+            }
         }
 
         ColumnLayout {
-            visible: root.extraContent.length > 0
+            visible: resourceCardRoot.extraContent.length > 0
             id: extraColumn
             Layout.fillWidth: true
             Layout.topMargin: parent.spacing * 2

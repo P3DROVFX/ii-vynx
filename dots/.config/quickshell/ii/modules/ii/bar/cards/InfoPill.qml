@@ -22,7 +22,8 @@ Rectangle {
     property color symbolColor: Appearance.colors.colOnSecondary
     property color textColor: Appearance.colors.colOnSecondaryContainer
 
-    default property alias shapeContent: shapeItem.children
+    property alias shapeContent: shapeItem.children
+    property alias textContent: pillText.children
     property alias text: pillText.text
 
     MaterialShape {
@@ -41,8 +42,9 @@ Rectangle {
             visible: root.icon !== "" && shapeItem.children.length <= 1
             anchors.centerIn: parent
             text: root.icon
-            iconSize: Appearance.font.pixelSize.large
+            iconSize: Appearance.font.pixelSize.huge
             color: root.symbolColor
+            fill: 1
         }
     }
 

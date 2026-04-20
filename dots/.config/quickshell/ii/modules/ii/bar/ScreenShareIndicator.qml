@@ -50,6 +50,7 @@ MouseArea {
 
     StyledPopup {
         hoverTarget: indicator
+        animate: false
         contentItem: HeroCard {
             compactMode: true
             anchors.centerIn: parent
