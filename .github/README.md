@@ -55,6 +55,86 @@ This fork introduces several new features and improvements over the original `ii
 - **Dynamic Palettes**: Capture colors from your screen and instantly generate Material You palettes.
 - **Visual Feedback**: Real-time preview of how the colors look across different M3 layers.
 
+<details>
+<summary><b>🎨 Advanced Color Picker & Material 3 Palette Implementation</b></summary>
+
+### 1. Global State Management (`modules/common/GlobalStates.qml`)
+Add properties and IPC handlers to manage the popup state and receive colors from external tools:
+```qml
+property bool colorPickerPopupOpen: false
+property string colorPickerPopupColor: ""
+
+function pickColor(hex) {
+    if (hex && hex.startsWith("#")) {
+        root.colorPickerPopupColor = hex;
+        root.colorPickerPopupOpen = false;
+        Qt.callLater(() => { root.colorPickerPopupOpen = true; });
+    }
+}
+
+function launchColorPicker() {
+    Quickshell.execDetached(["qs", "-c", "ii", "ipc", "call", "colorPickerLaunch", "trigger"]);
+}
+
+IpcHandler {
+    target: "pickColor"
+    function handle(hex: string): void { root.pickColor(hex); }
+}
+```
+
+### 2. Bar Integration (`modules/ii/bar/UtilButtons.qml`)
+Add the trigger button to your utilities section:
+```qml
+Loader {
+    active: Config.options.bar.utilButtons.showColorPicker
+    sourceComponent: CircleUtilButton {
+        onClicked: GlobalStates.launchColorPicker()
+        MaterialSymbol { 
+            text: "colorize"
+            iconSize: Appearance.font.pixelSize.large 
+            color: Appearance.colors.colOnLayer2
+        }
+    }
+}
+```
+
+### 3. Hyprland Keybind (`hyprland/keybinds.conf`)
+Bind the picker to a global shortcut that Quickshell can listen to:
+```ini
+bindd = Super+Shift, C, Color picker, global, quickshell:colorPickerLaunch
+```
+
+### 4. Shell Registration (`panelFamilies/IllogicalImpulseFamily.qml`)
+Register the component so it is loaded on startup:
+```qml
+import qs.modules.ii.colorPickerPopup
+// ... inside Scope
+PanelLoader { component: ColorPickerPopup {} }
+```
+
+### 5. Backend Persistence (`scripts/colors/switchwall.sh`)
+Update your script to support the `--color` flag and prevent auto-resetting manual colors upon shell restart:
+```bash
+# Inside argument parsing
+--color) set_accent_color "$2"; shift 2 ;;
+
+# Inside main logic (checks if the wallpaper actually changed before clearing manual colors)
+current_wallpaper=$(jq -r '.background.wallpaperPath' "$SHELL_CONFIG_FILE")
+if [[ -n "$imgpath" && "$imgpath" != "$current_wallpaper" ]]; then
+    set_accent_color "" 
+fi
+```
+
+### 6. Module Definition (`modules/ii/colorPickerPopup/qmldir`)
+```text
+module qs.modules.ii.colorPickerPopup
+ColorPickerPopup 1.0 ColorPickerPopup.qml
+ColorPickerPopupContent 1.0 ColorPickerPopupContent.qml
+```
+
+</details>
+
+
 <p align="center">
   <img width="421" height="554" alt="image" src="https://github.com/user-attachments/assets/89e2d851-fda4-4105-a66f-ebbf26d10949" />
 </p>
@@ -93,7 +173,7 @@ While this repository is my daily driver, please be aware that it contains many 
 1. Clone this repository with submodules:
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/YOUR_REPO_NAME.git --recurse-submodules
+git clone https://github.com/P3DROVFX/ii-vynx.git --recurse-submodules
 ```
 
 2. Run the setup script and follow the instructions:
