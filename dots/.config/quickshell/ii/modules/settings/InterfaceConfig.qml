@@ -104,6 +104,25 @@ ContentPage {
                 Config.options.cheatsheet.fontSize.comment = value;
             }
         }
+        ConfigRow {
+            uniform: true
+            ConfigSwitch {
+                buttonIcon: "mail"
+                text: Translation.tr("Enable Gmail")
+                checked: Config.options.cheatsheet.enableGmail
+                onCheckedChanged: {
+                    Config.options.cheatsheet.enableGmail = checked;
+                }
+            }
+            ConfigSwitch {
+                buttonIcon: "calendar_month"
+                text: Translation.tr("Enable Timetable")
+                checked: Config.options.cheatsheet.enableTimetable
+                onCheckedChanged: {
+                    Config.options.cheatsheet.enableTimetable = checked;
+                }
+            }
+        }
     }
 
     ContentSection {

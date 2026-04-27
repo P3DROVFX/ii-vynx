@@ -413,6 +413,8 @@ Singleton {
                 property JsonObject tooltips: JsonObject {
                     property bool clickToShow: false
                     property bool compactPopups: false
+                    property bool enableColorPickerPopup: true
+                    property bool enableBluetoothConnectionPopup: true
                 }
                 property JsonObject sizes: JsonObject {
                     property int height: 40 // horizontal mode
@@ -444,6 +446,8 @@ Singleton {
                 property bool useMouseSymbol: false
                 property bool useFnSymbol: false
                 property bool filterUnbinds: false
+                property bool enableGmail: false
+                property bool enableTimetable: true
                 property JsonObject fontSize: JsonObject {
                     property int key: Appearance.font.pixelSize.smaller
                     property int comment: Appearance.font.pixelSize.smaller

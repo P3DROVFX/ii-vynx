@@ -32,6 +32,7 @@ Singleton {
     property bool superReleaseMightTrigger: true
     property bool wallpaperSelectorOpen: false
     property bool workspaceShowNumbers: false
+    property bool filePickerOpen: false
 
     // Bluetooth connection popup
     property bool bluetoothConnectionPopupOpen: false
@@ -44,10 +45,12 @@ Singleton {
     function pickColor(hex) {
         if (hex && hex.startsWith("#")) {
             root.colorPickerPopupColor = hex;
-            root.colorPickerPopupOpen = false;
-            Qt.callLater(() => {
-                root.colorPickerPopupOpen = true;
-            });
+            if (Config.options.bar.tooltips.enableColorPickerPopup) {
+                root.colorPickerPopupOpen = false;
+                Qt.callLater(() => {
+                    root.colorPickerPopupOpen = true;
+                });
+            }
         }
     }
 

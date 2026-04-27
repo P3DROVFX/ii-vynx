@@ -681,5 +681,21 @@ ContentPage {
                 Config.options.bar.tooltips.compactPopups = checked;
             }
         }
+        ConfigSwitch {
+            buttonIcon: "colorize"
+            text: Translation.tr("Enable color picker popup")
+            checked: Config.options.bar.tooltips.enableColorPickerPopup
+            onCheckedChanged: {
+                Config.options.bar.tooltips.enableColorPickerPopup = checked;
+            }
+        }
+        ConfigSwitch {
+            buttonIcon: "bluetooth"
+            text: Translation.tr("Enable Bluetooth connection popup")
+            checked: Config.options.bar.tooltips.enableBluetoothConnectionPopup
+            onCheckedChanged: {
+                Config.options.bar.tooltips.enableBluetoothConnectionPopup = checked;
+            }
+        }
     }
 }

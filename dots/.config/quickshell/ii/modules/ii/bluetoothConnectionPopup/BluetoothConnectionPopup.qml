@@ -23,9 +23,11 @@ Scope {
     Connections {
         target: BluetoothStatus
         function onDeviceConnected(device) {
-            GlobalStates.bluetoothConnectionPopupDevice = device;
-            GlobalStates.bluetoothConnectionPopupOpen = true;
-            dismissTimer.restart();
+            if (Config.options.bar.tooltips.enableBluetoothConnectionPopup) {
+                GlobalStates.bluetoothConnectionPopupDevice = device;
+                GlobalStates.bluetoothConnectionPopupOpen = true;
+                dismissTimer.restart();
+            }
         }
     }
 

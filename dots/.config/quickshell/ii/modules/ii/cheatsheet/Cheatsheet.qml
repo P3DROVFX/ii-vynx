@@ -13,24 +13,30 @@ import Quickshell.Hyprland
 
 Scope { // Scope
     id: root
-    property var tabButtonList: [
-        {
-            "icon": "calendar_month",
-            "name": Translation.tr("Timetable")
-        },
-        {
+    property var tabButtonList: {
+        let list = [];
+        if (Config.options.cheatsheet.enableTimetable) {
+            list.push({
+                "icon": "calendar_month",
+                "name": Translation.tr("Timetable")
+            });
+        }
+        list.push({
             "icon": "keyboard",
             "name": Translation.tr("Keybinds")
-        },
-        {
+        });
+        list.push({
             "icon": "experiment",
             "name": Translation.tr("Elements")
-        },
-        {
-            "icon": "mail",
-            "name": Translation.tr("Mail")
+        });
+        if (Config.options.cheatsheet.enableGmail) {
+            list.push({
+                "icon": "mail",
+                "name": Translation.tr("Email")
+            });
         }
-    ]
+        return list;
+    }
 
     Loader {
         id: cheatsheetLoader
@@ -39,6 +45,15 @@ Scope { // Scope
         sourceComponent: PanelWindow { // Window
             id: cheatsheetRoot
             visible: cheatsheetLoader.active
+
+            Connections {
+                target: root
+                function onTabButtonListChanged() {
+                    if (swipeView.currentIndex >= root.tabButtonList.length) {
+                        swipeView.currentIndex = 0;
+                    }
+                }
+            }
 
             anchors {
                 top: true
@@ -56,7 +71,7 @@ Scope { // Scope
             WlrLayershell.namespace: "quickshell:cheatsheet"
             // Hyprland 0.49: Focus is always exclusive and setting this breaks mouse focus grab
             // WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
-            WlrLayershell.keyboardFocus: cheatsheetTimetable.eventPopupVisible ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+            WlrLayershell.keyboardFocus: (timetableLoader.item && timetableLoader.item.eventPopupVisible) ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
             color: "transparent"
 
             mask: Region {
@@ -179,12 +194,19 @@ Scope { // Scope
                             }
                         }
 
-                        CheatsheetTimetable {
-                            id: cheatsheetTimetable
+                        Loader {
+                            id: timetableLoader
+                            active: Config.options.cheatsheet.enableTimetable
+                            visible: active
+                            source: "CheatsheetTimetable.qml"
                         }
                         CheatsheetKeybinds {}
                         CheatsheetPeriodicTable {}
-                        CheatsheetMail {}
+                        Loader {
+                            active: Config.options.cheatsheet.enableGmail
+                            visible: active
+                            source: "CheatsheetEmail.qml"
+                        }
                     }
                 }
             }
