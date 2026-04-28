@@ -26,22 +26,6 @@ Item {
         hasNextPage = EmailService.hasNextPage(activeTab, currentPage);
     }
 
-    property real glanceProgress: 0
-    property string glancingId: ""
-
-    NumberAnimation {
-        id: glanceAnim
-        target: root
-        property: "glanceProgress"
-        duration: 200
-        easing.type: Easing.OutCubic
-        to: 0.2
-    }
-
-    Behavior on glanceProgress {
-        enabled: !glanceAnim.running
-        NumberAnimation { duration: 100; easing.type: Easing.OutCubic }
-    }
 
     Connections {
         target: root.model
@@ -184,15 +168,6 @@ Item {
             width: flickable.width - 24
             spacing: 4
 
-            scale: 1.0 - (root.glanceProgress * 0.1)
-            opacity: 1.0 - (root.glanceProgress * 0.4)
-
-            Behavior on scale {
-                NumberAnimation { duration: 250; easing.type: Easing.OutCubic }
-            }
-            Behavior on opacity {
-                NumberAnimation { duration: 250; easing.type: Easing.OutCubic }
-            }
 
             // Empty states
             Item {
@@ -716,7 +691,6 @@ Item {
                             root.pressedIndex = index;
                             root.swipingIndex = index; // Register magnetic focus
                             pressTimer.restart();
-                            glanceTimer.restart();
 
                             let dist = (ox, oy) => ox * ox + oy * oy;
                             rippleAnim.x = event.x;
@@ -726,16 +700,6 @@ Item {
                             rippleAnim.restart();
                         }
 
-                        Timer {
-                            id: glanceTimer
-                            interval: 150
-                            onTriggered: {
-                                if (mouseArea.pressed) {
-                                    root.glancingId = model.id;
-                                    glanceAnim.restart();
-                                }
-                            }
-                        }
 
                         onPositionChanged: event => {
                             if (!pressed)
@@ -766,17 +730,6 @@ Item {
                         }
 
                         onReleased: event => {
-                            glanceTimer.stop();
-                            if (root.glancingId === model.id) {
-                                let wasGlancing = root.glanceProgress > 0.1;
-                                glanceAnim.stop();
-                                // We keep the progress for a moment to bridge into the opening animation
-                                // It will be reset via timer or on selection
-                                root.glancingId = "";
-                                triggerEmailSelection();
-                                Qt.callLater(() => root.glanceProgress = 0);
-                                return;
-                            }
 
                             if (cardRoot.swiping) {
                                 cardRoot.swiping = false;
@@ -824,12 +777,6 @@ Item {
                         }
 
                         onCanceled: {
-                            glanceTimer.stop();
-                            if (root.glancingId === model.id) {
-                                glanceAnim.stop();
-                                root.glanceProgress = 0;
-                                root.glancingId = "";
-                            }
                             if (cardRoot.swiping) {
                                 cardRoot.swiping = false;
                                 cardRoot.swipeX = 0;

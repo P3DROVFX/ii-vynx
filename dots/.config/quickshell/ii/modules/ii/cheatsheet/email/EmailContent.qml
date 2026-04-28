@@ -22,22 +22,6 @@ Item {
     property var detectedMeetings: []
     property var detectedPhones: []
 
-    property real glanceProgress: 0
-    NumberAnimation {
-        id: glanceAnim
-        target: root
-        property: "glanceProgress"
-        duration: 400
-        easing.type: Easing.OutCubic
-        to: 1.0
-    }
-    Behavior on glanceProgress {
-        enabled: !glanceAnim.running
-        NumberAnimation {
-            duration: 300
-            easing.type: Easing.OutCubic
-        }
-    }
 
     readonly property string processedBody: {
         if (!root.body)
@@ -453,24 +437,6 @@ Item {
         antialiasing: true
         clip: true
 
-        scale: 1.0 - (root.glanceProgress * 0.08)
-        opacity: 1.0 - (root.glanceProgress * 0.4)
-        transform: Translate {
-            x: root.glanceProgress * 40
-        }
-
-        Behavior on scale {
-            NumberAnimation {
-                duration: 300
-                easing.type: Easing.OutCubic
-            }
-        }
-        Behavior on opacity {
-            NumberAnimation {
-                duration: 300
-                easing.type: Easing.OutCubic
-            }
-        }
 
         Item {
             id: contentCol
@@ -578,27 +544,7 @@ Item {
                         colBackgroundHover: Appearance.colors.colLayer4Hover
                         colRipple: Appearance.colors.colLayer4Active
 
-                        downAction: () => glanceTimer.restart()
-                        releaseAction: () => {
-                            let progress = root.glanceProgress;
-                            glanceTimer.stop();
-                            glanceAnim.stop();
-                            root.glanceProgress = 0;
-
-                            // Normal click (progress 0) or confirmed back gesture
-                            if (progress === 0 || progress > 0.2) {
-                                root.startClose();
-                            }
-                        }
-
-                        Timer {
-                            id: glanceTimer
-                            interval: 150
-                            onTriggered: {
-                                if (parent.down)
-                                    glanceAnim.start();
-                            }
-                        }
+                        onClicked: root.startClose()
 
                         MaterialSymbol {
                             anchors.centerIn: parent
@@ -872,7 +818,7 @@ Item {
                         id: icsActionBtn
                         visible: isIcs
                         implicitHeight: 48
-                        implicitWidth: icsInfo ? (icsInfoText.implicitWidth + 56) : 48
+                        implicitWidth: icsInfoText.implicitWidth + 64
                         buttonRadius: Appearance.rounding.full
 
                         topLeftRadius: (fabContainer.showBrowser || root.detectedMeetings.length > 0 || root.detectedPhones.length > 0 || index > 0) ? Appearance.rounding.verysmall : Appearance.rounding.full
@@ -918,7 +864,7 @@ Item {
                                 text: icsActionBtn.icsInfo ? (icsActionBtn.icsInfo.startTime + " • " + icsActionBtn.icsInfo.date.replace(/-/g, "/")) : (icsActionBtn.imported ? qsTr("Imported") : qsTr("Add to Calendar"))
                                 color: icsActionBtn.imported ? Appearance.m3colors.m3onSuccessContainer : (icsActionBtn.icsInfo ? Appearance.m3colors.m3onTertiaryContainer : Appearance.m3colors.m3onSurfaceVariant)
                                 font.weight: Font.Bold
-                                font.pixelSize: Appearance.font.pixelSize.tiny
+                                font.pixelSize: Appearance.font.pixelSize.smallie
                             }
                         }
 
@@ -1028,7 +974,7 @@ Item {
                                     text: downloadFab.status === "downloading" ? qsTr("Downloading...") : model.name
                                     color: downloadFab.status === "done" ? Appearance.m3colors.m3onSuccessContainer : Appearance.colors.colOnSecondaryContainer
                                     font.weight: Font.Bold
-                                    font.pixelSize: Appearance.font.pixelSize.tiny
+                                    font.pixelSize: Appearance.font.pixelSize.smallie
                                     elide: Text.ElideRight
                                     Layout.maximumWidth: 120
                                 }
