@@ -33,7 +33,10 @@ Item {
     }
     Behavior on glanceProgress {
         enabled: !glanceAnim.running
-        NumberAnimation { duration: 300; easing.type: Easing.OutCubic }
+        NumberAnimation {
+            duration: 300
+            easing.type: Easing.OutCubic
+        }
     }
 
     readonly property string processedBody: {
@@ -196,8 +199,16 @@ Item {
             }
             NumberAnimation {
                 target: background
-                properties: "width,height"
-                to: root.width // height follows
+                property: "width"
+                to: root.width
+                duration: 450
+                easing.type: Easing.BezierSpline
+                easing.bezierCurve: Appearance.animationCurves.expressiveDefaultSpatial
+            }
+            NumberAnimation {
+                target: background
+                property: "height"
+                to: root.height
                 duration: 450
                 easing.type: Easing.BezierSpline
                 easing.bezierCurve: Appearance.animationCurves.expressiveDefaultSpatial
@@ -205,20 +216,35 @@ Item {
             // Animate Ghost Subject to Header Position
             NumberAnimation {
                 target: ghostSubject
-                properties: "x,y,width,height"
+                property: "x"
+                to: contentSubjectText.mapToItem(root, 0, 0).x
                 duration: 450
                 easing.type: Easing.BezierSpline
                 easing.bezierCurve: Appearance.animationCurves.expressiveDefaultSpatial
-                to: {
-                    // Header subject position
-                    let p = contentSubjectText.mapToItem(root, 0, 0);
-                    return {
-                        x: p.x,
-                        y: p.y,
-                        width: contentSubjectText.width,
-                        height: contentSubjectText.height
-                    };
-                }
+            }
+            NumberAnimation {
+                target: ghostSubject
+                property: "y"
+                to: contentSubjectText.mapToItem(root, 0, 0).y
+                duration: 450
+                easing.type: Easing.BezierSpline
+                easing.bezierCurve: Appearance.animationCurves.expressiveDefaultSpatial
+            }
+            NumberAnimation {
+                target: ghostSubject
+                property: "width"
+                to: contentSubjectText.width
+                duration: 450
+                easing.type: Easing.BezierSpline
+                easing.bezierCurve: Appearance.animationCurves.expressiveDefaultSpatial
+            }
+            NumberAnimation {
+                target: ghostSubject
+                property: "height"
+                to: contentSubjectText.height
+                duration: 450
+                easing.type: Easing.BezierSpline
+                easing.bezierCurve: Appearance.animationCurves.expressiveDefaultSpatial
             }
             NumberAnimation {
                 target: ghostSubject
@@ -433,8 +459,18 @@ Item {
             x: root.glanceProgress * 40
         }
 
-        Behavior on scale { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
-        Behavior on opacity { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
+        Behavior on scale {
+            NumberAnimation {
+                duration: 300
+                easing.type: Easing.OutCubic
+            }
+        }
+        Behavior on opacity {
+            NumberAnimation {
+                duration: 300
+                easing.type: Easing.OutCubic
+            }
+        }
 
         Item {
             id: contentCol
@@ -1032,16 +1068,23 @@ Item {
         z: 30
         visible: opacity > 0.01
 
+        ShaderEffectSource {
+            id: ghostSubjectSource
+            sourceItem: ghostSubjectText
+            hideSource: false
+            visible: false
+        }
+        ShaderEffectSource {
+            id: contentSubjectSource
+            sourceItem: contentSubjectText
+            hideSource: false
+            visible: false
+        }
+
         ShaderEffect {
             anchors.fill: parent
-            property variant source1: ShaderEffectSource {
-                sourceItem: ghostSubjectText
-                hideSource: false
-            }
-            property variant source2: ShaderEffectSource {
-                sourceItem: contentSubjectText
-                hideSource: false
-            }
+            property variant source1: ghostSubjectSource
+            property variant source2: contentSubjectSource
             property real progress: ghostSubject.progress
 
             fragmentShader: "
