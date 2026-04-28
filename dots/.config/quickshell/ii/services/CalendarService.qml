@@ -339,4 +339,42 @@ Singleton {
       console.log("[CalendarService] Removing event:", title);
       khalRemoveProcess.running = true;
     }
+
+    Process {
+        id: icsImportProcess
+        property string targetPath: ""
+        command: ["python3", Directories.scriptPath + "/email/import_ics.py", targetPath]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    const data = JSON.parse(this.text);
+                    if (data.success) {
+                        console.log("[CalendarService] ICS imported successfully, events:", data.event_count);
+                        refreshTimer.start();
+                    } else {
+                        console.warn("[CalendarService] ICS import failed:", data.error);
+                    }
+                } catch (e) {
+                    console.warn("[CalendarService] ICS import response parse error:", e, this.text);
+                }
+            }
+        }
+    }
+
+    Timer {
+        id: refreshTimer
+        interval: 1500
+        repeat: false
+        onTriggered: {
+            vdirsyncerProcess.running = true;
+            getEventsProcess.running = true;
+        }
+    }
+
+    function importFromIcs(path, autoDelete) {
+        if (!root.khalAvailable) return;
+        console.log("[CalendarService] Importing ICS:", path, "autoDelete:", !!autoDelete);
+        icsImportProcess.command = ["python3", Directories.scriptPath + "/email/import_ics.py", path, autoDelete ? "true" : "false"];
+        icsImportProcess.running = true;
+    }
 }

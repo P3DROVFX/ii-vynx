@@ -1,0 +1,992 @@
+import QtQuick
+import QtQuick.Layouts
+import Qt5Compat.GraphicalEffects
+import qs.modules.common
+import qs.modules.common.widgets
+import qs.services
+
+Item {
+    id: root
+
+    // Magnetic swipe tracking (Android 16 style)
+    property int swipingIndex: -1
+    property real activeSwipeX: 0
+
+    property ListModel model: ListModel {}
+    property bool loading: false
+    property string activeTab: "inbox"
+    property int pressedIndex: -1
+    property bool isPullRefreshing: false
+    property bool refreshing: isPullRefreshing && (root.loading || minRefreshTimer.running)
+
+    property int currentPage: 0
+    property bool hasNextPage: EmailService.hasNextPage(activeTab, currentPage)
+
+    function refreshPagination() {
+        hasNextPage = EmailService.hasNextPage(activeTab, currentPage);
+    }
+
+    property real glanceProgress: 0
+    property string glancingId: ""
+
+    NumberAnimation {
+        id: glanceAnim
+        target: root
+        property: "glanceProgress"
+        duration: 200
+        easing.type: Easing.OutCubic
+        to: 0.2
+    }
+
+    Behavior on glanceProgress {
+        enabled: !glanceAnim.running
+        NumberAnimation { duration: 100; easing.type: Easing.OutCubic }
+    }
+
+    Connections {
+        target: root.model
+        function onCountChanged() {
+            root.refreshPagination();
+        }
+        function onDataChanged() {
+            root.refreshPagination();
+        }
+    }
+
+    onCurrentPageChanged: root.refreshPagination()
+    onActiveTabChanged: {
+        currentPage = 0;
+        root.refreshPagination();
+    }
+
+    Timer {
+        id: minRefreshTimer
+        interval: 2000
+        onTriggered: {
+            if (!root.loading)
+                root.isPullRefreshing = false;
+        }
+    }
+
+    onLoadingChanged: {
+        if (!loading && !minRefreshTimer.running)
+            root.isPullRefreshing = false;
+    }
+
+    function getCustomLabels(labelsList) {
+        if (!labelsList)
+            return [];
+        let systemLabels = ["INBOX", "UNREAD", "SPAM", "TRASH", "SENT", "STARRED", "IMPORTANT", "DRAFT", "CATEGORY_PERSONAL", "CATEGORY_SOCIAL", "CATEGORY_PROMOTIONS", "CATEGORY_UPDATES", "CATEGORY_FORUMS"];
+        let result = [];
+        let list = labelsList.toArray ? labelsList.toArray() : labelsList;
+        for (let i = 0; i < list.length; i++) {
+            let id = list[i];
+            if (systemLabels.indexOf(id) === -1) {
+                // Find label name in EmailService
+                let found = false;
+                for (let j = 0; j < EmailService.labels.count; j++) {
+                    let l = EmailService.labels.get(j);
+                    if (l.id === id) {
+                        result.push(l.name);
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found)
+                    result.push(id); // Fallback to ID
+            }
+        }
+        return result;
+    }
+
+    signal emailSelected(string messageId, string threadId, real startX, real startY, real startWidth, real startHeight, real iconX, real iconY, real iconW, real iconH, real subjectX, real subjectY, real subjectW, real subjectH)
+
+    Rectangle {
+        anchors.fill: parent
+        color: Appearance.colors.colLayer0
+        topLeftRadius: Appearance.rounding.small
+        topRightRadius: Appearance.rounding.verylarge
+        bottomLeftRadius: Appearance.rounding.small
+        bottomRightRadius: Appearance.rounding.verylarge
+        antialiasing: true
+    }
+
+    StyledFlickable {
+        id: flickable
+        anchors.fill: parent
+        topMargin: root.refreshing ? 80 : 12
+        bottomMargin: 12
+        leftMargin: 12
+        rightMargin: 12
+        contentHeight: contentLayout.implicitHeight
+        clip: true
+
+        Behavior on topMargin {
+            animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(flickable)
+        }
+
+        onDragEnded: {
+            if (contentY < -100 && !root.isPullRefreshing) {
+                root.isPullRefreshing = true;
+                EmailService.syncLabel(root.activeTab, 0, true); // force = true
+
+                minRefreshTimer.start();
+            }
+        }
+
+        Item {
+            width: flickable.width - 24
+            height: 80
+            y: -80
+
+            Rectangle {
+                anchors.centerIn: parent
+                width: 56
+                height: 56
+                radius: Appearance.rounding.full
+                antialiasing: true
+                color: Appearance.colors.colSurfaceContainerHighest
+                border.width: 0
+
+                function getPullShape(yVal) {
+                    let dist = Math.max(0, -yVal - 12);
+                    if (dist < 15)
+                        return MaterialShape.Shape.Circle;
+                    if (dist < 30)
+                        return MaterialShape.Shape.Cookie4Sided;
+                    if (dist < 45)
+                        return MaterialShape.Shape.Pentagon;
+                    if (dist < 55)
+                        return MaterialShape.Shape.Cookie6Sided;
+                    if (dist < 65)
+                        return MaterialShape.Shape.Cookie7Sided;
+                    if (dist < 75)
+                        return MaterialShape.Shape.Cookie9Sided;
+                    return MaterialShape.Shape.Burst;
+                }
+
+                MaterialShape {
+                    anchors.centerIn: parent
+                    implicitSize: 36
+                    visible: !root.refreshing
+                    shape: parent.getPullShape(flickable.contentY)
+                    color: flickable.contentY < -87 ? Appearance.colors.colPrimary : Appearance.colors.colOnSurfaceVariant
+                    rotation: flickable.contentY < -12 ? Math.max(0, -flickable.contentY - 20) * 3 : 0
+                    Behavior on color {
+                        animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(parent)
+                    }
+                }
+            }
+        }
+
+        ColumnLayout {
+            id: contentLayout
+            width: flickable.width - 24
+            spacing: 4
+
+            scale: 1.0 - (root.glanceProgress * 0.1)
+            opacity: 1.0 - (root.glanceProgress * 0.4)
+
+            Behavior on scale {
+                NumberAnimation { duration: 250; easing.type: Easing.OutCubic }
+            }
+            Behavior on opacity {
+                NumberAnimation { duration: 250; easing.type: Easing.OutCubic }
+            }
+
+            // Empty states
+            Item {
+                Layout.fillWidth: true
+                implicitHeight: 450
+                visible: root.model.count === 0 && !root.loading
+
+                ColumnLayout {
+                    anchors.centerIn: parent
+                    spacing: 24
+
+                    MaterialShape {
+                        Layout.alignment: Qt.AlignHCenter
+                        implicitSize: 180
+                        shape: MaterialShape.Shape.Clover8Leaf
+                        color: Appearance.colors.colSurfaceContainerHighest
+
+                        MaterialSymbol {
+                            anchors.centerIn: parent
+                            text: root.activeTab === "spam" ? "report" : root.activeTab === "sent" ? "send" : root.activeTab === "search" ? "search" : root.activeTab.startsWith("label_") ? "label" : "inbox"
+                            iconSize: 80
+                            color: Appearance.colors.colOnSurfaceVariant
+                        }
+                    }
+
+                    ColumnLayout {
+                        Layout.alignment: Qt.AlignHCenter
+                        spacing: 8
+
+                        StyledText {
+                            Layout.alignment: Qt.AlignHCenter
+                            text: root.activeTab === "spam" ? Translation.tr("No Spam Found") : root.activeTab === "sent" ? Translation.tr("No Sent Messages") : root.activeTab === "search" ? Translation.tr("No Results Found") : root.activeTab.startsWith("label_") ? Translation.tr("No Messages for this Label") : Translation.tr("Your Inbox is Clean")
+                            font.pixelSize: 32
+                            font.weight: Font.Bold
+                            color: Appearance.colors.colOnSurface
+                        }
+
+                        StyledText {
+                            Layout.alignment: Qt.AlignHCenter
+                            text: root.activeTab === "spam" ? Translation.tr("Looks like you're safe from junk for now.") : root.activeTab === "sent" ? Translation.tr("You haven't sent any emails from this account yet.") : root.activeTab === "search" ? Translation.tr("Try adjusting your filters or keywords.") : Translation.tr("You've cleared everything. Enjoy the peace!")
+                            font.pixelSize: Appearance.font.pixelSize.larger
+                            color: Appearance.colors.colOnSurfaceVariant
+                            opacity: 0.8
+                        }
+                    }
+                }
+            }
+
+            // Loading state
+
+            Repeater {
+                id: emailRepeater
+                model: root.model
+
+                delegate: Item {
+                    id: cardRoot
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: EmailService.compactMode ? 64 : 96
+                    clip: true // Ensure content doesn't bleed out during swipe
+
+                    Behavior on Layout.preferredHeight {
+                        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(cardRoot)
+                    }
+
+                    // Staggered entrance animation
+                    opacity: 0
+                    transform: Translate {
+                        id: enterTranslate
+                        y: 20
+                    }
+                    Component.onCompleted: {
+                        enterAnimTimer.interval = index * 30;
+                        enterAnimTimer.start();
+                    }
+                    Timer {
+                        id: enterAnimTimer
+                        onTriggered: {
+                            cardRoot.opacity = 1;
+                            enterTranslate.y = 0;
+                        }
+                    }
+                    Behavior on opacity {
+                        animation: Appearance.animation.elementMoveEnter.numberAnimation.createObject(this)
+                    }
+
+                    property bool visualPressed: false
+                    Timer {
+                        id: pressTimer
+                        interval: 200
+                        onTriggered: {
+                            if (!mouseArea.pressed) {
+                                visualPressed = false;
+                                if (root.pressedIndex === index)
+                                    root.pressedIndex = -1;
+                            }
+                        }
+                    }
+
+                    // Swipe-to-delete state
+                    property real swipeX: 0
+                    property bool swiping: false
+                    property bool dismissed: false
+                    readonly property real deleteWidth: 96
+                    readonly property real deleteThreshold: -220
+                    readonly property real starThreshold: 220
+                    property bool confirmDeleteMode: false
+
+                    // Magnetic neighbor effect
+                    readonly property real magneticOffset: {
+                        if (root.swipingIndex === -1 || root.swipingIndex === index)
+                            return 0;
+                        if (Math.abs(root.swipingIndex - index) === 1) {
+                            // Pull neighbors by 15% of the swipe distance, max 30px
+                            return Math.max(-30, root.activeSwipeX * 0.15);
+                        }
+                        return 0;
+                    }
+
+                    onSwipeXChanged: if (swiping)
+                        root.activeSwipeX = swipeX
+
+                    NumberAnimation {
+                        id: snapAnim
+                        target: cardRoot
+                        property: "swipeX"
+                        duration: 350
+                        easing.type: Easing.OutCubic
+                        onFinished: if (to === 0) {
+                            root.swipingIndex = -1;
+                            root.activeSwipeX = 0;
+                        }
+                    }
+
+                    // Star Button (Dynamic background)
+                    Rectangle {
+                        id: starBtn
+                        anchors.left: parent.left
+                        anchors.top: parent.top
+                        anchors.bottom: parent.bottom
+                        width: Math.max(0, cardRoot.swipeX - 6)
+                        radius: Appearance.rounding.full
+                        color: Appearance.colors.colTertiary
+                        antialiasing: true
+                        visible: cardRoot.swipeX > 4
+
+                        MaterialSymbol {
+                            anchors.centerIn: parent
+                            text: model.starred ? "star_border" : "star"
+                            iconSize: 32
+                            color: Appearance.colors.colOnTertiary
+                            scale: cardRoot.swipeX >= cardRoot.starThreshold ? 1.3 : 1.0
+                            Behavior on scale {
+                                NumberAnimation {
+                                    duration: 200
+                                    easing.type: Easing.OutBack
+                                }
+                            }
+                        }
+                    }
+
+                    // Delete Button (Dynamic background)
+                    Rectangle {
+                        id: deleteBtn
+                        anchors.right: parent.right
+                        anchors.top: parent.top
+                        anchors.bottom: parent.bottom
+                        width: Math.max(0, -cardRoot.swipeX - 6)
+                        radius: Appearance.rounding.full
+                        color: Appearance.colors.colError
+                        antialiasing: true
+                        visible: cardRoot.swipeX < -4
+
+                        MaterialSymbol {
+                            anchors.centerIn: parent
+                            text: cardRoot.confirmDeleteMode ? "check" : (root.activeTab === "trash" ? "delete_forever" : "delete")
+                            iconSize: 32
+                            color: Appearance.colors.colOnError
+                            scale: (cardRoot.swipeX <= cardRoot.deleteThreshold || cardRoot.confirmDeleteMode) ? 1.3 : 1.0
+                            Behavior on scale {
+                                NumberAnimation {
+                                    duration: 200
+                                    easing.type: Easing.OutBack
+                                }
+                            }
+                        }
+
+                        StyledText {
+                            anchors.top: parent.top
+                            anchors.topMargin: 64
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            text: Translation.tr("Confirm")
+                            color: Appearance.colors.colOnError
+                            visible: cardRoot.confirmDeleteMode
+                            font.weight: Font.Bold
+                        }
+                    }
+
+                    // The actual card content container
+                    Item {
+                        id: swipeContainer
+                        anchors.top: parent.top
+                        anchors.bottom: parent.bottom
+                        width: parent.width
+                        x: cardRoot.swipeX + cardRoot.magneticOffset
+
+                        Behavior on x {
+                            enabled: !cardRoot.swiping
+                            NumberAnimation {
+                                duration: 300
+                                easing.type: Easing.OutCubic
+                            }
+                        }
+
+                        // Email Card
+                        Rectangle {
+                            id: backgroundRect
+                            width: parent.width
+                            height: parent.height
+                            antialiasing: true
+                            color: visualPressed ? Appearance.colors.colSecondaryContainerActive : (mouseArea.containsMouse ? Appearance.colors.colSecondaryContainerHover : (model.unread ? Appearance.colors.colSecondaryContainer : Appearance.colors.colSurfaceContainerHigh))
+
+                            scale: visualPressed ? 0.96 : 1.0
+                            Behavior on scale {
+                                NumberAnimation {
+                                    duration: visualPressed ? 60 : 300
+                                    easing.type: visualPressed ? Easing.OutQuad : Easing.OutBack
+                                }
+                            }
+
+                            Behavior on color {
+                                ColorAnimation {
+                                    duration: 200
+                                }
+                            }
+
+                            property bool isPressed: visualPressed
+                            property bool isAbovePressed: root.pressedIndex === index + 1 && root.pressedIndex !== -1
+                            property bool isBelowPressed: root.pressedIndex === index - 1 && root.pressedIndex !== -1
+
+                            readonly property real swipeEffect: Math.min(height / 2, Math.abs(cardRoot.swipeX) * 0.5)
+
+                            topLeftRadius: Math.max(swipeEffect, index === 0 ? Appearance.rounding.large : (isPressed || isBelowPressed ? height / 2 : Appearance.rounding.small))
+                            topRightRadius: Math.max(swipeEffect, index === 0 ? Appearance.rounding.large : (isPressed || isBelowPressed ? height / 2 : Appearance.rounding.small))
+                            bottomLeftRadius: Math.max(swipeEffect, index === root.model.count - 1 ? Appearance.rounding.large : (isPressed || isAbovePressed ? height / 2 : Appearance.rounding.small))
+                            bottomRightRadius: Math.max(swipeEffect, index === root.model.count - 1 ? Appearance.rounding.large : (isPressed || isAbovePressed ? height / 2 : Appearance.rounding.small))
+
+                            Behavior on topLeftRadius {
+                                enabled: !cardRoot.swiping
+                                NumberAnimation {
+                                    duration: 150
+                                    easing.type: Easing.OutCubic
+                                }
+                            }
+                            Behavior on topRightRadius {
+                                enabled: !cardRoot.swiping
+                                NumberAnimation {
+                                    duration: 150
+                                    easing.type: Easing.OutCubic
+                                }
+                            }
+                            Behavior on bottomLeftRadius {
+                                enabled: !cardRoot.swiping
+                                NumberAnimation {
+                                    duration: 150
+                                    easing.type: Easing.OutCubic
+                                }
+                            }
+                            Behavior on bottomRightRadius {
+                                enabled: !cardRoot.swiping
+                                NumberAnimation {
+                                    duration: 150
+                                    easing.type: Easing.OutCubic
+                                }
+                            }
+
+                            // Ripple
+                            layer.enabled: true
+                            layer.samples: 8
+                            layer.smooth: true
+                            layer.effect: OpacityMask {
+                                maskSource: Rectangle {
+                                    width: backgroundRect.width
+                                    height: backgroundRect.height
+                                    topLeftRadius: backgroundRect.topLeftRadius
+                                    topRightRadius: backgroundRect.topRightRadius
+                                    bottomLeftRadius: backgroundRect.bottomLeftRadius
+                                    bottomRightRadius: backgroundRect.bottomRightRadius
+                                    antialiasing: true
+                                }
+                            }
+
+                            Item {
+                                id: ripple
+                                width: ripple.implicitWidth
+                                height: ripple.implicitHeight
+                                opacity: 0
+                                visible: width > 0 && height > 0
+                                property real implicitWidth: 0
+                                property real implicitHeight: 0
+                                Behavior on opacity {
+                                    animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(ripple)
+                                }
+                                RadialGradient {
+                                    anchors.fill: parent
+                                    gradient: Gradient {
+                                        GradientStop {
+                                            position: 0.0
+                                            color: Appearance.colors.colPrimaryActive
+                                        }
+                                        GradientStop {
+                                            position: 0.4
+                                            color: "transparent"
+                                        }
+                                    }
+                                }
+                                transform: Translate {
+                                    x: -ripple.width / 2
+                                    y: -ripple.height / 2
+                                }
+                            }
+
+                            RippleAnim {
+                                id: rippleFadeAnim
+                                duration: 2400
+                                target: ripple
+                                property: "opacity"
+                                to: 0
+                            }
+
+                            SequentialAnimation {
+                                id: rippleAnim
+                                property real x
+                                property real y
+                                property real radius
+                                PropertyAction {
+                                    target: ripple
+                                    property: "x"
+                                    value: rippleAnim.x
+                                }
+                                PropertyAction {
+                                    target: ripple
+                                    property: "y"
+                                    value: rippleAnim.y
+                                }
+                                PropertyAction {
+                                    target: ripple
+                                    property: "opacity"
+                                    value: 0.55
+                                }
+                                ParallelAnimation {
+                                    RippleAnim {
+                                        target: ripple
+                                        properties: "implicitWidth,implicitHeight"
+                                        from: 0
+                                        to: rippleAnim.radius * 2
+                                    }
+                                }
+                            }
+
+                            // Email content
+                            RowLayout {
+                                anchors.fill: parent
+                                spacing: 0
+
+                                Item {
+                                    Layout.preferredWidth: EmailService.compactMode ? 180 : 240
+                                    Layout.fillHeight: true
+                                    RowLayout {
+                                        anchors.fill: parent
+                                        anchors.margins: EmailService.compactMode ? 8 : 12
+                                        spacing: EmailService.compactMode ? 8 : 10
+
+                                        Rectangle {
+                                            id: iconRect
+                                            Layout.preferredWidth: EmailService.compactMode ? 40 : 64
+                                            Layout.preferredHeight: EmailService.compactMode ? 40 : 64
+                                            Layout.alignment: Qt.AlignVCenter
+                                            radius: Appearance.rounding.full
+                                            antialiasing: true
+                                            visible: EmailService.showAvatars
+                                            color: mouseArea.pressed ? Appearance.colors.colSurfaceContainerHigh : Appearance.colors.colSurfaceContainerHighest
+                                            Behavior on color {
+                                                animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+                                            }
+                                            MaterialSymbol {
+                                                anchors.centerIn: parent
+                                                text: model.icon || "person"
+                                                fill: model.unread ? 1 : 0
+                                                iconSize: EmailService.compactMode ? Appearance.font.pixelSize.large : Appearance.font.pixelSize.huge
+                                                color: mouseArea.pressed ? Appearance.colors.colOnSurface : Appearance.colors.colOnSurfaceVariant
+                                                Behavior on color {
+                                                    animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+                                                }
+                                                Behavior on fill {
+                                                    animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                                                }
+                                            }
+                                        }
+
+                                        StyledText {
+                                            Layout.fillWidth: true
+                                            Layout.alignment: Qt.AlignVCenter
+                                            text: model.from.split("<")[0].trim() || model.from
+                                            font.family: Appearance.font.family.main
+                                            font.pixelSize: Appearance.font.pixelSize.normal
+                                            font.weight: model.unread ? Font.Bold : Font.Normal
+                                            color: model.unread ? Appearance.colors.colOnSurface : Appearance.colors.colOnSurfaceVariant
+                                            elide: Text.ElideRight
+                                            maximumLineCount: 1
+                                        }
+
+                                        Rectangle {
+                                            Layout.preferredWidth: 8
+                                            Layout.preferredHeight: 8
+                                            Layout.alignment: Qt.AlignVCenter
+                                            radius: Appearance.rounding.full
+                                            antialiasing: true
+                                            color: Appearance.colors.colPrimary
+                                            opacity: model.unread ? 1 : 0
+                                            Behavior on opacity {
+                                                animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                                            }
+                                        }
+                                    }
+                                }
+
+                                Item {
+                                    Layout.fillWidth: true
+                                    Layout.fillHeight: true
+                                    ColumnLayout {
+                                        anchors.fill: parent
+                                        anchors.margins: EmailService.compactMode ? 8 : 16
+                                        anchors.leftMargin: EmailService.compactMode ? 12 : 24
+                                        spacing: EmailService.compactMode ? 2 : 4
+
+                                        RowLayout {
+                                            Layout.fillWidth: true
+                                            spacing: 8
+
+                                            StyledText {
+                                                id: cardSubjectText
+                                                Layout.fillWidth: true
+                                                text: model.subject
+                                                font.family: Appearance.font.family.main
+                                                font.pixelSize: Appearance.font.pixelSize.normal
+                                                font.weight: Font.DemiBold
+                                                color: Appearance.colors.colOnSurface
+                                                elide: Text.ElideRight
+                                                maximumLineCount: 1
+                                            }
+
+                                            Rectangle {
+                                                Layout.alignment: Qt.AlignVCenter
+                                                Layout.preferredHeight: dateText.implicitHeight + 4
+                                                Layout.preferredWidth: dateText.implicitWidth + 16
+                                                radius: Appearance.rounding.full
+                                                color: Appearance.colors.colTertiaryContainer
+                                                antialiasing: true
+
+                                                StyledText {
+                                                    id: dateText
+                                                    anchors.centerIn: parent
+                                                    text: {
+                                                        if (!model.date)
+                                                            return "";
+                                                        let d = new Date(model.date);
+                                                        if (isNaN(d.getTime()))
+                                                            return model.date;
+                                                        let now = new Date();
+                                                        if (d.toDateString() === now.toDateString()) {
+                                                            return d.toLocaleTimeString(Qt.locale(), "hh:mm");
+                                                        } else {
+                                                            return d.toLocaleDateString(Qt.locale(), "d MMM");
+                                                        }
+                                                    }
+                                                    font.family: Appearance.font.family.main
+                                                    font.pixelSize: Appearance.font.pixelSize.smallie
+                                                    font.weight: model.unread ? Font.Bold : Font.Medium
+                                                    color: model.unread ? Appearance.colors.colPrimary : Appearance.colors.colOnTertiaryContainer
+                                                }
+                                            }
+                                        }
+
+                                        StyledText {
+                                            Layout.fillWidth: true
+                                            visible: !EmailService.compactMode && EmailService.showSnippets
+                                            text: model.snippet
+                                            font.family: Appearance.font.family.main
+                                            font.pixelSize: Appearance.font.pixelSize.small
+                                            font.weight: Font.Medium
+                                            color: Appearance.colors.colOnSurfaceVariant
+                                            elide: Text.ElideRight
+                                            maximumLineCount: 1
+                                            opacity: 0.7
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    MouseArea {
+                        id: mouseArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        preventStealing: cardRoot.swiping
+
+                        property real startX: 0
+                        property real startY: 0
+                        property bool dragDecided: false
+                        property bool isHorizontalDrag: false
+
+                        onPressed: event => {
+                            startX = event.x;
+                            startY = event.y;
+                            dragDecided = false;
+                            isHorizontalDrag = false;
+
+                            visualPressed = true;
+                            root.pressedIndex = index;
+                            root.swipingIndex = index; // Register magnetic focus
+                            pressTimer.restart();
+                            glanceTimer.restart();
+
+                            let dist = (ox, oy) => ox * ox + oy * oy;
+                            rippleAnim.x = event.x;
+                            rippleAnim.y = event.y;
+                            rippleAnim.radius = Math.sqrt(Math.max(dist(0, 0), dist(width, 0), dist(0, height), dist(width, height)));
+                            rippleFadeAnim.complete();
+                            rippleAnim.restart();
+                        }
+
+                        Timer {
+                            id: glanceTimer
+                            interval: 150
+                            onTriggered: {
+                                if (mouseArea.pressed) {
+                                    root.glancingId = model.id;
+                                    glanceAnim.restart();
+                                }
+                            }
+                        }
+
+                        onPositionChanged: event => {
+                            if (!pressed)
+                                return;
+
+                            let dx = event.x - startX;
+                            let dy = event.y - startY;
+
+                            if (!dragDecided) {
+                                if (Math.abs(dx) > 5) {
+                                    dragDecided = true;
+                                    isHorizontalDrag = Math.abs(dx) > Math.abs(dy) * 1.2;
+                                    if (isHorizontalDrag) {
+                                        cardRoot.swiping = true;
+                                        visualPressed = false;
+                                        root.pressedIndex = -1;
+                                    }
+                                }
+                            }
+
+                            if (isHorizontalDrag && cardRoot.swiping) {
+                                // If confirm mode is active, limit swipe until confirmed
+                                if (cardRoot.confirmDeleteMode && dx < 0)
+                                    cardRoot.swipeX = Math.max(-cardRoot.width, dx);
+                                else
+                                    cardRoot.swipeX = dx;
+                            }
+                        }
+
+                        onReleased: event => {
+                            glanceTimer.stop();
+                            if (root.glancingId === model.id) {
+                                let wasGlancing = root.glanceProgress > 0.1;
+                                glanceAnim.stop();
+                                // We keep the progress for a moment to bridge into the opening animation
+                                // It will be reset via timer or on selection
+                                root.glancingId = "";
+                                triggerEmailSelection();
+                                Qt.callLater(() => root.glanceProgress = 0);
+                                return;
+                            }
+
+                            if (cardRoot.swiping) {
+                                cardRoot.swiping = false;
+                                if (cardRoot.swipeX <= cardRoot.deleteThreshold) {
+                                    if (EmailService.confirmDelete && !cardRoot.confirmDeleteMode) {
+                                        cardRoot.confirmDeleteMode = true;
+                                        snapAnim.to = -cardRoot.deleteWidth - 40;
+                                        snapAnim.start();
+                                    } else {
+                                        cardRoot.dismissed = true;
+                                        dismissAnim.start();
+                                    }
+                                } else if (cardRoot.swipeX >= cardRoot.starThreshold) {
+                                    starAnim.start();
+                                } else {
+                                    cardRoot.confirmDeleteMode = false;
+                                    snapAnim.to = 0;
+                                    snapAnim.start();
+                                }
+                            } else {
+                                // Clique direto se o botão estiver visível
+                                if (cardRoot.swipeX < -20 && event.x > (cardRoot.width + cardRoot.swipeX)) {
+                                    cardRoot.dismissed = true;
+                                    dismissAnim.start();
+                                } else if (cardRoot.swipeX > 20 && event.x < cardRoot.swipeX) {
+                                    starAnim.start();
+                                } else {
+                                    if (!pressTimer.running) {
+                                        visualPressed = false;
+                                        root.pressedIndex = -1;
+                                    }
+                                    rippleFadeAnim.restart();
+                                    triggerEmailSelection();
+                                }
+                            }
+                        }
+
+                        function triggerEmailSelection() {
+                            if (model.unread && EmailService.autoMarkAsRead)
+                                EmailService.markAsRead(model.id);
+                            let rect = backgroundRect.mapToItem(root, 0, 0, backgroundRect.width, backgroundRect.height);
+                            let iconR = iconRect.mapToItem(root, 0, 0, iconRect.width, iconRect.height);
+                            let subjectR = cardSubjectText.mapToItem(root, 0, 0, cardSubjectText.width, cardSubjectText.height);
+                            root.emailSelected(model.id, model.threadId, rect.x, rect.y, rect.width, rect.height, iconR.x, iconR.y, iconR.width, iconR.height, subjectR.x, subjectR.y, subjectR.width, subjectR.height);
+                        }
+
+                        onCanceled: {
+                            glanceTimer.stop();
+                            if (root.glancingId === model.id) {
+                                glanceAnim.stop();
+                                root.glanceProgress = 0;
+                                root.glancingId = "";
+                            }
+                            if (cardRoot.swiping) {
+                                cardRoot.swiping = false;
+                                cardRoot.swipeX = 0;
+                            }
+                            visualPressed = false;
+                            root.pressedIndex = -1;
+                            rippleFadeAnim.restart();
+                        }
+                    }
+
+                    // Dismiss animation
+                    SequentialAnimation {
+                        id: dismissAnim
+                        property string targetId: ""
+                        onStarted: targetId = model.id
+
+                        NumberAnimation {
+                            target: cardRoot
+                            property: "swipeX"
+                            to: -cardRoot.width - 100
+                            duration: 300
+                            easing.type: Easing.InCubic
+                        }
+                        ParallelAnimation {
+                            NumberAnimation {
+                                target: cardRoot
+                                property: "opacity"
+                                to: 0
+                                duration: 200
+                                easing.type: Easing.OutCubic
+                            }
+                            NumberAnimation {
+                                target: cardRoot
+                                property: "Layout.preferredHeight"
+                                to: 0
+                                duration: 300
+                                easing.type: Easing.InOutCubic
+                            }
+                        }
+                        ScriptAction {
+                            script: {
+                                if (root.activeTab === "trash") {
+                                    EmailService.deleteMessagePermanent(dismissAnim.targetId);
+                                } else {
+                                    EmailService.trashMessage(dismissAnim.targetId);
+                                }
+                            }
+                        }
+                    }
+
+                    // Star animation
+                    SequentialAnimation {
+                        id: starAnim
+                        NumberAnimation {
+                            target: cardRoot
+                            property: "swipeX"
+                            to: 0
+                            duration: 300
+                            easing.type: Easing.OutCubic
+                        }
+                        ScriptAction {
+                            script: {
+                                cardRoot.swiping = false;
+                                root.swipingIndex = -1;
+                                root.activeSwipeX = 0;
+                                EmailService.toggleStarMessage(model.id, model.starred);
+                            }
+                        }
+                    }
+                } // delegate end
+            } // Repeater end
+
+            // Premium Pager Controls - End of list
+            RowLayout {
+                id: pagerLayout
+                Layout.alignment: Qt.AlignHCenter
+                Layout.topMargin: 24
+                Layout.bottomMargin: 32
+                visible: root.currentPage > 0 || root.hasNextPage
+                spacing: 4
+
+                // Previous Page
+                RippleButton {
+                    Layout.preferredWidth: 64
+                    Layout.preferredHeight: 64
+                    topLeftRadius: Appearance.rounding.large
+                    bottomLeftRadius: Appearance.rounding.large
+                    topRightRadius: 8
+                    bottomRightRadius: 8
+                    colBackground: Appearance.colors.colSurfaceContainerHigh
+                    onClicked: {
+                        if (root.currentPage > 0) {
+                            root.currentPage -= 1;
+                            flickable.contentY = 0;
+                            EmailService.syncLabel(root.activeTab, root.currentPage);
+                        }
+                    }
+                    contentItem: MaterialSymbol {
+                        anchors.centerIn: parent
+                        text: "chevron_left"
+                        iconSize: 28
+                        color: root.currentPage > 0 ? Appearance.colors.colOnSurface : Appearance.colors.colOnSurfaceVariant
+                        opacity: root.currentPage > 0 ? 1 : 0.4
+                    }
+                }
+
+                // Current Page Indicator
+                RippleButton {
+                    Layout.preferredWidth: 64
+                    Layout.preferredHeight: 64
+                    topLeftRadius: 8
+                    bottomLeftRadius: 8
+                    topRightRadius: 8
+                    bottomRightRadius: 8
+                    colBackground: Appearance.colors.colSurfaceContainerHigh
+                    rippleEnabled: false
+                    contentItem: StyledText {
+                        anchors.centerIn: parent
+                        text: (root.currentPage + 1).toString()
+                        font.pixelSize: 24
+                        font.weight: Font.Bold
+                        color: Appearance.colors.colOnSurface
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                }
+
+                // Next Page
+                RippleButton {
+                    Layout.preferredWidth: 64
+                    Layout.preferredHeight: 64
+                    topRightRadius: Appearance.rounding.large
+                    bottomRightRadius: Appearance.rounding.large
+                    topLeftRadius: 8
+                    bottomLeftRadius: 8
+                    colBackground: Appearance.colors.colSurfaceContainerHigh
+                    onClicked: {
+                        if (root.hasNextPage) {
+                            root.currentPage += 1;
+                            flickable.contentY = 0;
+                            EmailService.syncLabel(root.activeTab, root.currentPage);
+                        }
+                    }
+                    contentItem: MaterialSymbol {
+                        anchors.centerIn: parent
+                        text: "chevron_right"
+                        iconSize: 28
+                        color: root.hasNextPage ? Appearance.colors.colOnSurface : Appearance.colors.colOnSurfaceVariant
+                        opacity: root.hasNextPage ? 1 : 0.4
+                    }
+                }
+            }
+        }
+    }
+
+    component RippleAnim: NumberAnimation {
+        duration: 1200
+        easing.type: Easing.OutQuart
+    }
+}

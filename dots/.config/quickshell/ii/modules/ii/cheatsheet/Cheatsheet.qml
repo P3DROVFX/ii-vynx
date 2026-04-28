@@ -11,29 +11,17 @@ import Quickshell
 import Quickshell.Wayland
 import Quickshell.Hyprland
 
-Scope { // Scope
+Scope {
     id: root
     property var tabButtonList: {
         let list = [];
         if (Config.options.cheatsheet.enableTimetable) {
-            list.push({
-                "icon": "calendar_month",
-                "name": Translation.tr("Timetable")
-            });
+            list.push({ "icon": "calendar_month", "name": Translation.tr("Timetable") });
         }
-        list.push({
-            "icon": "keyboard",
-            "name": Translation.tr("Keybinds")
-        });
-        list.push({
-            "icon": "experiment",
-            "name": Translation.tr("Elements")
-        });
+        list.push({ "icon": "keyboard", "name": Translation.tr("Keybinds") });
+        list.push({ "icon": "experiment", "name": Translation.tr("Elements") });
         if (Config.options.cheatsheet.enableGmail) {
-            list.push({
-                "icon": "mail",
-                "name": Translation.tr("Email")
-            });
+            list.push({ "icon": "mail", "name": Translation.tr("Email") });
         }
         return list;
     }
@@ -42,7 +30,7 @@ Scope { // Scope
         id: cheatsheetLoader
         active: false
 
-        sourceComponent: PanelWindow { // Window
+        sourceComponent: PanelWindow {
             id: cheatsheetRoot
             visible: cheatsheetLoader.active
 
@@ -69,8 +57,6 @@ Scope { // Scope
             implicitWidth: cheatsheetBackground.width + Appearance.sizes.elevationMargin * 2
             implicitHeight: cheatsheetBackground.height + Appearance.sizes.elevationMargin * 2
             WlrLayershell.namespace: "quickshell:cheatsheet"
-            // Hyprland 0.49: Focus is always exclusive and setting this breaks mouse focus grab
-            // WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
             WlrLayershell.keyboardFocus: (timetableLoader.item && timetableLoader.item.eventPopupVisible) ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
             color: "transparent"
 
@@ -78,7 +64,7 @@ Scope { // Scope
                 item: cheatsheetBackground
             }
 
-            HyprlandFocusGrab { // Click outside to close
+            HyprlandFocusGrab {
                 id: grab
                 windows: [cheatsheetRoot]
                 active: cheatsheetRoot.visible
@@ -88,7 +74,6 @@ Scope { // Scope
                 }
             }
 
-            // Background
             StyledRectangularShadow {
                 target: cheatsheetBackground
             }
@@ -100,10 +85,11 @@ Scope { // Scope
                 border.color: Appearance.colors.colLayer0Border
                 radius: Appearance.rounding.windowRounding
                 property real padding: 20
+                
                 implicitWidth: cheatsheetColumnLayout.implicitWidth + padding * 2
                 implicitHeight: cheatsheetColumnLayout.implicitHeight + padding * 2
 
-                Keys.onPressed: event => { // Esc to close
+                Keys.onPressed: event => {
                     if (event.key === Qt.Key_Escape) {
                         cheatsheetRoot.hide();
                     } else if (event.key === Qt.Key_Slash) {
@@ -127,7 +113,7 @@ Scope { // Scope
                     }
                 }
 
-                RippleButton { // Close button
+                RippleButton {
                     id: closeButton
                     focus: cheatsheetRoot.visible
                     implicitWidth: 40
@@ -152,7 +138,7 @@ Scope { // Scope
                     }
                 }
 
-                ColumnLayout { // Real content
+                ColumnLayout {
                     id: cheatsheetColumnLayout
                     anchors.centerIn: parent
                     spacing: 10
@@ -170,7 +156,7 @@ Scope { // Scope
                         }
                     }
 
-                    SwipeView { // Content pages
+                    SwipeView {
                         id: swipeView
                         Layout.topMargin: 5
                         Layout.fillWidth: true
@@ -185,7 +171,8 @@ Scope { // Scope
                         implicitHeight: Math.max.apply(null, contentChildren.map(child => child.implicitHeight || 0))
 
                         clip: true
-                        layer.enabled: true
+                        // Disable expensive layer compositing while animating to prevent lag
+                        layer.enabled: !swipeView.moving
                         layer.effect: OpacityMask {
                             maskSource: Rectangle {
                                 width: swipeView.width
@@ -194,18 +181,42 @@ Scope { // Scope
                             }
                         }
 
+
                         Loader {
                             id: timetableLoader
-                            active: Config.options.cheatsheet.enableTimetable
+                            property bool wasSeen: false
+                            active: Config.options.cheatsheet.enableTimetable && (swipeView.currentIndex === 0 || wasSeen)
+                            onActiveChanged: if (active) wasSeen = true
                             visible: active
+                            asynchronous: true 
                             source: "CheatsheetTimetable.qml"
+                            
+                            Rectangle {
+                                anchors.fill: parent
+                                color: "transparent"
+                                visible: timetableLoader.status !== Loader.Ready
+                                MaterialLoadingIndicator { anchors.centerIn: parent }
+                            }
                         }
+
                         CheatsheetKeybinds {}
                         CheatsheetPeriodicTable {}
+
                         Loader {
-                            active: Config.options.cheatsheet.enableGmail
+                            id: emailLoader
+                            property bool wasSeen: false
+                            active: Config.options.cheatsheet.enableGmail && (swipeView.currentIndex === (root.tabButtonList.length - 1) || wasSeen)
+                            onActiveChanged: if (active) wasSeen = true
                             visible: active
+                            asynchronous: true 
                             source: "CheatsheetEmail.qml"
+                            
+                            Rectangle {
+                                anchors.fill: parent
+                                color: "transparent"
+                                visible: emailLoader.status !== Loader.Ready
+                                MaterialLoadingIndicator { anchors.centerIn: parent }
+                            }
                         }
                     }
                 }
@@ -215,44 +226,26 @@ Scope { // Scope
 
     IpcHandler {
         target: "cheatsheet"
-
-        function toggle(): void {
-            cheatsheetLoader.active = !cheatsheetLoader.active;
-        }
-
-        function close(): void {
-            cheatsheetLoader.active = false;
-        }
-
-        function open(): void {
-            cheatsheetLoader.active = true;
-        }
+        function toggle(): void { cheatsheetLoader.active = !cheatsheetLoader.active; }
+        function close(): void { cheatsheetLoader.active = false; }
+        function open(): void { cheatsheetLoader.active = true; }
     }
 
     GlobalShortcut {
         name: "cheatsheetToggle"
         description: "Toggles cheatsheet on press"
-
-        onPressed: {
-            cheatsheetLoader.active = !cheatsheetLoader.active;
-        }
+        onPressed: { cheatsheetLoader.active = !cheatsheetLoader.active; }
     }
 
     GlobalShortcut {
         name: "cheatsheetOpen"
         description: "Opens cheatsheet on press"
-
-        onPressed: {
-            cheatsheetLoader.active = true;
-        }
+        onPressed: { cheatsheetLoader.active = true; }
     }
 
     GlobalShortcut {
         name: "cheatsheetClose"
         description: "Closes cheatsheet on press"
-
-        onPressed: {
-            cheatsheetLoader.active = false;
-        }
+        onPressed: { cheatsheetLoader.active = false; }
     }
 }

@@ -68,7 +68,7 @@ Item {
         descriptionField.text = "";
     }
 
-    // Scrim background — blocks all events behind the dialog
+    // Scrim background
     Rectangle {
         anchors.fill: parent
         radius: Appearance.rounding.small
@@ -95,9 +95,8 @@ Item {
     Rectangle {
         id: card
         width: 320
-        height: cardContent.implicitHeight + 48
+        height: Math.min(cardContent.implicitHeight + 48, popup.height - 32)
 
-        // Centered with offset based on anchor
         x: {
             let targetX = popup.anchorX - width / 2;
             return Math.max(16, Math.min(targetX, popup.width - width - 16));
@@ -138,15 +137,10 @@ Item {
             }
         }
 
-        // Card-level MouseArea: intercepts presses on non-interactive areas
-        // (header, margins, separators) so they don't fall through to the scrim.
-        // Using z: -1 so it sits behind the ColumnLayout children (TextFields, buttons).
         MouseArea {
             anchors.fill: parent
             z: -1
             onPressed: function(mouse) {
-                // Accept the press so the scrim doesn't get it,
-                // but immediately give focus back to title field
                 mouse.accepted = true;
                 titleField.forceActiveFocus();
             }
@@ -160,14 +154,13 @@ Item {
             }
             spacing: 16
 
-            // Header with icon
+            // Header
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 12
 
                 Rectangle {
-                    width: 40
-                    height: 40
+                    width: 40; height: 40
                     radius: Appearance.rounding.full
                     color: Appearance.m3colors.m3primary
 
@@ -180,25 +173,20 @@ Item {
                 }
 
                 ColumnLayout {
-                    Layout.fillWidth: true
-                    spacing: 2
-
+                    Layout.fillWidth: true; spacing: 2
                     StyledText {
                         text: popup.isEditMode ? Translation.tr("Edit event") : Translation.tr("New event")
                         font.pixelSize: Appearance.font.pixelSize.large
                         font.weight: Font.DemiBold
                         color: Appearance.colors.colOnSurface
                     }
-
                     RowLayout {
                         spacing: 4
-
                         MaterialSymbol {
                             text: "schedule"
                             font.pixelSize: Appearance.font.pixelSize.small
                             color: Appearance.colors.colOnSurfaceVariant
                         }
-
                         StyledText {
                             text: popup.startTimeStr + " — " + popup.endTimeStr
                             font.pixelSize: Appearance.font.pixelSize.small
@@ -208,12 +196,7 @@ Item {
                 }
             }
 
-            // Separator
-            Rectangle {
-                Layout.fillWidth: true
-                height: 1
-                color: Appearance.colors.colOutlineVariant
-            }
+            Rectangle { Layout.fillWidth: true; height: 1; color: Appearance.colors.colOutlineVariant }
 
             // Title field
             MaterialTextField {
@@ -222,132 +205,113 @@ Item {
                 placeholderText: Translation.tr("Event title")
                 font.pixelSize: Appearance.font.pixelSize.normal
                 focus: popup.visible
-
-                onAccepted: {
-                    if (titleField.text.length > 0) {
-                        submitEvent();
-                    }
-                }
-
-                Keys.onEscapePressed: {
-                    popup.cancelled();
-                    popup.close();
-                }
-                Keys.onTabPressed: {
-                    descriptionField.forceActiveFocus();
-                }
+                onAccepted: if (text.length > 0) submitEvent()
+                Keys.onEscapePressed: { popup.cancelled(); popup.close(); }
+                Keys.onTabPressed: descriptionField.forceActiveFocus()
             }
 
             // Description field
-            MaterialTextField {
-                id: descriptionField
+            ColumnLayout {
                 Layout.fillWidth: true
-                placeholderText: Translation.tr("Add description (optional)")
+                spacing: 4
 
-                Keys.onEscapePressed: {
-                    popup.cancelled();
-                    popup.close();
+                StyledText {
+                    text: Translation.tr("Description")
+                    font.pixelSize: Appearance.font.pixelSize.smallie
+                    font.weight: Font.Medium
+                    color: descriptionField.activeFocus ? Appearance.m3colors.m3primary : Appearance.m3colors.m3outline
+                }
+
+                Rectangle {
+                    id: descriptionContainer
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: Math.min(descriptionField.implicitHeight + 24, 150)
+                    color: "transparent"
+                    border.width: 1
+                    border.color: descriptionField.activeFocus ? Appearance.m3colors.m3primary : Appearance.m3colors.m3outline
+                    radius: Appearance.rounding.small
+
+                    ScrollView {
+                        anchors.fill: parent
+                        anchors.margins: 4
+                        clip: true
+                        ScrollBar.vertical.policy: ScrollBar.AsNeeded
+
+                        TextArea {
+                            id: descriptionField
+                            width: descriptionContainer.width - 12
+                            placeholderText: Translation.tr("Add description (optional)")
+                            placeholderTextColor: Appearance.m3colors.m3outline
+                            font.pixelSize: Appearance.font.pixelSize.small
+                            color: Appearance.m3colors.m3onSurface
+                            wrapMode: Text.Wrap
+                            padding: 8
+                            background: null
+                            
+                            Material.accent: Appearance.m3colors.m3primary
+                            Material.primary: Appearance.m3colors.m3primary
+
+                            Keys.onEscapePressed: { popup.cancelled(); popup.close(); }
+                        }
+                    }
                 }
             }
 
-            // Separator
-            Rectangle {
-                Layout.fillWidth: true
-                height: 1
-                color: Appearance.colors.colOutlineVariant
-            }
+            Rectangle { Layout.fillWidth: true; height: 1; color: Appearance.colors.colOutlineVariant }
 
-            // Action buttons
+            // Actions
             RowLayout {
-                Layout.fillWidth: true
-                spacing: 8
+                Layout.fillWidth: true; spacing: 8
 
-                // Delete button (edit mode only)
                 RippleButton {
                     visible: popup.isEditMode
-                    implicitWidth: 36
-                    implicitHeight: 36
+                    implicitWidth: 36; implicitHeight: 36
                     buttonRadius: Appearance.rounding.full
                     buttonColor: ColorUtils.transparentize(Appearance.m3colors.m3errorContainer, 0.5)
                     colBackgroundHover: Appearance.m3colors.m3errorContainer
-
-                    onClicked: {
-                        popup.eventDeleted(popup.editEventData.title);
-                        popup.close();
-                    }
-
+                    onClicked: { popup.eventDeleted(popup.editEventData.title); popup.close(); }
                     contentItem: MaterialSymbol {
                         anchors.centerIn: parent
-                        horizontalAlignment: Text.AlignHCenter
-                        font.pixelSize: 18
-                        text: "delete"
-                        color: Appearance.m3colors.m3error
+                        text: "delete"; font.pixelSize: 18; color: Appearance.m3colors.m3error
                     }
-
-                    StyledToolTip {
-                        extraVisibleCondition: parent.hovered
-                        text: Translation.tr("Delete event")
-                    }
+                    StyledToolTip { extraVisibleCondition: parent.hovered; text: Translation.tr("Delete event") }
                 }
 
                 Item { Layout.fillWidth: true }
 
-                // Cancel
                 RippleButton {
-                    implicitWidth: cancelText.implicitWidth + 24
-                    implicitHeight: 36
-                    buttonRadius: Appearance.rounding.full
-                    buttonColor: "transparent"
+                    implicitWidth: cancelText.implicitWidth + 24; implicitHeight: 36
+                    buttonRadius: Appearance.rounding.full; buttonColor: "transparent"
                     colBackgroundHover: Appearance.colors.colSurfaceContainerHighest
-
-                    onClicked: {
-                        popup.cancelled();
-                        popup.close();
-                    }
-
+                    onClicked: { popup.cancelled(); popup.close(); }
                     contentItem: StyledText {
                         id: cancelText
-                        anchors.centerIn: parent
-                        text: Translation.tr("Cancel")
-                        font.pixelSize: Appearance.font.pixelSize.small
-                        font.weight: Font.Medium
-                        color: Appearance.colors.colOnSurfaceVariant
+                        anchors.fill: parent
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                        text: Translation.tr("Cancel"); font.pixelSize: Appearance.font.pixelSize.small; font.weight: Font.Medium; color: Appearance.colors.colOnSurfaceVariant
                     }
                 }
 
-                // Save/Create
                 RippleButton {
-                    implicitWidth: saveText.implicitWidth + 32
-                    implicitHeight: 36
-                    buttonRadius: Appearance.rounding.full
-                    buttonColor: Appearance.colors.colPrimary
-                    enabled: titleField.text.length > 0
-                    opacity: enabled ? 1 : 0.5
-
+                    implicitWidth: saveText.implicitWidth + 32; implicitHeight: 36
+                    buttonRadius: Appearance.rounding.full; buttonColor: Appearance.colors.colPrimary
+                    enabled: titleField.text.length > 0; opacity: enabled ? 1 : 0.5
                     onClicked: submitEvent()
-
-                    contentItem: Item {
+                    contentItem: StyledText {
+                        id: saveText
                         anchors.fill: parent
-                        
-                        StyledText {
-                            id: saveText
-                            anchors.centerIn: parent
-                            text: popup.isEditMode ? Translation.tr("Save") : Translation.tr("Create")
-                            font.pixelSize: Appearance.font.pixelSize.small
-                            font.weight: Font.Medium
-                            color: Appearance.colors.colOnPrimary
-                        }
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                        text: popup.isEditMode ? Translation.tr("Save") : Translation.tr("Create"); font.pixelSize: Appearance.font.pixelSize.small; font.weight: Font.Medium; color: Appearance.colors.colOnPrimary
                     }
                 }
             }
         }
     }
 
-
-
     function submitEvent() {
         if (titleField.text.length === 0) return;
-
         if (popup.isEditMode) {
             popup.eventUpdated(popup.editEventData.title, titleField.text, descriptionField.text);
         } else {
