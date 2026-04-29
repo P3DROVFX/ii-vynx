@@ -1,27 +1,27 @@
-// test_gmail.qml — rode com: quickshell -p test_gmail.qml
+// test_gmail.qml — run with: quickshell -p test_gmail.qml
 import QtQuick
 import Quickshell
 import Quickshell.Io
 
 ShellRoot {
-    // Simula o que o GmailService fará internamente
+    // Simulates what EmailService does internally
     property string accessToken: ""
-    property string refreshToken: "COLE_SEU_REFRESH_TOKEN_AQUI"
+    property string refreshToken: "PASTE_YOUR_REFRESH_TOKEN_HERE"
 
     IpcHandler {
         target: "gmail"
         function onTokenRefreshed(token: string, expiresIn: int) {
-            console.log("[TEST] access_token recebido:", token.substring(0, 20) + "...")
+            console.log("[TEST] access_token received:", token.substring(0, 20) + "...")
             accessToken = token
             testApiCall()
         }
         function onAuthComplete(refresh: string, email: string) {
-            console.log("[TEST] Auth completo! email:", email, "refresh:", refresh.substring(0, 10) + "...")
+            console.log("[TEST] Auth complete! email:", email, "refresh:", refresh.substring(0, 10) + "...")
         }
     }
 
     Component.onCompleted: {
-        console.log("[TEST] Iniciando refresh de token...")
+        console.log("[TEST] Starting token refresh...")
         refreshProc.running = true
     }
 
@@ -35,11 +35,11 @@ ShellRoot {
             onRead: function(line) {
                 try {
                     const data = JSON.parse(line)
-                    console.log("[TEST] Token OK, expira em:", data.expires_in, "segundos")
+                    console.log("[TEST] Token OK, expires in:", data.expires_in, "seconds")
                     accessToken = data.access_token
                     testApiCall()
                 } catch(e) {
-                    console.error("[TEST] Erro ao parsear:", line)
+                    console.error("[TEST] Parse error:", line)
                 }
             }
         }
@@ -49,7 +49,7 @@ ShellRoot {
     }
 
     function testApiCall() {
-        console.log("[TEST] Fazendo chamada à API...")
+        console.log("[TEST] Making API call...")
         const xhr = new XMLHttpRequest()
         xhr.open("GET", "https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=3&labelIds=INBOX")
         xhr.setRequestHeader("Authorization", "Bearer " + accessToken)
@@ -58,11 +58,11 @@ ShellRoot {
             console.log("[TEST] Status HTTP:", xhr.status)
             if (xhr.status === 200) {
                 const data = JSON.parse(xhr.responseText)
-                console.log("[TEST] Mensagens recebidas:", data.messages?.length ?? 0)
+                console.log("[TEST] Messages received:", data.messages?.length ?? 0)
                 data.messages?.forEach((m, i) => console.log(`  [${i}] id: ${m.id}`))
                 testLabels()
             } else {
-                console.error("[TEST] Erro API:", xhr.responseText)
+                console.error("[TEST] API Error:", xhr.responseText)
             }
         }
         xhr.send()
@@ -77,7 +77,7 @@ ShellRoot {
             if (xhr.status === 200) {
                 const data = JSON.parse(xhr.responseText)
                 const userLabels = data.labels.filter(l => l.type === "user")
-                console.log("[TEST] Labels do usuário:", userLabels.map(l => l.name).join(", "))
+                console.log("[TEST] User labels:", userLabels.map(l => l.name).join(", "))
                 testSendDryRun()
             }
         }
@@ -85,10 +85,10 @@ ShellRoot {
     }
 
     function testSendDryRun() {
-        // Testa a função de build do raw email sem realmente enviar
-        const raw = buildRawEmail("teste@exemplo.com", "Teste do Quickshell Gmail", "Funcionou!")
+        // Tests the raw email build function without actually sending
+        const raw = buildRawEmail("test@example.com", "Quickshell Gmail Test", "It works!")
         console.log("[TEST] Raw email (base64url):", raw.substring(0, 40) + "...")
-        console.log("[TEST] ✅ Todos os testes passaram!")
+        console.log("[TEST] ✅ All tests passed!")
     }
 
     function buildRawEmail(to, subject, body) {

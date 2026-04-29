@@ -26,7 +26,6 @@ Item {
         hasNextPage = EmailService.hasNextPage(activeTab, currentPage);
     }
 
-
     Connections {
         target: root.model
         function onCountChanged() {
@@ -93,6 +92,48 @@ Item {
         bottomLeftRadius: Appearance.rounding.small
         bottomRightRadius: Appearance.rounding.verylarge
         antialiasing: true
+    }
+
+    // Background Refresh Indicator (Linear Progress)
+    Rectangle {
+        id: backgroundSyncBar
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.topMargin: 0
+        anchors.leftMargin: 12
+        anchors.rightMargin: 12
+        height: 2 // Thinner for a more subtle look
+        radius: 1
+        color: "transparent"
+        visible: EmailService.loading && root.model.count > 0 && !root.isPullRefreshing && loadingDelayTimer.showBar
+        clip: true
+        z: 5
+
+        Timer {
+            id: loadingDelayTimer
+            property bool showBar: false
+            interval: 400 // Only show if sync takes more than 400ms
+            running: EmailService.loading && root.model.count > 0 && !root.isPullRefreshing
+            onTriggered: showBar = true
+            onRunningChanged: if (!running)
+                showBar = false
+        }
+
+        Rectangle {
+            width: parent.width * 0.3
+            height: parent.height
+            radius: parent.radius
+            color: Appearance.colors.colPrimary
+
+            NumberAnimation on x {
+                from: -parent.width * 0.3
+                to: backgroundSyncBar.width
+                duration: 1500
+                loops: Animation.Infinite
+                running: backgroundSyncBar.visible
+            }
+        }
     }
 
     StyledFlickable {
@@ -167,7 +208,6 @@ Item {
             id: contentLayout
             width: flickable.width - 24
             spacing: 4
-
 
             // Empty states
             Item {
@@ -552,18 +592,15 @@ Item {
                                             Behavior on color {
                                                 animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
                                             }
-                                            MaterialSymbol {
+                                            EmailIcon {
                                                 anchors.centerIn: parent
-                                                text: model.icon || "person"
-                                                fill: model.unread ? 1 : 0
+                                                subject: model.subject
+                                                sender: model.from
+                                                snippet: model.snippet
+                                                unread: model.unread
                                                 iconSize: EmailService.compactMode ? Appearance.font.pixelSize.large : Appearance.font.pixelSize.huge
-                                                color: mouseArea.pressed ? Appearance.colors.colOnSurface : Appearance.colors.colOnSurfaceVariant
-                                                Behavior on color {
-                                                    animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
-                                                }
-                                                Behavior on fill {
-                                                    animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
-                                                }
+                                                isPressed: mouseArea.pressed
+                                                id: avatarIcon
                                             }
                                         }
 
@@ -700,7 +737,6 @@ Item {
                             rippleAnim.restart();
                         }
 
-
                         onPositionChanged: event => {
                             if (!pressed)
                                 return;
@@ -730,7 +766,6 @@ Item {
                         }
 
                         onReleased: event => {
-
                             if (cardRoot.swiping) {
                                 cardRoot.swiping = false;
                                 if (cardRoot.swipeX <= cardRoot.deleteThreshold) {
@@ -862,6 +897,7 @@ Item {
                 RippleButton {
                     Layout.preferredWidth: 64
                     Layout.preferredHeight: 64
+                    padding: 0
                     topLeftRadius: Appearance.rounding.large
                     bottomLeftRadius: Appearance.rounding.large
                     topRightRadius: 8
@@ -875,9 +911,10 @@ Item {
                         }
                     }
                     contentItem: MaterialSymbol {
-                        anchors.centerIn: parent
                         text: "chevron_left"
                         iconSize: 28
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
                         color: root.currentPage > 0 ? Appearance.colors.colOnSurface : Appearance.colors.colOnSurfaceVariant
                         opacity: root.currentPage > 0 ? 1 : 0.4
                     }
@@ -887,6 +924,7 @@ Item {
                 RippleButton {
                     Layout.preferredWidth: 64
                     Layout.preferredHeight: 64
+                    padding: 0
                     topLeftRadius: 8
                     bottomLeftRadius: 8
                     topRightRadius: 8
@@ -894,7 +932,6 @@ Item {
                     colBackground: Appearance.colors.colSurfaceContainerHigh
                     rippleEnabled: false
                     contentItem: StyledText {
-                        anchors.centerIn: parent
                         text: (root.currentPage + 1).toString()
                         font.pixelSize: 24
                         font.weight: Font.Bold
@@ -908,6 +945,7 @@ Item {
                 RippleButton {
                     Layout.preferredWidth: 64
                     Layout.preferredHeight: 64
+                    padding: 0
                     topRightRadius: Appearance.rounding.large
                     bottomRightRadius: Appearance.rounding.large
                     topLeftRadius: 8
@@ -921,9 +959,10 @@ Item {
                         }
                     }
                     contentItem: MaterialSymbol {
-                        anchors.centerIn: parent
                         text: "chevron_right"
                         iconSize: 28
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
                         color: root.hasNextPage ? Appearance.colors.colOnSurface : Appearance.colors.colOnSurfaceVariant
                         opacity: root.hasNextPage ? 1 : 0.4
                     }

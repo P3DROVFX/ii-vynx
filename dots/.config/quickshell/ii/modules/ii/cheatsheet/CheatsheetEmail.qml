@@ -7,6 +7,7 @@ import QtQuick.Layouts
 import QtQuick.Controls
 import QtQuick.Controls.Material
 import "./email"
+import "./email/EmailIconRules.js" as IconRules
 
 Item {
     id: root
@@ -113,7 +114,7 @@ Item {
                             root.selectedSubject = item.subject;
                             root.selectedFrom = item.from;
                             root.selectedSnippet = item.snippet;
-                            root.selectedIcon = item.icon;
+                            root.selectedIcon = IconRules.classify(item.subject, item.from, item.snippet);
                             root.selectedDate = item.date;
                             root.selectedUnread = item.unread;
                             root.selectedLabelsString = item.labelsString || "";

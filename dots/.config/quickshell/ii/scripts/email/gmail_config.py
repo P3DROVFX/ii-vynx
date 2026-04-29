@@ -51,3 +51,13 @@ def refresh_token_exchange(refresh_token):
     
     with urllib.request.urlopen(req) as resp:
         return json.loads(resp.read())["access_token"]
+
+def resolve_token(token_or_refresh):
+    """
+    Returns an access token. 
+    If input starts with 'ya29.', it's assumed to be a valid access token.
+    Otherwise, it's treated as a refresh token and exchanged.
+    """
+    if token_or_refresh.startswith("ya29."):
+        return token_or_refresh
+    return refresh_token_exchange(token_or_refresh)

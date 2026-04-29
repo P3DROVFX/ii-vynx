@@ -11,57 +11,6 @@ def api_get(url, token):
     with urllib.request.urlopen(req) as resp:
         return json.loads(resp.read())
 
-# Contextual icon classifier — keyword/regex, < 1ms per email
-_ICON_RULES = [
-    # (icon_name, [keywords...])
-    ("local_shipping",  [r"tracking", r"rastreio", r"\bpedido\b", r"entregue", r"shipped",
-                         r"delivery", r"\border\b", r"enviado", r"postado", r"transportadora"]),
-    ("receipt_long",    [r"invoice", r"fatura", r"\bcompra\b", r"purchase", r"\bpayment\b",
-                         r"pagamento", r"recibo", r"receipt", r"nota fiscal", r"boleto"]),
-    ("security",        [r"login\b", r"\bsenha\b", r"password", r"\b2fa\b", r"verify",
-                         r"verification", r"seguran[cç]a", r"security", r"suspicious",
-                         r"alert.*account", r"account.*alert", r"acesso n[aã]o"]),
-    ("campaign",        [r"unsubscribe", r"newsletter", r"weekly digest", r"monthly report",
-                         r"desinscrev", r"cancelar inscri[cç][aã]o"]),
-    ("event",           [r"\binvite\b", r"\bmeeting\b", r"\bevent\b", r"reuni[aã]o",
-                         r"agendado", r"webinar", r"conference", r"calendar", r"calend[aá]rio",
-                         r"confer[eê]ncia"]),
-    ("check_circle",    [r"confirmed", r"welcome", r"bem.vindo", r"activated", r"ativado",
-                         r"cadastro aprovado", r"conta criada", r"account created",
-                         r"successfully", r"conclu[íi]do"]),
-    ("code",            [r"github", r"gitlab", r"pull request", r"\bcommit\b", r"\bissue\b",
-                         r"\bdeploy\b", r"ci/cd", r"pipeline", r"bitbucket", r"merge request"]),
-    ("forum",           [r"comentou", r"mentioned you", r"commented", r"\bliked\b",
-                         r"replied", r"responded", r"new reply", r"respondeu"]),
-    ("account_balance", [r"extrato", r"\bsaldo\b", r"transfer[eê]ncia", r"\bpix\b",
-                         r"\bbank\b", r"statement", r"balance", r"banco", r"nubank",
-                         r"bradesco", r"itau", r"ita[uú]"]),
-    ("sell",            [r"promo[cç][aã]o", r"desconto", r"discount", r"\bsale\b",
-                         r"\boferta\b", r"\d+%\s*off", r"black friday", r"cupom", r"coupon"]),
-    ("warning",         [r"\balerta\b", r"\balert\b", r"\berror\b", r"\bwarning\b",
-                         r"\bfalha\b", r"\bfailed\b", r"expired", r"expira", r"vencimento",
-                         r"problema", r"problema detectado"]),
-    ("support_agent",   [r"\bticket\b", r"\bsupport\b", r"\bcase #", r"solicita[cç][aã]o",
-                         r"\brequest\b", r"atendimento", r"suporte"]),
-    ("newspaper",       [r"\bnews\b", r"breaking", r"\breport\b", r"not[íi]cia", r"manchete"]),
-    ("flight",          [r"\bflight\b", r"\bbooking\b", r"reserva", r"\bhotel\b",
-                         r"passagem", r"\bviagem\b", r"itinerary", r"check.in", r"embarque"]),
-    ("school",          [r"\bcourse\b", r"certificate", r"certificado", r"\blearn\b",
-                         r"\baula\b", r"m[oó]dulo", r"li[cç][aã]o", r"udemy", r"coursera",
-                         r"alura"]),
-    ("new_releases",    [r"new version", r"nova vers[aã]o", r"\brelease\b", r"changelog",
-                         r"new feature", r"nova funcionalidade", r"update available"]),
-]
-
-def classify_icon(subject: str, sender: str, snippet: str) -> str:
-    """Return a Material Symbols icon name based on email content."""
-    text = (subject + " " + sender + " " + snippet).lower()
-    for icon, patterns in _ICON_RULES:
-        for pattern in patterns:
-            if re.search(pattern, text):
-                return icon
-    return "person"
-
 def fetch_detail(msg_id, token):
     url = f"https://gmail.googleapis.com/gmail/v1/users/me/messages/{msg_id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=Date"
     detail = api_get(url, token)
@@ -73,14 +22,13 @@ def fetch_detail(msg_id, token):
     return {
         "id":       detail["id"],
         "threadId": detail.get("threadId", ""),
-        "subject":  subject or "(sem assunto)",
+        "subject":  subject or "(no subject)",
         "from":     sender,
         "date":     headers.get("Date", ""),
         "snippet":  snippet,
         "unread":   "UNREAD" in label_ids,
         "starred":  "STARRED" in label_ids,
         "labels":   label_ids,
-        "icon":     classify_icon(subject, sender, snippet),
     }
 
 def main():
@@ -105,51 +53,37 @@ def main():
         last_history_id = sys.argv[5] if len(sys.argv) > 5 else ""
 
     try:
-        token = gmail_config.refresh_token_exchange(refresh_token)
+        token = gmail_config.resolve_token(refresh_token)
     except Exception:
         sys.exit(1)
 
-    # Always get current historyId from profile
     profile = api_get("https://gmail.googleapis.com/gmail/v1/users/me/profile", token)
     current_history_id = profile.get("historyId", "")
 
-    # Try incremental sync if historyId provided
-    incremental_success = False
-    messages = []
-    next_page_token = ""
+    if last_history_id and last_history_id == current_history_id and not page_token:
+        print(json.dumps({
+            "messages": [], 
+            "nextPageToken": "", 
+            "historyId": current_history_id,
+            "noChange": True
+        }))
+        return
 
     if last_history_id and not page_token:
         try:
-            # history.list returns changes since last_history_id
             h_url = f"https://gmail.googleapis.com/gmail/v1/users/me/history?startHistoryId={last_history_id}&maxResults=100"
             history_data = api_get(h_url, token)
-            
-            if "history" in history_data:
-                # Identify all message IDs that were added or had labels changed
-                affected_ids = set()
-                for h in history_data["history"]:
-                    for m in h.get("messagesAdded", []): affected_ids.add(m["message"]["id"])
-                    for m in h.get("labelsAdded", []): affected_ids.add(m["message"]["id"])
-                    for m in h.get("labelsRemoved", []): affected_ids.add(m["message"]["id"])
-                
-                if not affected_ids:
-                    # No changes at all, we can stop here if we're just syncing
-                    # But for simplicity in the current QML architecture, 
-                    # we still want to return the "current state" list.
-                    # A better impl would return a "no change" flag.
-                    pass
-                else:
-                    # If there are changes, a simple "messages.list" is still the most robust 
-                    # way to get the current view without re-implementing label filtering 
-                    # logic in Python. The real optimization is skipping metadata fetch 
-                    # for IDs we already have, but since this script is stateless, 
-                    # we can't easily do that without a local cache.
-                    pass
+            if "history" not in history_data:
+                print(json.dumps({
+                    "messages": [], 
+                    "nextPageToken": "", 
+                    "historyId": current_history_id,
+                    "noChange": True
+                }))
+                return
         except Exception:
-            # historyId might be expired (404), fall back to full sync
             pass
 
-    # Standard fetch (Full sync or fallback)
     if label_id == "INBOX":
         cats = ["category:primary"]
         if flags_arg:
@@ -187,7 +121,6 @@ def main():
         }))
         return
 
-    # Fetch details in parallel (up to 10 threads)
     results = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=10) as pool:
         futures = {pool.submit(fetch_detail, m["id"], token): i for i, m in enumerate(messages)}
@@ -197,7 +130,6 @@ def main():
             except Exception:
                 pass
 
-    # Sort by original order
     results.sort(key=lambda x: x[0])
     
     print(json.dumps({

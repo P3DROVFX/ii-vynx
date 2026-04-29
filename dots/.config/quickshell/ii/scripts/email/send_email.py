@@ -40,9 +40,9 @@ def main():
     body_html     = sys.argv[4]
 
     try:
-        # 1. Exchange refresh token for access token
+        # 1. Resolve token (access or refresh)
         try:
-            token = gmail_config.refresh_token_exchange(refresh_token)
+            token = gmail_config.resolve_token(refresh_token)
         except Exception as e:
             print(json.dumps({"success": False, "error": f"Failed to get access token: {str(e)}"}))
             sys.exit(0)

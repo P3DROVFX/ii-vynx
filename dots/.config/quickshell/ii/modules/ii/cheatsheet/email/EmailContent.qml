@@ -570,12 +570,11 @@ Item {
                         color: Appearance.colors.colLayer4Base
                         antialiasing: true
 
-                        MaterialSymbol {
-                            anchors.centerIn: parent
-                            text: root.icon
-                            iconSize: 24
-                            color: Appearance.colors.colOnSurfaceVariant
-                        }
+                            EmailIcon {
+                                anchors.centerIn: parent
+                                icon: root.icon || "person"
+                                iconSize: 24
+                            }
                     }
 
                     // Name chip

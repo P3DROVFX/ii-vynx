@@ -366,7 +366,7 @@ class _HtmlSanitizer(HTMLParser):
             # Pop tags
             del self._tag_stack[idx:]
 
-        # legacy code removed
+
 
     def handle_data(self, data):
         if self._skip_depth > 0:
@@ -438,7 +438,7 @@ def main():
     message_id    = sys.argv[2]
 
     try:
-        token = gmail_config.refresh_token_exchange(refresh_token)
+        token = gmail_config.resolve_token(refresh_token)
     except Exception:
         print(json.dumps({"body": "", "htmlPath": "", "attachments": []}))
         sys.exit(1)

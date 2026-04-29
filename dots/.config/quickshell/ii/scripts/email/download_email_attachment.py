@@ -13,7 +13,7 @@ def main():
     filename = sys.argv[4]
 
     try:
-        token = gmail_config.refresh_token_exchange(refresh_token)
+        token = gmail_config.resolve_token(refresh_token)
         url = f"https://gmail.googleapis.com/gmail/v1/users/me/messages/{message_id}/attachments/{attachment_id}"
         req = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}"})
         

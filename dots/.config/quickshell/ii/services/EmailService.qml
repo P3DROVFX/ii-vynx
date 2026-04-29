@@ -29,7 +29,7 @@ Singleton {
     property bool enableUpdates: false
     property bool enablePromotions: false
     property bool enableSocials: false
-    property int refreshIntervalMinutes: 15
+    property int refreshIntervalMinutes: 1
     property bool compactMode: false
     property bool authenticating: false
     property var enabledLabels: []
@@ -123,6 +123,12 @@ Singleton {
     onEnableSpamChanged: _startDebouncedSync()
     onEnableSentChanged: _startDebouncedSync()
     onEnableTrashChanged: _startDebouncedSync()
+    onRefreshIntervalMinutesChanged: {
+        _startDebouncedSync();
+        if (autoRefreshTimer.running) {
+            autoRefreshTimer.restart();
+        }
+    }
 
     Timer {
         id: debounceSyncTimer
@@ -140,6 +146,7 @@ Singleton {
         running: root.authenticated && root.refreshIntervalMinutes > 0
         repeat: true
         onTriggered: {
+            console.log("[Gmail] Auto-refresh Timer Triggered! Interval:", interval, "ms");
             root.syncAll();
         }
     }
@@ -199,6 +206,15 @@ Singleton {
     property int starredUnreadCount: 0
     property int importantUnreadCount: 0
     property int purchasesUnreadCount: 0
+    property var syncingLabels: ({})
+
+    function _getBestToken() {
+        let now = Math.floor(Date.now() / 1000);
+        if (_accessToken !== "" && now < (_tokenExpiry - 30)) {
+            return _accessToken;
+        }
+        return _refreshToken;
+    }
 
     function decrementUnreadForModel(targetModel) {
         if (targetModel === inboxMessages)
@@ -242,7 +258,7 @@ Singleton {
         }
     }
 
-    // initialization — keyring pode não ter carregado ainda
+    // initialization — keyring might not have loaded yet
     Component.onCompleted: {
         root.checkCredentials();
         if (KeyringStorage.loaded) {
@@ -399,45 +415,50 @@ Singleton {
         let tab = label.toLowerCase();
         let targetModel = tab === "inbox" ? inboxMessages : tab === "sent" ? sentMessages : tab === "spam" ? spamMessages : tab === "starred" ? starredMessages : tab === "important" ? importantMessages : tab === "purchases" ? purchasesMessages : tab === "trash" ? trashMessages : searchMessagesModel;
 
-        // Only show global loading if the model is empty or forced
-        if (force || targetModel.count === 0) {
-            loading = true;
+        // Clear model immediately if forcing or changing page to show loading state
+        if (force || pageIndex !== 0) {
+            targetModel.clear();
         }
-        let token = _getToken(tab, pageIndex);
 
+        // Always set loading to true to provide UI feedback (progress bar)
+        // The global overlay in CheatsheetEmail.qml will only show if model.count === 0
+        loading = true;
+        let hId = (force || targetModel.count === 0) ? "" : historyId;
+        let token = _getToken(tab, pageIndex);
+        let bestToken = _getBestToken();
         if (tab === "inbox") {
             let catFlags = (enableUpdates ? "1" : "0") + "," + (enablePromotions ? "1" : "0") + "," + (enableSocials ? "1" : "0");
-            inboxFetcher.command = ["python3", _fetchScript, _refreshToken, "INBOX", maxEmails.toString(), catFlags, token, historyId];
+            inboxFetcher.command = ["python3", _fetchScript, bestToken, "INBOX", maxEmails.toString(), catFlags, token, hId];
             inboxFetcher._currentTab = tab;
             inboxFetcher._currentPage = pageIndex;
             inboxFetcher.running = true;
         } else if (tab === "sent") {
-            sentFetcher.command = ["python3", _fetchScript, _refreshToken, "SENT", maxEmails.toString(), token, historyId];
+            sentFetcher.command = ["python3", _fetchScript, bestToken, "SENT", maxEmails.toString(), token, hId];
             sentFetcher._currentTab = tab;
             sentFetcher._currentPage = pageIndex;
             sentFetcher.running = true;
         } else if (tab === "trash") {
-            trashFetcher.command = ["python3", _fetchScript, _refreshToken, "TRASH", maxEmails.toString(), token, historyId];
+            trashFetcher.command = ["python3", _fetchScript, bestToken, "TRASH", maxEmails.toString(), token, hId];
             trashFetcher._currentTab = tab;
             trashFetcher._currentPage = pageIndex;
             trashFetcher.running = true;
         } else if (tab === "spam") {
-            spamFetcher.command = ["python3", _fetchScript, _refreshToken, "SPAM", maxEmails.toString(), token, historyId];
+            spamFetcher.command = ["python3", _fetchScript, bestToken, "SPAM", maxEmails.toString(), token, hId];
             spamFetcher._currentTab = tab;
             spamFetcher._currentPage = pageIndex;
             spamFetcher.running = true;
         } else if (tab === "starred") {
-            starredFetcher.command = ["python3", _fetchScript, _refreshToken, "STARRED", maxEmails.toString(), token, historyId];
+            starredFetcher.command = ["python3", _fetchScript, bestToken, "STARRED", maxEmails.toString(), token, hId];
             starredFetcher._currentTab = tab;
             starredFetcher._currentPage = pageIndex;
             starredFetcher.running = true;
         } else if (tab === "important") {
-            importantFetcher.command = ["python3", _fetchScript, _refreshToken, "IMPORTANT", maxEmails.toString(), token, historyId];
+            importantFetcher.command = ["python3", _fetchScript, bestToken, "IMPORTANT", maxEmails.toString(), token, hId];
             importantFetcher._currentTab = tab;
             importantFetcher._currentPage = pageIndex;
             importantFetcher.running = true;
         } else if (tab === "purchases") {
-            purchasesFetcher.command = ["python3", _fetchScript, _refreshToken, "CATEGORY_PURCHASES", maxEmails.toString(), token, historyId];
+            purchasesFetcher.command = ["python3", _fetchScript, bestToken, "CATEGORY_PURCHASES", maxEmails.toString(), token, hId];
             purchasesFetcher._currentTab = tab;
             purchasesFetcher._currentPage = pageIndex;
             purchasesFetcher.running = true;
@@ -454,7 +475,7 @@ Singleton {
 
     function _startFetchAll() {
         syncLabel("inbox");
-        labelFetcher.command = ["python3", Directories.scriptPath + "/email/fetch_labels.py", _refreshToken, enabledLabels.join(",")];
+        labelFetcher.command = ["python3", Directories.scriptPath + "/email/fetch_labels.py", _getBestToken(), enabledLabels.join(",")];
         labelFetcher.running = true;
     }
 
@@ -473,8 +494,14 @@ Singleton {
         property int _currentPage: 0
         command: ["echo", "[]"]
         onRunningChanged: {
-            if (running)
+            if (running) {
                 root._pendingFetches++;
+                root.syncingLabels[id] = true;
+                root.syncingLabelsChanged();
+            } else {
+                delete root.syncingLabels[id];
+                root.syncingLabelsChanged();
+            }
         }
         stdout: StdioCollector {
             onStreamFinished: {
@@ -494,8 +521,14 @@ Singleton {
         property int _currentPage: 0
         command: ["echo", "[]"]
         onRunningChanged: {
-            if (running)
+            if (running) {
                 root._pendingFetches++;
+                root.syncingLabels[id] = true;
+                root.syncingLabelsChanged();
+            } else {
+                delete root.syncingLabels[id];
+                root.syncingLabelsChanged();
+            }
         }
         stdout: StdioCollector {
             onStreamFinished: {
@@ -515,8 +548,14 @@ Singleton {
         property int _currentPage: 0
         command: ["echo", "[]"]
         onRunningChanged: {
-            if (running)
+            if (running) {
                 root._pendingFetches++;
+                root.syncingLabels[id] = true;
+                root.syncingLabelsChanged();
+            } else {
+                delete root.syncingLabels[id];
+                root.syncingLabelsChanged();
+            }
         }
         stdout: StdioCollector {
             onStreamFinished: {
@@ -536,8 +575,14 @@ Singleton {
         property int _currentPage: 0
         command: ["echo", "[]"]
         onRunningChanged: {
-            if (running)
+            if (running) {
                 root._pendingFetches++;
+                root.syncingLabels[id] = true;
+                root.syncingLabelsChanged();
+            } else {
+                delete root.syncingLabels[id];
+                root.syncingLabelsChanged();
+            }
         }
         stdout: StdioCollector {
             onStreamFinished: {
@@ -557,8 +602,14 @@ Singleton {
         property int _currentPage: 0
         command: ["echo", "[]"]
         onRunningChanged: {
-            if (running)
+            if (running) {
                 root._pendingFetches++;
+                root.syncingLabels[id] = true;
+                root.syncingLabelsChanged();
+            } else {
+                delete root.syncingLabels[id];
+                root.syncingLabelsChanged();
+            }
         }
         stdout: StdioCollector {
             onStreamFinished: {
@@ -578,8 +629,14 @@ Singleton {
         property int _currentPage: 0
         command: ["echo", "[]"]
         onRunningChanged: {
-            if (running)
+            if (running) {
                 root._pendingFetches++;
+                root.syncingLabels[id] = true;
+                root.syncingLabelsChanged();
+            } else {
+                delete root.syncingLabels[id];
+                root.syncingLabelsChanged();
+            }
         }
         stdout: StdioCollector {
             onStreamFinished: {
@@ -599,8 +656,14 @@ Singleton {
         property int _currentPage: 0
         command: ["echo", "[]"]
         onRunningChanged: {
-            if (running)
+            if (running) {
                 root._pendingFetches++;
+                root.syncingLabels[id] = true;
+                root.syncingLabelsChanged();
+            } else {
+                delete root.syncingLabels[id];
+                root.syncingLabelsChanged();
+            }
         }
         stdout: StdioCollector {
             onStreamFinished: {
@@ -692,6 +755,11 @@ Singleton {
         }
         try {
             const res = JSON.parse(jsonText);
+
+            if (res.noChange) {
+                return;
+            }
+
             const msgs = res.messages || [];
 
             if (res.historyId) {
@@ -705,14 +773,30 @@ Singleton {
                 root._setNextToken(tab, pageIndex, npt);
             }
 
-            // Liberando memória da página anterior
+            // Deep comparison to avoid unnecessary updates and flickering
+            if (targetModel.count === msgs.length) {
+                let identical = true;
+                for (let i = 0; i < msgs.length; i++) {
+                    let oldItem = targetModel.get(i);
+                    let newItem = msgs[i];
+
+                    if (oldItem.id !== newItem.id || oldItem.unread !== (newItem.unread || false) || oldItem.starred !== (newItem.starred || false) || oldItem.subject !== (newItem.subject || "(sem assunto)") || oldItem.snippet !== (newItem.snippet || "")) {
+                        identical = false;
+                        break;
+                    }
+                }
+                if (identical)
+                    return;
+            }
+
+            // Only clear and refill if data actually changed
             targetModel.clear();
 
             msgs.forEach((msg, index) => {
                 let msgData = {
                     id: msg.id,
                     threadId: msg.threadId || "",
-                    subject: msg.subject || "(sem assunto)",
+                    subject: msg.subject || "(no subject)",
                     from: msg.from || "",
                     date: msg.date || "",
                     snippet: msg.snippet || "",
@@ -862,16 +946,12 @@ Singleton {
         loading = true;
 
         let token = _getToken("search", pageIndex);
+        let bestToken = _getBestToken();
 
-        searchFetcher.command = ["python3", _fetchScript, _refreshToken, "SEARCH:" + query, maxEmails.toString(), token];
+        searchFetcher.command = ["python3", _fetchScript, bestToken, "SEARCH:" + query, maxEmails.toString(), token];
         searchFetcher._currentTab = "search";
         searchFetcher._currentPage = pageIndex;
         searchFetcher.running = true;
-    }
-
-    function getThread(threadId, callback) {
-        // TODO: implement with Process if needed
-        console.warn("[Gmail] getThread not yet implemented with Process API");
     }
 
     Process {
@@ -915,7 +995,8 @@ Singleton {
     function fetchEmailBody(messageId) {
         currentEmailBody = "";
         loadingEmailBody = true;
-        emailBodyFetcher.command = ["python3", Directories.scriptPath + "/email/fetch_email_body.py", _refreshToken, messageId];
+        let bestToken = _getBestToken();
+        emailBodyFetcher.command = ["python3", Directories.scriptPath + "/email/fetch_email_body.py", bestToken, messageId];
         emailBodyFetcher.running = true;
     }
 
@@ -943,7 +1024,8 @@ Singleton {
     function downloadAttachment(messageId, attachmentId, filename, targetDir) {
         if (_refreshToken === "")
             return;
-        let cmd = ["python3", Directories.scriptPath + "/email/download_email_attachment.py", _refreshToken, messageId, attachmentId, filename];
+        let bestToken = _getBestToken();
+        let cmd = ["python3", Directories.scriptPath + "/email/download_email_attachment.py", bestToken, messageId, attachmentId, filename];
         if (targetDir) {
             cmd.push(targetDir);
         }

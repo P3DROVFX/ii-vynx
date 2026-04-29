@@ -20,7 +20,7 @@ def main():
     enabled_labels = sys.argv[2].split(",") if len(sys.argv) > 2 and sys.argv[2] else []
 
     try:
-        token = gmail_config.refresh_token_exchange(refresh_token)
+        token = gmail_config.resolve_token(refresh_token)
     except Exception:
         print("{}")
         sys.exit(1)

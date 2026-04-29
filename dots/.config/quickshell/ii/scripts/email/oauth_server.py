@@ -41,11 +41,11 @@ os.makedirs(os.path.expanduser("~/.cache/quickshell-gmail"), exist_ok=True)
 with open(os.path.expanduser("~/.cache/quickshell-gmail/verifier"), "w") as f:
     f.write(code_verifier)
 
-print(f"\n🔗 URL de autorização:\n{auth_url}\n", flush=True)
-print(f"⏳ Aguardando callback em localhost:{PORT}...", flush=True)
+print(f"\n🔗 Authorization URL:\n{auth_url}\n", flush=True)
+print(f"⏳ Waiting for callback on localhost:{PORT}...", flush=True)
 subprocess.Popen(["xdg-open", auth_url])
 
-# Flag para comunicar resultado ao thread principal
+# Flag to communicate result to the main thread
 result = {"done": False, "refresh": "", "email": "", "picture": ""}
 
 class Handler(http.server.BaseHTTPRequestHandler):
@@ -53,12 +53,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def handle_error(self): pass
 
     def do_GET(self):
-        # Responde PRIMEIRO, depois processa — evita timeout no browser
+        # Respond FIRST, then process — avoids browser timeout
         self.send_response(200)
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.end_headers()
         self.wfile.write(b"""<html><body style="font-family:sans-serif;text-align:center;padding:60px">
-        <h2>Autorizado!</h2><p>Pode fechar esta aba.</p></body></html>""")
+        <h2>Authorized!</h2><p>You may close this tab.</p></body></html>""")
         self.wfile.flush()
 
         if not self.path.startswith("/callback"):
@@ -70,13 +70,13 @@ class Handler(http.server.BaseHTTPRequestHandler):
         code = params.get("code", "")
 
         if not code:
-            print("❌ Nenhum code na URL", flush=True)
+            print("❌ No code in URL", flush=True)
             return
 
-        print(f"\n📨 Code recebido: {code[:20]}...", flush=True)
-        print("🔄 Trocando code por tokens...", flush=True)
+        print(f"\n📨 Code received: {code[:20]}...", flush=True)
+        print("🔄 Exchanging code for tokens...", flush=True)
 
-        # Troca code → tokens
+        # Exchange code → tokens
         try:
             data = urllib.parse.urlencode({
                 "code":          code,
@@ -96,22 +96,22 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 tokens = json.loads(resp.read())
         except urllib.error.HTTPError as e:
             body = e.read().decode()
-            print(f"❌ Erro na troca de tokens: {e.code} {e.reason}", flush=True)
-            print(f"   Resposta: {body}", flush=True)
+            print(f"❌ Token exchange error: {e.code} {e.reason}", flush=True)
+            print(f"   Response: {body}", flush=True)
             return
         except Exception as e:
-            print(f"❌ Erro inesperado: {type(e).__name__}: {e}", flush=True)
+            print(f"❌ Unexpected error: {type(e).__name__}: {e}", flush=True)
             return
 
         refresh = tokens.get("refresh_token", "")
         access  = tokens.get("access_token", "")
 
         if not refresh:
-            print("⚠️  refresh_token não veio — revogue o app em myaccount.google.com/permissions e tente de novo", flush=True)
-            print(f"   access_token (temporário): {access[:40]}...", flush=True)
+            print("⚠️  refresh_token not returned — revoke the app at myaccount.google.com/permissions and try again", flush=True)
+            print(f"   access_token (temporary): {access[:40]}...", flush=True)
             return
 
-        # Busca email do usuário
+        # Fetch user email
         try:
             req2 = urllib.request.Request(
                 "https://www.googleapis.com/oauth2/v2/userinfo",
@@ -122,11 +122,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
             email = userinfo.get("email", "desconhecido")
             picture = userinfo.get("picture", "")
         except Exception as e:
-            email = "erro-ao-buscar"
+            email = "error-fetching"
             picture = ""
-            print(f"⚠️  Não conseguiu buscar email: {e}", flush=True)
+            print(f"⚠️  Could not fetch email: {e}", flush=True)
 
-        print(f"\n✅ Autenticado como: {email}", flush=True)
+        print(f"\n✅ Authenticated as: {email}", flush=True)
         print(f"🔑 refresh_token:\n{refresh}\n", flush=True)
 
         result["refresh"] = refresh
@@ -140,13 +140,13 @@ while not result["done"]:
     httpd.handle_request()
 
 if result["done"]:
-    print("📡 Notificando Quickshell via IPC...", flush=True)
+    print("📡 Notifying Quickshell via IPC...", flush=True)
     ipc = subprocess.run(
         ["qs", "-c", os.path.expanduser("~/.config/quickshell/ii"), "ipc", "call", "gmail", "onAuthComplete", result["refresh"], result["email"], result["picture"]],
         capture_output=True, text=True
     )
     if ipc.returncode == 0:
-        print("✅ IPC enviado com sucesso", flush=True)
+        print("✅ IPC sent successfully", flush=True)
     else:
-        print(f"⚠️  IPC falhou (Quickshell não está rodando?): {ipc.stderr}", flush=True)
-        print("   Salve o refresh_token acima manualmente para continuar testando", flush=True)
+        print(f"⚠️  IPC failed (Quickshell not running?): {ipc.stderr}", flush=True)
+        print("   Save the refresh_token above manually to continue testing", flush=True)
