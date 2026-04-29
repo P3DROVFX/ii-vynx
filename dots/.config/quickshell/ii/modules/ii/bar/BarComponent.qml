@@ -95,6 +95,7 @@ Item {
             horizontalCenter: root.vertical ? undefined : rootItem.horizontalCenter
         }
         
+        padding: (modelData.id === "dashboard_panel_button" || modelData.id === "policies_panel_button") ? 0 : 5
         startRadius: rootItem.startRadius
         endRadius: rootItem.endRadius
         colBackground: (itemLoader.item?.activated || primaryBackgroundComps.includes(modelData.id)) ? rootItem.colBackgroundHighlight : rootItem.colBackground
@@ -138,10 +139,19 @@ Item {
 
     Component { id: workspaceComp; Workspaces { vertical: rootItem.vertical } }
 
-    Component { id: policiesPanelButton; PoliciesPanelButton {} }
+    Component { id: policiesPanelButton; PoliciesPanelButton {
+        startRadius: rootItem.startRadius
+        endRadius: rootItem.endRadius
+    } }
     
-    Component { id: dashboardPanelButton; DashboardPanelButton {} }
-    Component { id: dashboardPanelButtonVert; VerticalDashboardPanelButton {} }
+    Component { id: dashboardPanelButton; DashboardPanelButton {
+        startRadius: rootItem.startRadius
+        endRadius: rootItem.endRadius
+    } }
+    Component { id: dashboardPanelButtonVert; VerticalDashboardPanelButton {
+        startRadius: rootItem.startRadius
+        endRadius: rootItem.endRadius
+    } }
 
     Component { id: bluetoothComp; BluetoothDevicesWidget { vertical: rootItem.vertical } }
     Component { id: bluetoothCompVert; Vertical.VerticalBluetoothDevicesWidget {} }

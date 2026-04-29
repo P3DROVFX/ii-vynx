@@ -165,7 +165,7 @@ GroupButton {
         Connections {
             target: root.mouseArea
             function onPressed(event) {
-                let d = (ox, oy) => ox * ox + oy * oy;
+                var d = (ox, oy) => ox * ox + oy * oy;
                 rippleAnim.cx = event.x;
                 rippleAnim.cy = event.y;
                 rippleAnim.r = Math.sqrt(Math.max(d(0, 0), d(root.width, 0), d(0, root.height), d(root.width, root.height)));

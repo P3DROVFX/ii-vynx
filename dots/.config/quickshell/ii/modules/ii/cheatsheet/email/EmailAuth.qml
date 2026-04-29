@@ -277,7 +277,7 @@ Item {
                     colBackground: Appearance.colors.colSurfaceContainerHigh
                     colBackgroundHover: Appearance.colors.colSurfaceContainerHighest
                     onClicked: {
-                        let envPath = FileUtils.trimFileProtocol(Directories.config + "/quickshell/ii/.env");
+                        var envPath = FileUtils.trimFileProtocol(Directories.config + "/quickshell/ii/.env");
                         Qt.openUrlExternally("file://" + envPath);
                     }
                     

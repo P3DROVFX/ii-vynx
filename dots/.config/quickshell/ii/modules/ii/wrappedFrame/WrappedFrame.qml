@@ -19,6 +19,7 @@ Item {
     component HorizontalFrame: PanelWindow {
         id: cornerPanelWindow
         property bool showBackground: true
+        WlrLayershell.namespace: "quickshell:bar"
 
         color: showBackground ? Appearance.colors.colLayer0 : "transparent"
         implicitWidth: frameThickness;implicitHeight: frameThickness
@@ -36,6 +37,7 @@ Item {
     component VerticalFrame: PanelWindow {
         id: cornerPanelWindow
         property bool showBackground: true
+        WlrLayershell.namespace: "quickshell:bar"
 
         color: showBackground ? Appearance.colors.colLayer0 : "transparent"
         implicitWidth: frameThickness;implicitHeight: frameThickness
@@ -56,6 +58,7 @@ Item {
         property bool bottom
         property bool showBackground: true
         screen: monitorScope.modelData
+        WlrLayershell.namespace: "quickshell:bar"
         anchors {
             bottom: bottom
             top: !bottom

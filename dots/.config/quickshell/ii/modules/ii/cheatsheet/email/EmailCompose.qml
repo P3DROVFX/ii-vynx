@@ -53,14 +53,18 @@ Item {
     property alias subjectText: subjectInput.text
     property string lastError: ""
     property var attachments: []
+    property string threadId: ""
+    property string inReplyTo: ""
 
     // Send availability
     readonly property bool canSend: toInput.text.trim().length > 0 && subjectInput.text.trim().length > 0 && bodyInput.text.trim().length > 0 && !EmailService.sendingEmail
 
-    function setReplyMode(to, subject, body) {
+    function setReplyMode(to, subject, body, threadId = "", inReplyTo = "") {
         toInput.text = to;
         subjectInput.text = subject;
         bodyInput.text = body;
+        root.threadId = threadId;
+        root.inReplyTo = inReplyTo;
         root.attachments = [];
         bodyInput.cursorPosition = 0;
         bodyInput.forceActiveFocus();
@@ -162,7 +166,7 @@ Item {
 
     // ── Rich-text formatting on selection ────────────────────────────────────
     function applyFormat(fmt) {
-        const edit = bodyInput;
+        var edit = bodyInput;
         if (edit.selectionStart === edit.selectionEnd) {
             // No selection: toggle global font property as convenience
             if (fmt === "bold")
@@ -176,18 +180,18 @@ Item {
             return;
         }
 
-        const start = edit.selectionStart;
-        const end = edit.selectionEnd;
+        var start = edit.selectionStart;
+        var end = edit.selectionEnd;
 
         // Simple alpha markers to avoid HTML escaping issues
-        const sM = "XXSTRTXX";
-        const eM = "XXENDXX";
+        var sM = "XXSTRTXX";
+        var eM = "XXENDXX";
 
         // Insert markers into the document
         edit.insert(end, eM);
         edit.insert(start, sM);
 
-        let tag = "b";
+        var tag = "b";
         if (fmt === "italic")
             tag = "i";
         else if (fmt === "under")
@@ -196,8 +200,8 @@ Item {
             tag = "s";
 
         // Get the full HTML and replace markers with tags
-        let html = edit.text;
-        let newHtml = html.split(sM).join("<" + tag + ">").split(eM).join("</" + tag + ">");
+        var html = edit.text;
+        var newHtml = html.split(sM).join("<" + tag + ">").split(eM).join("</" + tag + ">");
 
         edit.text = newHtml;
         edit.forceActiveFocus();
@@ -214,8 +218,8 @@ Item {
         if (!canSend)
             return;
         root.lastError = "";
-        const body = `<p>${bodyInput.text.replace(/\n/g, "<br>")}</p>`;
-        EmailService.sendEmail(toText.trim(), subjectText.trim(), body, root.attachments);
+        // bodyInput.text is already HTML because textFormat is RichText
+        EmailService.sendEmail(toText.trim(), subjectText.trim(), bodyInput.text, root.attachments, root.threadId, root.inReplyTo);
     }
 
     Connections {
@@ -531,7 +535,7 @@ Item {
                         anchors.bottomMargin: 88  // space for toolbar
                         contentWidth: width
                         contentHeight: Math.max(height, bodyInput.implicitHeight)
-                        clip: false  // let placeholder show through
+                        clip: false  // var placeholder show through
 
                         TextEdit {
                             id: bodyInput
@@ -612,7 +616,7 @@ Item {
                                         hoverEnabled: true
                                         cursorShape: Qt.PointingHandCursor
                                         onClicked: {
-                                            let newAtts = root.attachments.slice();
+                                            var newAtts = root.attachments.slice();
                                             newAtts.splice(index, 1);
                                             root.attachments = newAtts;
                                         }
@@ -1020,8 +1024,8 @@ Item {
                         implicitHeight: 36
                         buttonRadius: Appearance.rounding.full
                         colBackground: {
-                            let currentPath = FileUtils.trimFileProtocol(localFolderModel.folder.toString());
-                            let btnPath = FileUtils.trimFileProtocol(modelData.path);
+                            var currentPath = FileUtils.trimFileProtocol(localFolderModel.folder.toString());
+                            var btnPath = FileUtils.trimFileProtocol(modelData.path);
                             return currentPath === btnPath ? Appearance.colors.colSecondaryContainer : Appearance.colors.colLayer2Base;
                         }
                         colBackgroundHover: Appearance.colors.colLayer2Hover
@@ -1039,8 +1043,8 @@ Item {
                                 text: modelData.icon
                                 iconSize: 14
                                 color: {
-                                    let currentPath = FileUtils.trimFileProtocol(localFolderModel.folder.toString());
-                                    let btnPath = FileUtils.trimFileProtocol(modelData.path);
+                                    var currentPath = FileUtils.trimFileProtocol(localFolderModel.folder.toString());
+                                    var btnPath = FileUtils.trimFileProtocol(modelData.path);
                                     return currentPath === btnPath ? Appearance.colors.colOnSecondaryContainer : Appearance.colors.colOnSurfaceVariant;
                                 }
                             }
@@ -1049,8 +1053,8 @@ Item {
                                 text: modelData.label
                                 font.pixelSize: Appearance.font.pixelSize.small
                                 color: {
-                                    let currentPath = FileUtils.trimFileProtocol(localFolderModel.folder.toString());
-                                    let btnPath = FileUtils.trimFileProtocol(modelData.path);
+                                    var currentPath = FileUtils.trimFileProtocol(localFolderModel.folder.toString());
+                                    var btnPath = FileUtils.trimFileProtocol(modelData.path);
                                     return currentPath === btnPath ? Appearance.colors.colOnSecondaryContainer : Appearance.colors.colOnSurfaceVariant;
                                 }
                             }
@@ -1121,9 +1125,9 @@ Item {
                             if (fileDelegate.capturedIsDir) {
                                 localFolderModel.folder = "file://" + fileDelegate.capturedPath;
                             } else {
-                                let path = fileDelegate.capturedPath;
+                                var path = fileDelegate.capturedPath;
                                 if (!root.attachments.includes(path)) {
-                                    let newAtts = root.attachments.slice();
+                                    var newAtts = root.attachments.slice();
                                     newAtts.push(path);
                                     root.attachments = newAtts;
                                 }
@@ -1166,7 +1170,7 @@ Item {
                                     color: fileDelegate.capturedIsDir ? Appearance.colors.colOnSecondaryContainer : Appearance.colors.colPrimary
 
                                     function getFileIcon(name) {
-                                        let ext = name.split('.').pop().toLowerCase();
+                                        var ext = name.split('.').pop().toLowerCase();
                                         if (["jpg", "jpeg", "png", "gif", "svg", "webp", "bmp"].includes(ext))
                                             return "image";
                                         if (["mp4", "mkv", "avi", "mov", "webm"].includes(ext))
@@ -1204,7 +1208,7 @@ Item {
                                 visible: !fileDelegate.capturedIsDir
                                 text: {
                                     if (typeof fileSize !== "undefined" && fileSize >= 0) {
-                                        let s = fileSize;
+                                        var s = fileSize;
                                         if (s < 1024)
                                             return s + " B";
                                         if (s < 1048576)

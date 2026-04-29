@@ -18,31 +18,74 @@ Item {
     property string htmlPath: ""
     property var attachments: null
     property string messageId: ""
+    property string threadId: ""
     property string labelsString: ""
     property var detectedMeetings: []
     property var detectedPhones: []
+    property var detectedCodes: []
 
+    property string displayBody: ""
+    property string quotedBody: ""
+    property bool hasQuotedBody: false
+    property bool showQuoted: false
 
-    readonly property string processedBody: {
-        if (!root.body)
-            return "";
-        let emailRegex = /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})(?![^<]*>|[^<>]*<\/a>)/g;
-        return root.body.replace(emailRegex, '<a href="copy:$1">$1</a>');
+    function processBody(rawBody) {
+        if (!rawBody) {
+            root.displayBody = "";
+            root.quotedBody = "";
+            root.hasQuotedBody = false;
+            return;
+        }
+
+        var patterns = [/--- .* wrote ---/i, /Em .* escreveu:/i, /On .* wrote:/i, /<div class="gmail_quote"/i, /<blockquote>/i];
+
+        var splitIndex = -1;
+        for (var i = 0; i < patterns.length; i++) {
+            var match = rawBody.match(patterns[i]);
+            if (match) {
+                if (splitIndex === -1 || match.index < splitIndex) {
+                    splitIndex = match.index;
+                }
+            }
+        }
+
+        var emailRegex = /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})(?![^<]*>|[^<>]*<\/a>)/g;
+
+        if (splitIndex !== -1) {
+            var main = rawBody.substring(0, splitIndex).trim();
+            var quoted = rawBody.substring(splitIndex).trim();
+            root.displayBody = main.replace(emailRegex, '<a href="copy:$1">$1</a>');
+            root.quotedBody = quoted.replace(emailRegex, '<a href="copy:$1">$1</a>');
+            root.hasQuotedBody = true;
+        } else {
+            root.displayBody = rawBody.replace(emailRegex, '<a href="copy:$1">$1</a>');
+            root.quotedBody = "";
+            root.hasQuotedBody = false;
+        }
     }
+
+    onBodyChanged: {
+        processBody(root.body);
+        updateDetections();
+    }
+
+    readonly property string processedBody: root.displayBody
 
     function updateDetections() {
         if (!root.body) {
             root.detectedMeetings = [];
             root.detectedPhones = [];
+            root.detectedCodes = [];
             return;
         }
-        let bodyRaw = root.body;
-        let clean = root.body.replace(/<[^>]*>?/gm, ' ');
+        var bodyRaw = root.body;
+        var clean = root.body.replace(/<style[\s\S]*?<\/style>/gi, '').replace(/<script[\s\S]*?<\/script>/gi, '').replace(/<br\s*\/?>/gi, '\n').replace(/<\/p>/gi, '\n').replace(/<\/div>/gi, '\n').replace(/<[^>]*>?/gm, ' ');
+        var textNoUrls = clean.replace(/https?:\/\/[^\s]+/gi, ' ');
 
-        let meetings = [];
-        let m;
+        var meetings = [];
+        var m;
         // Meet
-        let meetRegex = /https?:\/\/meet\.google\.com\/[a-z0-9-]+/gi;
+        var meetRegex = /https?:\/\/meet\.google\.com\/[a-z0-9-]+/gi;
         while ((m = meetRegex.exec(bodyRaw)) !== null)
             meetings.push({
                 type: "Meet",
@@ -50,14 +93,14 @@ Item {
                 icon: "video_chat"
             });
         // Teams
-        let teamsRegex1 = /https?:\/\/teams\.microsoft\.com\/l\/meetup-join\/[^\s"<>'{}|\\^`[\]]+/gi;
+        var teamsRegex1 = /https?:\/\/teams\.microsoft\.com\/l\/meetup-join\/[^\s"<>'{}|\\^`[\]]+/gi;
         while ((m = teamsRegex1.exec(bodyRaw)) !== null)
             meetings.push({
                 type: "Teams",
                 url: m[0],
                 icon: "groups"
             });
-        let teamsRegex2 = /https?:\/\/teams\.microsoft\.com\/v2\/\?meetingjoin=true#\/meet\/[^\s"<>'{}|\\^`[\]]+/gi;
+        var teamsRegex2 = /https?:\/\/teams\.microsoft\.com\/v2\/\?meetingjoin=true#\/meet\/[^\s"<>'{}|\\^`[\]]+/gi;
         while ((m = teamsRegex2.exec(bodyRaw)) !== null)
             meetings.push({
                 type: "Teams",
@@ -65,7 +108,7 @@ Item {
                 icon: "groups"
             });
         // Zoom
-        let zoomRegex = /https?:\/\/zoom\.us\/j\/[0-9]+(?:\?pwd=[a-zA-Z0-9]+)?/gi;
+        var zoomRegex = /https?:\/\/zoom\.us\/j\/[0-9]+(?:\?pwd=[a-zA-Z0-9]+)?/gi;
         while ((m = zoomRegex.exec(bodyRaw)) !== null)
             meetings.push({
                 type: "Zoom",
@@ -75,35 +118,45 @@ Item {
 
         root.detectedMeetings = meetings.filter((v, i, a) => a.findIndex(t => t.url === v.url) === i);
 
-        let phones = [];
-        let phoneRegex = /(?:\+?55\s?)?(?:\(?\d{2}\)?\s?)?9?\d{4}[-.\s]?\d{4}/g;
+        var phones = [];
+        var phoneRegex = /(?:\+?55\s?)?(?:\(?\d{2}\)?\s?)?9?\d{4}[-.\s]?\d{4}/g;
         while ((m = phoneRegex.exec(clean)) !== null) {
-            let p = m[0].trim();
+            var p = m[0].trim();
             if (p.length >= 8)
                 phones.push(p);
         }
         root.detectedPhones = phones.filter((v, i, a) => a.indexOf(v) === i);
-    }
 
-    onBodyChanged: updateDetections()
+        // Codes (OTP) - alphanumeric 4-10 chars near keywords
+        var codes = [];
+        var keywords = "(código|code|token|senha|password|verificação|verification|acesso|access|pin)";
+        var codeRegex = new RegExp(keywords + "[:\\s]+([A-Z0-9]{4,10})(?![A-Z0-9])", "gi");
+        while ((m = codeRegex.exec(textNoUrls)) !== null) {
+            if (m[2] && !/^[0-9]{1,3}$/.test(m[2])) { // Filter out small numbers
+                if (codes.indexOf(m[2]) === -1)
+                    codes.push(m[2]);
+            }
+        }
+        root.detectedCodes = codes;
+    }
 
     function getCustomLabels(str) {
         if (!str || str === "")
             return [];
-        let systemLabels = ["UNREAD", "SPAM", "TRASH", "SENT", "STARRED", "IMPORTANT", "DRAFT", "CATEGORY_PERSONAL", "CATEGORY_SOCIAL", "CATEGORY_PROMOTIONS", "CATEGORY_UPDATES", "CATEGORY_FORUMS"];
-        let result = [];
+        var systemLabels = ["UNREAD", "SPAM", "TRASH", "SENT", "STARRED", "IMPORTANT", "DRAFT", "CATEGORY_PERSONAL", "CATEGORY_SOCIAL", "CATEGORY_PROMOTIONS", "CATEGORY_UPDATES", "CATEGORY_FORUMS"];
+        var result = [];
 
-        let list = str.split(",");
+        var list = str.split(",");
 
-        for (let i = 0; i < list.length; i++) {
-            let id = list[i].trim();
+        for (var i = 0; i < list.length; i++) {
+            var id = list[i].trim();
             if (!id || id === "INBOX")
                 continue;
 
             if (systemLabels.indexOf(id) === -1) {
-                let found = false;
-                for (let j = 0; j < EmailService.labels.count; j++) {
-                    let l = EmailService.labels.get(j);
+                var found = false;
+                for (var j = 0; j < EmailService.labels.count; j++) {
+                    var l = EmailService.labels.get(j);
                     if (l.id === id) {
                         result.push(l.name);
                         found = true;
@@ -119,7 +172,7 @@ Item {
 
     signal closeStarted
     signal closeRequested
-    signal replyRequested(string to, string subject, string body)
+    signal replyRequested(string to, string subject, string body, string threadId, string inReplyTo)
 
     property real startX: 0
     property real startY: 0
@@ -165,7 +218,6 @@ Item {
             ghostIcon.y = cardIconY;
             ghostIcon.width = cardIconW;
             ghostIcon.height = cardIconH;
-            ghostSubject.opacity = 1;
             openAnim.start();
         }
     }
@@ -197,47 +249,6 @@ Item {
                 easing.type: Easing.BezierSpline
                 easing.bezierCurve: Appearance.animationCurves.expressiveDefaultSpatial
             }
-            // Animate Ghost Subject to Header Position
-            NumberAnimation {
-                target: ghostSubject
-                property: "x"
-                to: contentSubjectText.mapToItem(root, 0, 0).x
-                duration: 450
-                easing.type: Easing.BezierSpline
-                easing.bezierCurve: Appearance.animationCurves.expressiveDefaultSpatial
-            }
-            NumberAnimation {
-                target: ghostSubject
-                property: "y"
-                to: contentSubjectText.mapToItem(root, 0, 0).y
-                duration: 450
-                easing.type: Easing.BezierSpline
-                easing.bezierCurve: Appearance.animationCurves.expressiveDefaultSpatial
-            }
-            NumberAnimation {
-                target: ghostSubject
-                property: "width"
-                to: contentSubjectText.width
-                duration: 450
-                easing.type: Easing.BezierSpline
-                easing.bezierCurve: Appearance.animationCurves.expressiveDefaultSpatial
-            }
-            NumberAnimation {
-                target: ghostSubject
-                property: "height"
-                to: contentSubjectText.height
-                duration: 450
-                easing.type: Easing.BezierSpline
-                easing.bezierCurve: Appearance.animationCurves.expressiveDefaultSpatial
-            }
-            NumberAnimation {
-                target: ghostSubject
-                property: "progress"
-                from: 0
-                to: 1
-                duration: 450
-                easing.type: Easing.InOutCubic
-            }
             NumberAnimation {
                 target: contentCol
                 property: "opacity"
@@ -256,7 +267,6 @@ Item {
         ScriptAction {
             script: {
                 isAnimating = false;
-                ghostSubject.opacity = 0;
             }
         }
     }
@@ -414,11 +424,11 @@ Item {
 
     // Derived properties
     readonly property string senderName: {
-        let parts = senderFull.split("<");
+        var parts = senderFull.split("<");
         return parts.length > 1 ? parts[0].trim() : senderFull;
     }
     readonly property string senderEmail: {
-        let match = senderFull.match(/<(.+?)>/);
+        var match = senderFull.match(/<(.+?)>/);
         return match ? match[1] : senderFull;
     }
 
@@ -436,7 +446,6 @@ Item {
         bottomRightRadius: Appearance.rounding.large
         antialiasing: true
         clip: true
-
 
         Item {
             id: contentCol
@@ -510,10 +519,12 @@ Item {
                         colBackgroundHover: Appearance.colors.colPrimaryHover
                         colRipple: Appearance.m3colors.m3primaryContainer
                         onClicked: {
-                            let cleanBody = root.body.replace(/<[^>]*>?/gm, ''); // Basic HTML strip
-                            let replyBody = "\n\n--- " + root.senderFull + " wrote ---\n> " + cleanBody.split("\n").join("\n> ");
-                            let replySubject = root.subject.toLowerCase().startsWith("re:") ? root.subject : "Re: " + root.subject;
-                            root.replyRequested(root.senderFull, replySubject, replyBody);
+                            var cleanBody = root.body.replace(/<[^>]*>?/gm, ''); // Basic HTML strip
+                            // Format reply as Gmail-style quote
+                            var replyBody = "<br><br><div class=\"gmail_quote\">" + "<div dir=\"ltr\" class=\"gmail_attr\">Em " + root.date + ", " + root.senderFull + " escreveu:<br></div>" + "<blockquote class=\"gmail_quote\" style=\"margin:0px 0px 0px 0.8ex;border-left:1px solid rgb(204,204,204);padding-left:1ex\">" + root.body + "</blockquote></div>";
+
+                            var replySubject = root.subject.toLowerCase().startsWith("re:") ? root.subject : "Re: " + root.subject;
+                            root.replyRequested(root.senderFull, replySubject, replyBody, root.threadId, root.messageId);
                         }
 
                         RowLayout {
@@ -570,11 +581,11 @@ Item {
                         color: Appearance.colors.colLayer4Base
                         antialiasing: true
 
-                            EmailIcon {
-                                anchors.centerIn: parent
-                                icon: root.icon || "person"
-                                iconSize: 24
-                            }
+                        EmailIcon {
+                            anchors.centerIn: parent
+                            icon: root.icon || "person"
+                            iconSize: 24
+                        }
                     }
 
                     // Name chip
@@ -637,30 +648,80 @@ Item {
                     StyledFlickable {
                         anchors.fill: parent
                         anchors.margins: 20
-                        contentHeight: bodyText.implicitHeight
+                        contentWidth: width
+                        contentHeight: contentColInsideFlickable.implicitHeight
                         clip: true
 
-                        StyledText {
-                            id: bodyText
+                        ColumnLayout {
+                            id: contentColInsideFlickable
                             width: parent.width
-                            text: root.loadingBody ? "" : root.processedBody
-                            textFormat: Text.RichText
-                            font.family: Appearance.font.family.reading
-                            font.pixelSize: EmailService.bodyFontSize
-                            font.weight: Font.Normal
-                            color: Appearance.colors.colOnSurface
-                            wrapMode: Text.Wrap
-                            linkColor: Appearance.colors.colPrimary
-                            onLinkActivated: link => {
-                                if (link.startsWith("copy:")) {
-                                    Quickshell.clipboardText = link.substring(5);
-                                } else {
-                                    Qt.openUrlExternally(link);
+                            spacing: 16
+
+                            StyledText {
+                                id: bodyText
+                                Layout.fillWidth: true
+                                text: root.loadingBody ? "" : root.processedBody
+                                textFormat: Text.RichText
+                                font.family: Appearance.font.family.reading
+                                font.pixelSize: EmailService.bodyFontSize
+                                font.weight: Font.Normal
+                                color: Appearance.colors.colOnSurface
+                                wrapMode: Text.Wrap
+                                linkColor: Appearance.colors.colPrimary
+                                onLinkActivated: link => {
+                                    if (link.startsWith("copy:")) {
+                                        Quickshell.clipboardText = link.substring(5);
+                                    } else {
+                                        Qt.openUrlExternally(link);
+                                    }
+                                }
+
+                                HoverHandler {
+                                    cursorShape: parent.hoveredLink ? Qt.PointingHandCursor : Qt.ArrowCursor
                                 }
                             }
 
-                            HoverHandler {
-                                cursorShape: parent.hoveredLink ? Qt.PointingHandCursor : Qt.ArrowCursor
+                            // Quoted text section
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                visible: root.hasQuotedBody && !root.loadingBody
+                                spacing: 8
+
+                                RippleButton {
+                                    Layout.preferredHeight: 32
+                                    Layout.preferredWidth: 48
+                                    buttonRadius: Appearance.rounding.small
+                                    colBackground: Appearance.colors.colSurfaceContainerHighest
+                                    onClicked: root.showQuoted = !root.showQuoted
+
+                                    MaterialSymbol {
+                                        anchors.centerIn: parent
+                                        text: "more_horiz"
+                                        iconSize: 20
+                                        color: Appearance.colors.colOnSurfaceVariant
+                                    }
+                                }
+
+                                StyledText {
+                                    Layout.fillWidth: true
+                                    visible: root.showQuoted
+                                    text: root.quotedBody
+                                    textFormat: Text.RichText
+                                    font.family: Appearance.font.family.reading
+                                    font.pixelSize: EmailService.bodyFontSize - 1
+                                    font.weight: Font.Normal
+                                    color: Appearance.colors.colOnSurfaceVariant
+                                    opacity: 0.7
+                                    wrapMode: Text.Wrap
+                                    linkColor: Appearance.colors.colPrimary
+                                    onLinkActivated: link => {
+                                        if (link.startsWith("copy:")) {
+                                            Quickshell.clipboardText = link.substring(5);
+                                        } else {
+                                            Qt.openUrlExternally(link);
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -686,7 +747,7 @@ Item {
 
             property bool showBrowser: root.htmlPath !== ""
             property int attachmentCount: root.attachments ? root.attachments.count : 0
-            visible: showBrowser || attachmentCount > 0 || root.detectedMeetings.length > 0 || root.detectedPhones.length > 0
+            visible: showBrowser || attachmentCount > 0 || root.detectedMeetings.length > 0 || root.detectedCodes.length > 0 || root.detectedPhones.length > 0
 
             RippleButton {
                 id: openInBrowserFab
@@ -696,8 +757,8 @@ Item {
                 implicitWidth: browserFabRow.implicitWidth + 40
 
                 buttonRadius: Appearance.rounding.full
-                topRightRadius: (root.detectedMeetings.length > 0 || root.detectedPhones.length > 0 || fabContainer.attachmentCount > 0) ? Appearance.rounding.verysmall : Appearance.rounding.full
-                bottomRightRadius: (root.detectedMeetings.length > 0 || root.detectedPhones.length > 0 || fabContainer.attachmentCount > 0) ? Appearance.rounding.verysmall : Appearance.rounding.full
+                topRightRadius: (root.detectedMeetings.length > 0 || root.detectedCodes.length > 0 || root.detectedPhones.length > 0 || fabContainer.attachmentCount > 0) ? Appearance.rounding.verysmall : Appearance.rounding.full
+                bottomRightRadius: (root.detectedMeetings.length > 0 || root.detectedCodes.length > 0 || root.detectedPhones.length > 0 || fabContainer.attachmentCount > 0) ? Appearance.rounding.verysmall : Appearance.rounding.full
 
                 colBackground: Appearance.colors.colPrimary
                 colBackgroundHover: Appearance.colors.colPrimaryHover
@@ -731,8 +792,8 @@ Item {
 
                     topLeftRadius: (fabContainer.showBrowser || index > 0) ? Appearance.rounding.verysmall : Appearance.rounding.full
                     bottomLeftRadius: (fabContainer.showBrowser || index > 0) ? Appearance.rounding.verysmall : Appearance.rounding.full
-                    topRightRadius: (index < root.detectedMeetings.length - 1 || root.detectedPhones.length > 0 || fabContainer.attachmentCount > 0) ? Appearance.rounding.verysmall : Appearance.rounding.full
-                    bottomRightRadius: (index < root.detectedMeetings.length - 1 || root.detectedPhones.length > 0 || fabContainer.attachmentCount > 0) ? Appearance.rounding.verysmall : Appearance.rounding.full
+                    topRightRadius: (index < root.detectedMeetings.length - 1 || root.detectedCodes.length > 0 || root.detectedPhones.length > 0 || fabContainer.attachmentCount > 0) ? Appearance.rounding.verysmall : Appearance.rounding.full
+                    bottomRightRadius: (index < root.detectedMeetings.length - 1 || root.detectedCodes.length > 0 || root.detectedPhones.length > 0 || fabContainer.attachmentCount > 0) ? Appearance.rounding.verysmall : Appearance.rounding.full
 
                     colBackground: Appearance.colors.colSecondaryContainer
                     colBackgroundHover: Appearance.colors.colSecondaryContainerHover
@@ -763,6 +824,53 @@ Item {
                     }
                 }
             }
+            Repeater {
+                model: root.detectedCodes
+                delegate: RippleButton {
+                    property bool copied: false
+                    implicitHeight: 48
+                    implicitWidth: codeFabRow.implicitWidth + 32
+                    buttonRadius: Appearance.rounding.full
+
+                    topLeftRadius: (fabContainer.showBrowser || root.detectedMeetings.length > 0 || index > 0) ? Appearance.rounding.verysmall : Appearance.rounding.full
+                    bottomLeftRadius: (fabContainer.showBrowser || root.detectedMeetings.length > 0 || index > 0) ? Appearance.rounding.verysmall : Appearance.rounding.full
+                    topRightRadius: (index < root.detectedCodes.length - 1 || root.detectedPhones.length > 0 || fabContainer.attachmentCount > 0) ? Appearance.rounding.verysmall : Appearance.rounding.full
+                    bottomRightRadius: (index < root.detectedCodes.length - 1 || root.detectedPhones.length > 0 || fabContainer.attachmentCount > 0) ? Appearance.rounding.verysmall : Appearance.rounding.full
+
+                    colBackground: Appearance.colors.colPrimaryContainer
+                    colBackgroundHover: Appearance.colors.colPrimaryContainerHover
+                    colRipple: Appearance.m3colors.m3primaryContainer
+
+                    onClicked: {
+                        Quickshell.clipboardText = modelData;
+                        copied = true;
+                        copyTimer.restart();
+                    }
+
+                    Timer {
+                        id: copyTimer
+                        interval: 2000
+                        onTriggered: copied = false
+                    }
+
+                    RowLayout {
+                        id: codeFabRow
+                        anchors.centerIn: parent
+                        spacing: 8
+                        MaterialSymbol {
+                            text: copied ? "check" : "key"
+                            iconSize: 20
+                            color: Appearance.colors.colOnPrimaryContainer
+                        }
+                        StyledText {
+                            text: modelData
+                            color: Appearance.colors.colOnPrimaryContainer
+                            font.weight: Font.Bold
+                            font.pixelSize: Appearance.font.pixelSize.normal
+                        }
+                    }
+                }
+            }
 
             Repeater {
                 model: root.detectedPhones
@@ -771,8 +879,8 @@ Item {
                     implicitWidth: phoneFabRow.implicitWidth + 32
                     buttonRadius: Appearance.rounding.full
 
-                    topLeftRadius: (fabContainer.showBrowser || root.detectedMeetings.length > 0 || index > 0) ? Appearance.rounding.verysmall : Appearance.rounding.full
-                    bottomLeftRadius: (fabContainer.showBrowser || root.detectedMeetings.length > 0 || index > 0) ? Appearance.rounding.verysmall : Appearance.rounding.full
+                    topLeftRadius: (fabContainer.showBrowser || root.detectedMeetings.length > 0 || root.detectedCodes.length > 0 || index > 0) ? Appearance.rounding.verysmall : Appearance.rounding.full
+                    bottomLeftRadius: (fabContainer.showBrowser || root.detectedMeetings.length > 0 || root.detectedCodes.length > 0 || index > 0) ? Appearance.rounding.verysmall : Appearance.rounding.full
                     topRightRadius: (index < root.detectedPhones.length - 1 || fabContainer.attachmentCount > 0) ? Appearance.rounding.verysmall : Appearance.rounding.full
                     bottomRightRadius: (index < root.detectedPhones.length - 1 || fabContainer.attachmentCount > 0) ? Appearance.rounding.verysmall : Appearance.rounding.full
 
@@ -881,7 +989,7 @@ Item {
                                 // Download to /tmp for calendar import
                                 EmailService.downloadAttachment(root.messageId, model.attachmentId, model.name, "/tmp");
 
-                                let onDownload;
+                                var onDownload;
                                 onDownload = function (id, success, path) {
                                     if (id === model.attachmentId) {
                                         if (success) {
@@ -1004,59 +1112,6 @@ Item {
             text: root.icon
             iconSize: Appearance.font.pixelSize.huge
             color: Appearance.colors.colOnSurfaceVariant
-        }
-    }
-
-    Item {
-        id: ghostSubject
-        property real progress: 0
-        z: 30
-        visible: opacity > 0.01
-
-        ShaderEffectSource {
-            id: ghostSubjectSource
-            sourceItem: ghostSubjectText
-            hideSource: false
-            visible: false
-        }
-        ShaderEffectSource {
-            id: contentSubjectSource
-            sourceItem: contentSubjectText
-            hideSource: false
-            visible: false
-        }
-
-        ShaderEffect {
-            anchors.fill: parent
-            property variant source1: ghostSubjectSource
-            property variant source2: contentSubjectSource
-            property real progress: ghostSubject.progress
-
-            fragmentShader: "
-                varying highp vec2 qt_TexCoord0;
-                uniform lowp sampler2D source1;
-                uniform lowp sampler2D source2;
-                uniform lowp float progress;
-                uniform lowp float qt_Opacity;
-                void main() {
-                    lowp vec4 c1 = texture2D(source1, qt_TexCoord0);
-                    lowp vec4 c2 = texture2D(source2, qt_TexCoord0);
-                    gl_FragColor = mix(c1, c2, progress) * qt_Opacity;
-                }
-            "
-        }
-
-        StyledText {
-            id: ghostSubjectText
-            anchors.fill: parent
-            visible: false
-            text: root.subject
-            font.family: Appearance.font.family.main
-            font.pixelSize: Appearance.font.pixelSize.normal
-            font.weight: Font.DemiBold
-            color: Appearance.colors.colOnSurface
-            elide: Text.ElideRight
-            maximumLineCount: 1
         }
     }
 }

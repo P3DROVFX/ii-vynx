@@ -24,8 +24,8 @@ Item {
 
     // Build the nav button list dynamically
     property var _navButtons: {
-        let list = EmailService.navOrder;
-        let visibilityMap = {
+        var list = EmailService.navOrder;
+        var visibilityMap = {
             "inbox": true,
             "spam": EmailService.enableSpam,
             "sent": EmailService.enableSent,
@@ -41,8 +41,8 @@ Item {
     property var _labelButtons: {
         var arr = EmailService.enabledLabels;
         var list = [];
-        for (let i = 0; i < EmailService.labels.count; i++) {
-            let lbl = EmailService.labels.get(i);
+        for (var i = 0; i < EmailService.labels.count; i++) {
+            var lbl = EmailService.labels.get(i);
             if (lbl && arr.includes(lbl.id)) {
                 list.push({
                     id: lbl.id,
@@ -145,7 +145,7 @@ Item {
                             badgeText: {
                                 if (!EmailService.enableUnreadBadges)
                                     return "";
-                                let count = 0;
+                                var count = 0;
                                 if (modelData.tab === "inbox")
                                     count = EmailService.inboxUnreadCount;
                                 else if (modelData.tab === "spam")

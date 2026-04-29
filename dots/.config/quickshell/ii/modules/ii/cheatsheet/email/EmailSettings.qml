@@ -581,10 +581,7 @@ Item {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 64
                     color: Appearance.colors.colSurfaceContainerHigh
-                    topLeftRadius: Appearance.rounding.small
-                    topRightRadius: Appearance.rounding.small
-                    bottomLeftRadius: Appearance.rounding.large
-                    bottomRightRadius: Appearance.rounding.large
+                    radius: Appearance.rounding.small
 
                     RowLayout {
                         anchors.fill: parent
@@ -616,6 +613,94 @@ Item {
                             onCheckedChanged: {
                                 if (EmailService.confirmDelete !== checked) {
                                     EmailService.confirmDelete = checked;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Email Stacking
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 64
+                    color: Appearance.colors.colSurfaceContainerHigh
+                    topLeftRadius: Appearance.rounding.small
+                    topRightRadius: Appearance.rounding.small
+                    bottomLeftRadius: Appearance.rounding.large
+                    bottomRightRadius: Appearance.rounding.large
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.margins: 16
+                        spacing: 24
+
+                        MaterialShape {
+                            implicitWidth: 32
+                            implicitHeight: 32
+                            shape: MaterialShape.Shape.Cookie12Sided
+                            color: Appearance.colors.colSecondaryContainer
+                            MaterialSymbol {
+                                anchors.centerIn: parent
+                                text: "layers"
+                                iconSize: 18
+                                color: Appearance.colors.colOnSecondaryContainer
+                            }
+                        }
+
+                        StyledText {
+                            Layout.fillWidth: true
+                            text: Translation.tr("Email Threading (beta)")
+                            font.pixelSize: Appearance.font.pixelSize.large
+                            color: Appearance.colors.colOnSurface
+                        }
+
+                        StyledSwitch {
+                            checked: EmailService.stackingEnabled
+                            onCheckedChanged: {
+                                if (EmailService.stackingEnabled !== checked) {
+                                    EmailService.stackingEnabled = checked;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 64
+                    color: Appearance.colors.colSurfaceContainerHigh
+                    radius: Appearance.rounding.large
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.margins: 16
+                        spacing: 24
+
+                        MaterialShape {
+                            implicitWidth: 32
+                            implicitHeight: 32
+                            shape: MaterialShape.Shape.Cookie12Sided
+                            color: Appearance.colors.colSecondaryContainer
+                            MaterialSymbol {
+                                anchors.centerIn: parent
+                                text: "schedule"
+                                iconSize: 18
+                                color: Appearance.colors.colOnSecondaryContainer
+                            }
+                        }
+
+                        StyledText {
+                            Layout.fillWidth: true
+                            text: Translation.tr("Semantic Timestamps")
+                            font.pixelSize: Appearance.font.pixelSize.large
+                            color: Appearance.colors.colOnSurface
+                        }
+
+                        StyledSwitch {
+                            checked: EmailService.semanticTimestampsEnabled
+                            onCheckedChanged: {
+                                if (EmailService.semanticTimestampsEnabled !== checked) {
+                                    EmailService.semanticTimestampsEnabled = checked;
                                 }
                             }
                         }
@@ -1101,12 +1186,16 @@ Item {
                             StyledSwitch {
                                 checked: EmailService.enabledLabels.includes(model.id)
                                 onCheckedChanged: {
-                                    let labels = Array.from(EmailService.enabledLabels);
-                                    if (checked && !labels.includes(model.id)) {
+                                    var labels = [];
+                                    for (var k = 0; k < EmailService.enabledLabels.length; k++) {
+                                        labels.push(EmailService.enabledLabels[k]);
+                                    }
+                                    var idx = labels.indexOf(model.id);
+                                    if (checked && idx === -1) {
                                         labels.push(model.id);
                                         EmailService.enabledLabels = labels;
-                                    } else if (!checked && labels.includes(model.id)) {
-                                        labels = labels.filter(id => id !== model.id);
+                                    } else if (!checked && idx !== -1) {
+                                        labels.splice(idx, 1);
                                         EmailService.enabledLabels = labels;
                                     }
                                 }
@@ -1247,8 +1336,8 @@ Item {
         DropArea {
             anchors.fill: parent
             onEntered: drag => {
-                let fromIndex = drag.source.parent.visualIndex;
-                let toIndex = entryWrapper.visualIndex;
+                var fromIndex = drag.source.parent.visualIndex;
+                var toIndex = entryWrapper.visualIndex;
                 navOrderVisualModel.items.move(fromIndex, toIndex);
             }
         }

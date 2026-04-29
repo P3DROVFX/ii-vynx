@@ -29,6 +29,7 @@ def fetch_detail(msg_id, token):
         "unread":   "UNREAD" in label_ids,
         "starred":  "STARRED" in label_ids,
         "labels":   label_ids,
+        "timestamp": int(detail.get("internalDate", 0)) // 1000
     }
 
 def main():

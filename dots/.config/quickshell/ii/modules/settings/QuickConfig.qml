@@ -238,12 +238,22 @@ ContentPage {
                 }
             }
         }
-        ConfigSwitch {
-            buttonIcon: "ev_shadow"
-            text: Translation.tr("Transparency")
-            checked: Config.options.appearance.transparency.enable
-            onCheckedChanged: {
-                Config.options.appearance.transparency.enable = checked;
+        ConfigRow {
+            ConfigSwitch {
+                buttonIcon: "ev_shadow"
+                text: Translation.tr("Transparency")
+                checked: Config.options.appearance.transparency.enable
+                onCheckedChanged: {
+                    Config.options.appearance.transparency.enable = checked;
+                }
+            }
+            ConfigSwitch {
+                buttonIcon: "opacity"
+                text: Translation.tr("Popup Transparency")
+                checked: Config.options.appearance.transparency.popups
+                onCheckedChanged: {
+                    Config.options.appearance.transparency.popups = checked;
+                }
             }
         }
         
@@ -433,6 +443,7 @@ ContentPage {
         
     }
 
+    
     
     
 

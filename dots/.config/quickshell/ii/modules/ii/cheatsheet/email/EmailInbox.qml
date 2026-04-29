@@ -59,16 +59,16 @@ Item {
     function getCustomLabels(labelsList) {
         if (!labelsList)
             return [];
-        let systemLabels = ["INBOX", "UNREAD", "SPAM", "TRASH", "SENT", "STARRED", "IMPORTANT", "DRAFT", "CATEGORY_PERSONAL", "CATEGORY_SOCIAL", "CATEGORY_PROMOTIONS", "CATEGORY_UPDATES", "CATEGORY_FORUMS"];
-        let result = [];
-        let list = labelsList.toArray ? labelsList.toArray() : labelsList;
-        for (let i = 0; i < list.length; i++) {
-            let id = list[i];
+        var systemLabels = ["INBOX", "UNREAD", "SPAM", "TRASH", "SENT", "STARRED", "IMPORTANT", "DRAFT", "CATEGORY_PERSONAL", "CATEGORY_SOCIAL", "CATEGORY_PROMOTIONS", "CATEGORY_UPDATES", "CATEGORY_FORUMS"];
+        var result = [];
+        var list = labelsList.toArray ? labelsList.toArray() : labelsList;
+        for (var i = 0; i < list.length; i++) {
+            var id = list[i];
             if (systemLabels.indexOf(id) === -1) {
                 // Find label name in EmailService
-                let found = false;
-                for (let j = 0; j < EmailService.labels.count; j++) {
-                    let l = EmailService.labels.get(j);
+                var found = false;
+                for (var j = 0; j < EmailService.labels.count; j++) {
+                    var l = EmailService.labels.get(j);
                     if (l.id === id) {
                         result.push(l.name);
                         found = true;
@@ -82,7 +82,7 @@ Item {
         return result;
     }
 
-    signal emailSelected(string messageId, string threadId, real startX, real startY, real startWidth, real startHeight, real iconX, real iconY, real iconW, real iconH, real subjectX, real subjectY, real subjectW, real subjectH)
+    signal emailSelected(string messageId, string threadId, bool isStack, real startX, real startY, real startWidth, real startHeight, real iconX, real iconY, real iconW, real iconH, real subjectX, real subjectY, real subjectW, real subjectH)
 
     Rectangle {
         anchors.fill: parent
@@ -174,7 +174,7 @@ Item {
                 border.width: 0
 
                 function getPullShape(yVal) {
-                    let dist = Math.max(0, -yVal - 12);
+                    var dist = Math.max(0, -yVal - 12);
                     if (dist < 15)
                         return MaterialShape.Shape.Circle;
                     if (dist < 30)
@@ -266,9 +266,13 @@ Item {
                     id: cardRoot
                     Layout.fillWidth: true
                     Layout.preferredHeight: EmailService.compactMode ? 64 : 96
-                    clip: true // Ensure content doesn't bleed out during swipe
+                    Layout.bottomMargin: (model.isStack || false) ? (mouseArea.containsMouse ? 24 : 12) : 0
+                    clip: false // Allow stack effect to overflow
 
                     Behavior on Layout.preferredHeight {
+                        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(cardRoot)
+                    }
+                    Behavior on Layout.bottomMargin {
                         animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(cardRoot)
                     }
 
@@ -354,8 +358,10 @@ Item {
                         visible: cardRoot.swipeX > 4
 
                         MaterialSymbol {
+                            id: starIconSymbol
                             anchors.centerIn: parent
-                            text: model.starred ? "star_border" : "star"
+                            text: root.activeTab === "trash" ? "restore" : "star"
+                            fill: root.activeTab === "trash" ? 1 : (model.starred ? 1 : 0)
                             iconSize: 32
                             color: Appearance.colors.colOnTertiary
                             scale: cardRoot.swipeX >= cardRoot.starThreshold ? 1.3 : 1.0
@@ -383,6 +389,7 @@ Item {
                         MaterialSymbol {
                             anchors.centerIn: parent
                             text: cardRoot.confirmDeleteMode ? "check" : (root.activeTab === "trash" ? "delete_forever" : "delete")
+                            fill: (cardRoot.confirmDeleteMode || root.activeTab === "trash") ? 1 : 0
                             iconSize: 32
                             color: Appearance.colors.colOnError
                             scale: (cardRoot.swipeX <= cardRoot.deleteThreshold || cardRoot.confirmDeleteMode) ? 1.3 : 1.0
@@ -413,11 +420,84 @@ Item {
                         width: parent.width
                         x: cardRoot.swipeX + cardRoot.magneticOffset
 
+                        transformOrigin: Item.Center
+                        scale: visualPressed ? 0.96 : 1.0
+                        Behavior on scale {
+                            NumberAnimation {
+                                duration: visualPressed ? 60 : 300
+                                easing.type: visualPressed ? Easing.OutQuad : Easing.OutBack
+                            }
+                        }
+
                         Behavior on x {
                             enabled: !cardRoot.swiping
                             NumberAnimation {
                                 duration: 300
                                 easing.type: Easing.OutCubic
+                            }
+                        }
+
+                        // Email Card Stacks (Thread indicators)
+                        Rectangle {
+                            id: stack2
+                            anchors.fill: backgroundRect
+                            anchors.topMargin: 12
+                            anchors.bottomMargin: -12
+                            anchors.leftMargin: 32
+                            anchors.rightMargin: 32
+                            z: -2
+                            visible: (model.isStack || false) && !cardRoot.dismissed
+                            color: backgroundRect.color
+                            opacity: mouseArea.containsMouse ? 0.35 : 0.2
+                            topLeftRadius: backgroundRect.topLeftRadius
+                            topRightRadius: backgroundRect.topRightRadius
+                            bottomLeftRadius: backgroundRect.bottomLeftRadius
+                            bottomRightRadius: backgroundRect.bottomRightRadius
+
+                            transform: Translate {
+                                y: mouseArea.containsMouse ? 12 : 0
+                                Behavior on y {
+                                    NumberAnimation {
+                                        duration: 300
+                                        easing.type: Easing.OutBack
+                                    }
+                                }
+                            }
+                            Behavior on opacity {
+                                NumberAnimation {
+                                    duration: 200
+                                }
+                            }
+                        }
+                        Rectangle {
+                            id: stack1
+                            anchors.fill: backgroundRect
+                            anchors.topMargin: 6
+                            anchors.bottomMargin: -6
+                            anchors.leftMargin: 16
+                            anchors.rightMargin: 16
+                            z: -1
+                            visible: (model.isStack || false) && !cardRoot.dismissed
+                            color: backgroundRect.color
+                            opacity: mouseArea.containsMouse ? 0.7 : 0.4
+                            topLeftRadius: backgroundRect.topLeftRadius
+                            topRightRadius: backgroundRect.topRightRadius
+                            bottomLeftRadius: backgroundRect.bottomLeftRadius
+                            bottomRightRadius: backgroundRect.bottomRightRadius
+
+                            transform: Translate {
+                                y: mouseArea.containsMouse ? 6 : 0
+                                Behavior on y {
+                                    NumberAnimation {
+                                        duration: 300
+                                        easing.type: Easing.OutBack
+                                    }
+                                }
+                            }
+                            Behavior on opacity {
+                                NumberAnimation {
+                                    duration: 200
+                                }
                             }
                         }
 
@@ -428,14 +508,6 @@ Item {
                             height: parent.height
                             antialiasing: true
                             color: visualPressed ? Appearance.colors.colSecondaryContainerActive : (mouseArea.containsMouse ? Appearance.colors.colSecondaryContainerHover : (model.unread ? Appearance.colors.colSecondaryContainer : Appearance.colors.colSurfaceContainerHigh))
-
-                            scale: visualPressed ? 0.96 : 1.0
-                            Behavior on scale {
-                                NumberAnimation {
-                                    duration: visualPressed ? 60 : 300
-                                    easing.type: visualPressed ? Easing.OutQuad : Easing.OutBack
-                                }
-                            }
 
                             Behavior on color {
                                 ColorAnimation {
@@ -507,6 +579,7 @@ Item {
                                 visible: width > 0 && height > 0
                                 property real implicitWidth: 0
                                 property real implicitHeight: 0
+                                property color color: Appearance.colors.colPrimaryActive
                                 Behavior on opacity {
                                     animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(ripple)
                                 }
@@ -515,7 +588,7 @@ Item {
                                     gradient: Gradient {
                                         GradientStop {
                                             position: 0.0
-                                            color: Appearance.colors.colPrimaryActive
+                                            color: ripple.color
                                         }
                                         GradientStop {
                                             position: 0.4
@@ -593,6 +666,7 @@ Item {
                                                 animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
                                             }
                                             EmailIcon {
+                                                id: avatarIcon
                                                 anchors.centerIn: parent
                                                 subject: model.subject
                                                 sender: model.from
@@ -600,7 +674,6 @@ Item {
                                                 unread: model.unread
                                                 iconSize: EmailService.compactMode ? Appearance.font.pixelSize.large : Appearance.font.pixelSize.huge
                                                 isPressed: mouseArea.pressed
-                                                id: avatarIcon
                                             }
                                         }
 
@@ -656,7 +729,57 @@ Item {
                                                 maximumLineCount: 1
                                             }
 
+                                            MaterialSymbol {
+                                                Layout.alignment: Qt.AlignVCenter
+                                                text: "star"
+                                                iconSize: Appearance.font.pixelSize.small
+                                                color: Appearance.colors.colTertiary
+                                                fill: 1
+                                                visible: model.starred
+                                            }
+
+                                            MaterialSymbol {
+                                                Layout.alignment: Qt.AlignVCenter
+                                                text: "delete"
+                                                iconSize: Appearance.font.pixelSize.small
+                                                color: Appearance.colors.colError
+                                                fill: 1
+                                                visible: model.labelsString.indexOf("TRASH") !== -1
+                                            }
+
+                                            MaterialSymbol {
+                                                Layout.alignment: Qt.AlignVCenter
+                                                text: "layers"
+                                                iconSize: 18
+                                                color: Appearance.colors.colOnSurfaceVariant
+                                                visible: (model.isStack || false)
+                                                opacity: 0.6
+                                            }
+
+                                            // Total Count Badge for Stacks
                                             Rectangle {
+                                                Layout.alignment: Qt.AlignVCenter
+                                                Layout.preferredHeight: 20
+                                                Layout.preferredWidth: Math.max(20, badgeText.implicitWidth + 8)
+                                                radius: Appearance.rounding.full
+                                                color: model.threadUnreadCount > 0 ? Appearance.colors.colPrimary : Appearance.colors.colSurfaceContainerHighest
+                                                visible: (model.isStack || false)
+                                                antialiasing: true
+                                                border.width: model.threadUnreadCount > 0 ? 0 : 1
+                                                border.color: Appearance.colors.colOutlineVariant
+
+                                                StyledText {
+                                                    id: badgeText
+                                                    anchors.centerIn: parent
+                                                    text: model.stackCount || ""
+                                                    font.pixelSize: 11
+                                                    font.weight: Font.Bold
+                                                    color: model.threadUnreadCount > 0 ? Appearance.colors.colOnPrimary : Appearance.colors.colOnSurfaceVariant
+                                                }
+                                            }
+
+                                            Rectangle {
+                                                id: dateChip
                                                 Layout.alignment: Qt.AlignVCenter
                                                 Layout.preferredHeight: dateText.implicitHeight + 4
                                                 Layout.preferredWidth: dateText.implicitWidth + 16
@@ -667,21 +790,9 @@ Item {
                                                 StyledText {
                                                     id: dateText
                                                     anchors.centerIn: parent
-                                                    text: {
-                                                        if (!model.date)
-                                                            return "";
-                                                        let d = new Date(model.date);
-                                                        if (isNaN(d.getTime()))
-                                                            return model.date;
-                                                        let now = new Date();
-                                                        if (d.toDateString() === now.toDateString()) {
-                                                            return d.toLocaleTimeString(Qt.locale(), "hh:mm");
-                                                        } else {
-                                                            return d.toLocaleDateString(Qt.locale(), "d MMM");
-                                                        }
-                                                    }
+                                                    text: EmailService.formatRelativeDate(model.timestamp)
                                                     font.family: Appearance.font.family.main
-                                                    font.pixelSize: Appearance.font.pixelSize.smallie
+                                                    font.pixelSize: Appearance.font.pixelSize.small
                                                     font.weight: model.unread ? Font.Bold : Font.Medium
                                                     color: model.unread ? Appearance.colors.colPrimary : Appearance.colors.colOnTertiaryContainer
                                                 }
@@ -715,12 +826,14 @@ Item {
 
                         property real startX: 0
                         property real startY: 0
+                        property real baseSwipeX: 0
                         property bool dragDecided: false
                         property bool isHorizontalDrag: false
 
                         onPressed: event => {
                             startX = event.x;
                             startY = event.y;
+                            baseSwipeX = cardRoot.swipeX;
                             dragDecided = false;
                             isHorizontalDrag = false;
 
@@ -729,9 +842,10 @@ Item {
                             root.swipingIndex = index; // Register magnetic focus
                             pressTimer.restart();
 
-                            let dist = (ox, oy) => ox * ox + oy * oy;
+                            var dist = (ox, oy) => ox * ox + oy * oy;
                             rippleAnim.x = event.x;
                             rippleAnim.y = event.y;
+                            ripple.color = Appearance.colors.colPrimaryActive;
                             rippleAnim.radius = Math.sqrt(Math.max(dist(0, 0), dist(width, 0), dist(0, height), dist(width, height)));
                             rippleFadeAnim.complete();
                             rippleAnim.restart();
@@ -741,13 +855,13 @@ Item {
                             if (!pressed)
                                 return;
 
-                            let dx = event.x - startX;
-                            let dy = event.y - startY;
+                            var dx = event.x - startX;
+                            var dy = event.y - startY;
 
                             if (!dragDecided) {
                                 if (Math.abs(dx) > 5) {
                                     dragDecided = true;
-                                    isHorizontalDrag = Math.abs(dx) > Math.abs(dy) * 1.2;
+                                    isHorizontalDrag = Math.abs(dx) > Math.abs(dy) * 1.2 && !(model.isStack || false);
                                     if (isHorizontalDrag) {
                                         cardRoot.swiping = true;
                                         visualPressed = false;
@@ -758,10 +872,10 @@ Item {
 
                             if (isHorizontalDrag && cardRoot.swiping) {
                                 // If confirm mode is active, limit swipe until confirmed
-                                if (cardRoot.confirmDeleteMode && dx < 0)
-                                    cardRoot.swipeX = Math.max(-cardRoot.width, dx);
+                                if (cardRoot.confirmDeleteMode && (baseSwipeX + dx) < 0)
+                                    cardRoot.swipeX = Math.max(-cardRoot.width, baseSwipeX + dx);
                                 else
-                                    cardRoot.swipeX = dx;
+                                    cardRoot.swipeX = baseSwipeX + dx;
                             }
                         }
 
@@ -778,7 +892,11 @@ Item {
                                         dismissAnim.start();
                                     }
                                 } else if (cardRoot.swipeX >= cardRoot.starThreshold) {
-                                    starAnim.start();
+                                    if (root.activeTab === "trash") {
+                                        restoreAnim.start();
+                                    } else {
+                                        starAnim.start();
+                                    }
                                 } else {
                                     cardRoot.confirmDeleteMode = false;
                                     snapAnim.to = 0;
@@ -790,7 +908,11 @@ Item {
                                     cardRoot.dismissed = true;
                                     dismissAnim.start();
                                 } else if (cardRoot.swipeX > 20 && event.x < cardRoot.swipeX) {
-                                    starAnim.start();
+                                    if (root.activeTab === "trash") {
+                                        restoreAnim.start();
+                                    } else {
+                                        starAnim.start();
+                                    }
                                 } else {
                                     if (!pressTimer.running) {
                                         visualPressed = false;
@@ -805,10 +927,10 @@ Item {
                         function triggerEmailSelection() {
                             if (model.unread && EmailService.autoMarkAsRead)
                                 EmailService.markAsRead(model.id);
-                            let rect = backgroundRect.mapToItem(root, 0, 0, backgroundRect.width, backgroundRect.height);
-                            let iconR = iconRect.mapToItem(root, 0, 0, iconRect.width, iconRect.height);
-                            let subjectR = cardSubjectText.mapToItem(root, 0, 0, cardSubjectText.width, cardSubjectText.height);
-                            root.emailSelected(model.id, model.threadId, rect.x, rect.y, rect.width, rect.height, iconR.x, iconR.y, iconR.width, iconR.height, subjectR.x, subjectR.y, subjectR.width, subjectR.height);
+                            var rect = backgroundRect.mapToItem(root, 0, 0, backgroundRect.width, backgroundRect.height);
+                            var iconR = iconRect.mapToItem(root, 0, 0, iconRect.width, iconRect.height);
+                            var subjectR = cardSubjectText.mapToItem(root, 0, 0, cardSubjectText.width, cardSubjectText.height);
+                            root.emailSelected(model.id, model.threadId, (model.isStack || false), rect.x, rect.y, rect.width, rect.height, iconR.x, iconR.y, iconR.width, iconR.height, subjectR.x, subjectR.y, subjectR.width, subjectR.height);
                         }
 
                         onCanceled: {
@@ -853,6 +975,8 @@ Item {
                         }
                         ScriptAction {
                             script: {
+                                root.swipingIndex = -1;
+                                root.activeSwipeX = 0;
                                 if (root.activeTab === "trash") {
                                     EmailService.deleteMessagePermanent(dismissAnim.targetId);
                                 } else {
@@ -862,22 +986,100 @@ Item {
                         }
                     }
 
+                    // Restore animation
+                    SequentialAnimation {
+                        id: restoreAnim
+                        property string targetId: ""
+                        onStarted: targetId = model.id
+
+                        NumberAnimation {
+                            target: cardRoot
+                            property: "swipeX"
+                            to: cardRoot.width + 100
+                            duration: 300
+                            easing.type: Easing.InCubic
+                        }
+                        ParallelAnimation {
+                            NumberAnimation {
+                                target: cardRoot
+                                property: "opacity"
+                                to: 0
+                                duration: 200
+                                easing.type: Easing.OutCubic
+                            }
+                            NumberAnimation {
+                                target: cardRoot
+                                property: "Layout.preferredHeight"
+                                to: 0
+                                duration: 300
+                                easing.type: Easing.InOutCubic
+                            }
+                        }
+                        ScriptAction {
+                            script: {
+                                root.swipingIndex = -1;
+                                root.activeSwipeX = 0;
+                                EmailService.restoreMessage(restoreAnim.targetId);
+                            }
+                        }
+                    }
+
                     // Star animation
                     SequentialAnimation {
                         id: starAnim
+                        ScriptAction {
+                            script: {
+                                // Trigger ripple effect
+                                rippleAnim.x = cardRoot.swipeX / 2;
+                                rippleAnim.y = cardRoot.height / 2;
+                                rippleAnim.radius = cardRoot.width * 1.5;
+                                ripple.color = Appearance.colors.colTertiaryActive;
+                                rippleFadeAnim.complete();
+                                rippleAnim.restart();
+
+                                // Toggle data
+                                EmailService.toggleStarMessage(model.id, model.starred);
+                            }
+                        }
+
+                        ParallelAnimation {
+                            // Icon pop and bounce
+                            SequentialAnimation {
+                                NumberAnimation {
+                                    target: starIconSymbol
+                                    property: "scale"
+                                    to: 2.2
+                                    duration: 250
+                                    easing.type: Easing.OutBack
+                                }
+                                NumberAnimation {
+                                    target: starIconSymbol
+                                    property: "scale"
+                                    to: 1.3
+                                    duration: 450
+                                    easing.type: Easing.OutBounce
+                                }
+                            }
+
+                            // Hold the swipe position
+                            PauseAnimation {
+                                duration: 600
+                            }
+                        }
+
                         NumberAnimation {
                             target: cardRoot
                             property: "swipeX"
                             to: 0
-                            duration: 300
-                            easing.type: Easing.OutCubic
+                            duration: 500
+                            easing.type: Easing.OutExpo
                         }
+
                         ScriptAction {
                             script: {
                                 cardRoot.swiping = false;
                                 root.swipingIndex = -1;
                                 root.activeSwipeX = 0;
-                                EmailService.toggleStarMessage(model.id, model.starred);
                             }
                         }
                     }

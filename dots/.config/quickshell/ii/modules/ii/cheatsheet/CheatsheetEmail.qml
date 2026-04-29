@@ -26,6 +26,7 @@ Item {
     property string selectedDate: ""
     property bool selectedUnread: false
     property string selectedLabelsString: ""
+    property bool selectedIsStack: false
 
     property real emailOpenStartX: 0
     property real emailOpenStartY: 0
@@ -104,12 +105,12 @@ Item {
 
                 loading: EmailService.loading
                 activeTab: root.activeTab
-                model: root.activeTab === "spam" ? EmailService.spamMessages : root.activeTab === "sent" ? EmailService.sentMessages : root.activeTab === "trash" ? EmailService.trashMessages : root.activeTab === "starred" ? EmailService.starredMessages : root.activeTab === "important" ? EmailService.importantMessages : root.activeTab === "purchases" ? EmailService.purchasesMessages : root.activeTab === "search" ? EmailService.searchMessagesModel : root.activeTab.startsWith("label_") ? EmailService.searchMessagesModel : EmailService.inboxMessages
-                onEmailSelected: (messageId, threadId, startX, startY, startWidth, startHeight, iconX, iconY, iconW, iconH, subjectX, subjectY, subjectW, subjectH) => {
+                model: root.activeTab === "spam" ? EmailService.spamMessages : root.activeTab === "sent" ? EmailService.sentMessages : root.activeTab === "trash" ? EmailService.trashMessages : root.activeTab === "starred" ? EmailService.starredMessages : root.activeTab === "important" ? EmailService.importantMessages : root.activeTab === "purchases" ? EmailService.purchasesMessages : root.activeTab === "search" ? EmailService.searchMessagesModel : root.activeTab.indexOf("label_") === 0 ? EmailService.searchMessagesModel : EmailService.inboxMessages
+                onEmailSelected: function(messageId, threadId, isStack, startX, startY, startWidth, startHeight, iconX, iconY, iconW, iconH, subjectX, subjectY, subjectW, subjectH) {
                     // Buscar dados do email no model ativo
-                    let currentModel = emailInbox.model;
-                    for (let i = 0; i < currentModel.count; i++) {
-                        let item = currentModel.get(i);
+                    var currentModel = emailInbox.model;
+                    for (var i = 0; i < currentModel.count; i++) {
+                        var item = currentModel.get(i);
                         if (item.id === messageId) {
                             root.selectedSubject = item.subject;
                             root.selectedFrom = item.from;
@@ -123,6 +124,7 @@ Item {
                     }
                     root.selectedMessageId = messageId;
                     root.selectedThreadId = threadId;
+                    root.selectedIsStack = isStack;
                     root.emailOpenStartX = startX;
                     root.emailOpenStartY = startY;
                     root.emailOpenStartWidth = startWidth;
@@ -138,7 +140,7 @@ Item {
                     if (root.selectedUnread) {
                         EmailService.markAsRead(messageId);
                         // Atualizar no model local
-                        for (let i = 0; i < emailInbox.model.count; i++) {
+                        for (var i = 0; i < emailInbox.model.count; i++) {
                             if (emailInbox.model.get(i).id === messageId) {
                                 emailInbox.model.setProperty(i, "unread", false);
                                 break;
@@ -148,7 +150,37 @@ Item {
                     }
                     root.emailOpen = true;
                     root.emailActive = true;
-                    EmailService.fetchEmailBody(messageId);
+                    if (EmailService.stackingEnabled && root.selectedIsStack) {
+                        EmailService.fetchThread(threadId);
+                    } else {
+                        EmailService.fetchEmailBody(messageId);
+                    }
+                }
+            }
+
+            EmailStackedContent {
+                id: emailStackedContent
+                anchors.fill: parent
+                z: 10
+                visible: root.emailOpen && EmailService.stackingEnabled && root.selectedIsStack
+                startX: root.emailOpenStartX
+                startY: root.emailOpenStartY
+                startWidth: root.emailOpenStartWidth
+                startHeight: root.emailOpenStartHeight
+                subject: root.selectedSubject
+                threadId: root.selectedThreadId
+                onCloseStarted: {
+                    root.emailActive = false;
+                }
+                onCloseRequested: {
+                    root.emailOpen = false;
+                    root.selectedMessageId = "";
+                    EmailService.currentThreadMessages.clear();
+                }
+                onReplyRequested: function(to, subject, body, threadId, inReplyTo) {
+                    emailStackedContent.startClose();
+                    root.activeTab = "compose";
+                    emailCompose.setReplyMode(to, subject, body, threadId, inReplyTo);
                 }
             }
 
@@ -156,7 +188,7 @@ Item {
                 id: emailContent
                 anchors.fill: parent
                 z: 10
-                visible: root.emailOpen
+                visible: root.emailOpen && (!EmailService.stackingEnabled || !root.selectedIsStack)
                 messageId: root.selectedMessageId
                 startX: root.emailOpenStartX
                 startY: root.emailOpenStartY
@@ -179,6 +211,7 @@ Item {
                 loadingBody: EmailService.loadingEmailBody
                 attachments: EmailService.currentEmailAttachments
                 labelsString: root.selectedLabelsString
+                threadId: root.selectedThreadId
                 onCloseStarted: {
                     root.emailActive = false;
                 }
@@ -189,10 +222,10 @@ Item {
                     EmailService.currentEmailHtmlPath = "";
                     EmailService.currentEmailAttachments.clear();
                 }
-                onReplyRequested: (to, subject, body) => {
+                onReplyRequested: {
                     emailContent.startClose();
                     root.activeTab = "compose";
-                    emailCompose.setReplyMode(to, subject, body);
+                    emailCompose.setReplyMode(to, subject, body, threadId, inReplyTo);
                 }
             }
 
@@ -237,7 +270,7 @@ Item {
 
                         StyledText {
                             Layout.alignment: Qt.AlignHCenter
-                            text: root.activeTab === "spam" ? Translation.tr("Checking for Spam") : root.activeTab === "sent" ? Translation.tr("Retrieving Sent") : root.activeTab === "trash" ? Translation.tr("Emptying Bin") : root.activeTab === "search" ? Translation.tr("Searching") : root.activeTab.startsWith("label_") ? Translation.tr("Loading Label") : Translation.tr("Fetching Messages")
+                            text: root.activeTab === "spam" ? Translation.tr("Checking for Spam") : root.activeTab === "sent" ? Translation.tr("Retrieving Sent") : root.activeTab === "trash" ? Translation.tr("Emptying Bin") : root.activeTab === "search" ? Translation.tr("Searching") : root.activeTab.indexOf("label_") === 0 ? Translation.tr("Loading Label") : Translation.tr("Fetching Messages")
                             font.pixelSize: 32
                             font.weight: Font.Bold
                             color: Appearance.colors.colOnSurface

@@ -31,6 +31,7 @@ Singleton {
     property bool enableSocials: false
     property int refreshIntervalMinutes: 1
     property bool compactMode: false
+    property bool stackingEnabled: true
     property bool authenticating: false
     property var enabledLabels: []
     property bool enableStarred: false
@@ -44,6 +45,7 @@ Singleton {
     property bool showAvatars: true
     property bool confirmDelete: true
     property int bodyFontSize: 14
+    property bool semanticTimestampsEnabled: true
     property bool autoMarkAsRead: true
     property var navOrder: [
         {
@@ -92,6 +94,40 @@ Singleton {
 
     function checkCredentials() {
         credentialsChecker.running = true;
+    }
+
+    function formatRelativeDate(timestamp) {
+        if (!timestamp)
+            return "";
+
+        let date = new Date(timestamp * 1000);
+        let today = new Date();
+
+        if (!root.semanticTimestampsEnabled) {
+            if (date.toDateString() === today.toDateString()) {
+                return date.toLocaleTimeString(Qt.locale(), "HH:mm");
+            }
+            return date.toLocaleDateString(Qt.locale(), "MMM d");
+        }
+
+        let now = Math.floor(Date.now() / 1000);
+        let diff = now - timestamp;
+
+        if (diff < 0)
+            return "Just now"; // Clock skew
+        if (diff < 60)
+            return "Just now";
+        if (diff < 3600)
+            return Math.floor(diff / 60) + "m ago";
+        if (diff < 86400)
+            return Math.floor(diff / 3600) + "h ago";
+        if (diff < 172800)
+            return "Yesterday";
+
+        if (date.getFullYear() === today.getFullYear()) {
+            return date.toLocaleDateString(Qt.locale(), "MMM d");
+        }
+        return date.toLocaleDateString(Qt.locale(), "MMM d, yyyy");
     }
     Process {
         id: credentialsChecker
@@ -168,6 +204,7 @@ Singleton {
         property alias enableTrash: root.enableTrash
         property alias enableUnreadBadges: root.enableUnreadBadges
         property alias compactMode: root.compactMode
+        property alias stackingEnabled: root.stackingEnabled
         property alias historyId: root.historyId
         property alias showSnippets: root.showSnippets
         property alias showAvatars: root.showAvatars
@@ -198,6 +235,7 @@ Singleton {
     property ListModel trashMessages: ListModel {}
     property ListModel searchMessagesModel: ListModel {}
     property ListModel labels: ListModel {}
+    property ListModel currentThreadMessages: ListModel {}
 
     property int inboxUnreadCount: 0
     property int spamUnreadCount: 0
@@ -462,7 +500,7 @@ Singleton {
             purchasesFetcher._currentTab = tab;
             purchasesFetcher._currentPage = pageIndex;
             purchasesFetcher.running = true;
-        } else if (tab.startsWith("label_")) {
+        } else if (tab.indexOf("label_") === 0) {
             for (let i = 0; i < labels.count; i++) {
                 let lbl = labels.get(i);
                 if ("label_" + lbl.id === label) {
@@ -496,10 +534,10 @@ Singleton {
         onRunningChanged: {
             if (running) {
                 root._pendingFetches++;
-                root.syncingLabels[id] = true;
+                root.syncingLabels["fetcher"] = true;
                 root.syncingLabelsChanged();
             } else {
-                delete root.syncingLabels[id];
+                delete root.syncingLabels["fetcher"];
                 root.syncingLabelsChanged();
             }
         }
@@ -523,10 +561,10 @@ Singleton {
         onRunningChanged: {
             if (running) {
                 root._pendingFetches++;
-                root.syncingLabels[id] = true;
+                root.syncingLabels["fetcher"] = true;
                 root.syncingLabelsChanged();
             } else {
-                delete root.syncingLabels[id];
+                delete root.syncingLabels["fetcher"];
                 root.syncingLabelsChanged();
             }
         }
@@ -550,10 +588,10 @@ Singleton {
         onRunningChanged: {
             if (running) {
                 root._pendingFetches++;
-                root.syncingLabels[id] = true;
+                root.syncingLabels["fetcher"] = true;
                 root.syncingLabelsChanged();
             } else {
-                delete root.syncingLabels[id];
+                delete root.syncingLabels["fetcher"];
                 root.syncingLabelsChanged();
             }
         }
@@ -577,10 +615,10 @@ Singleton {
         onRunningChanged: {
             if (running) {
                 root._pendingFetches++;
-                root.syncingLabels[id] = true;
+                root.syncingLabels["fetcher"] = true;
                 root.syncingLabelsChanged();
             } else {
-                delete root.syncingLabels[id];
+                delete root.syncingLabels["fetcher"];
                 root.syncingLabelsChanged();
             }
         }
@@ -604,10 +642,10 @@ Singleton {
         onRunningChanged: {
             if (running) {
                 root._pendingFetches++;
-                root.syncingLabels[id] = true;
+                root.syncingLabels["fetcher"] = true;
                 root.syncingLabelsChanged();
             } else {
-                delete root.syncingLabels[id];
+                delete root.syncingLabels["fetcher"];
                 root.syncingLabelsChanged();
             }
         }
@@ -631,10 +669,10 @@ Singleton {
         onRunningChanged: {
             if (running) {
                 root._pendingFetches++;
-                root.syncingLabels[id] = true;
+                root.syncingLabels["fetcher"] = true;
                 root.syncingLabelsChanged();
             } else {
-                delete root.syncingLabels[id];
+                delete root.syncingLabels["fetcher"];
                 root.syncingLabelsChanged();
             }
         }
@@ -658,10 +696,10 @@ Singleton {
         onRunningChanged: {
             if (running) {
                 root._pendingFetches++;
-                root.syncingLabels[id] = true;
+                root.syncingLabels["fetcher"] = true;
                 root.syncingLabelsChanged();
             } else {
-                delete root.syncingLabels[id];
+                delete root.syncingLabels["fetcher"];
                 root.syncingLabelsChanged();
             }
         }
@@ -792,8 +830,29 @@ Singleton {
             // Only clear and refill if data actually changed
             targetModel.clear();
 
-            msgs.forEach((msg, index) => {
-                let msgData = {
+            var seenThreads = {};
+            var threadCounts = {};
+            var threadUnreadCounts = {};
+            if (root.stackingEnabled) {
+                for (var k = 0; k < msgs.length; k++) {
+                    var mThread = msgs[k].threadId;
+                    if (mThread) {
+                        threadCounts[mThread] = (threadCounts[mThread] || 0) + 1;
+                        if (msgs[k].unread) {
+                            threadUnreadCounts[mThread] = (threadUnreadCounts[mThread] || 0) + 1;
+                        }
+                    }
+                }
+            }
+
+            msgs.forEach(function (msg, index) {
+                if (root.stackingEnabled && msg.threadId) {
+                    if (seenThreads[msg.threadId])
+                        return;
+                    seenThreads[msg.threadId] = true;
+                }
+
+                var msgData = {
                     id: msg.id,
                     threadId: msg.threadId || "",
                     subject: msg.subject || "(no subject)",
@@ -802,8 +861,12 @@ Singleton {
                     snippet: msg.snippet || "",
                     unread: msg.unread || false,
                     starred: msg.starred || false,
+                    timestamp: msg.timestamp || 0,
                     labelsString: (msg.labels || []).join(","),
-                    icon: msg.icon || "person"
+                    icon: msg.icon || "person",
+                    isStack: root.stackingEnabled && threadCounts[msg.threadId] > 1,
+                    stackCount: root.stackingEnabled ? (threadCounts[msg.threadId] || 1) : 1,
+                    threadUnreadCount: root.stackingEnabled ? (threadUnreadCounts[msg.threadId] || 0) : 0
                 };
                 targetModel.append(msgData);
             });
@@ -840,14 +903,22 @@ Singleton {
         }
     }
 
-    function sendEmail(to, subject, bodyHtml, attachments) {
+    function sendEmail(to, subject, bodyHtml, attachments, threadId = "", inReplyTo = "", references = "") {
         if (!authenticated || _refreshToken === "") {
             root.emailSent(false, "Not authenticated");
             return;
         }
         sendingEmail = true;
         let cmd = ["python3", Directories.scriptPath + "/email/send_email.py", _refreshToken, to, subject, bodyHtml];
+        if (threadId)
+            cmd.push("--thread-id", threadId);
+        if (inReplyTo)
+            cmd.push("--in-reply-to", inReplyTo);
+        if (references)
+            cmd.push("--references", references);
+
         if (attachments && attachments.length > 0) {
+            cmd.push("--attachments");
             cmd = cmd.concat(attachments);
         }
         emailSender.command = cmd;
@@ -886,6 +957,29 @@ Singleton {
         });
     }
 
+    function markThreadAsRead(threadId) {
+        _ensureValidToken(token => {
+            const bodyStr = JSON.stringify({
+                removeLabelIds: ["UNREAD"]
+            });
+            Quickshell.execDetached(["curl", "-s", "-X", "POST", "-H", "Authorization: Bearer " + token, "-H", "Content-Type: application/json", "-d", bodyStr, `https://gmail.googleapis.com/gmail/v1/users/me/threads/${threadId}/modify`]);
+        });
+
+        // Update local models
+        var models = [inboxMessages, sentMessages, spamMessages, starredMessages, importantMessages, purchasesMessages, searchMessagesModel, currentThreadMessages];
+        for (var i = 0; i < models.length; i++) {
+            var m = models[i];
+            for (var j = 0; j < m.count; j++) {
+                var item = m.get(j);
+                if (item.threadId === threadId && item.unread) {
+                    m.setProperty(j, "unread", false);
+                    m.setProperty(j, "threadUnreadCount", 0);
+                    root.decrementUnreadForModel(m);
+                }
+            }
+        }
+    }
+
     function toggleStarMessage(messageId, currentState) {
         _ensureValidToken(token => {
             const bodyStr = JSON.stringify(currentState ? {
@@ -896,11 +990,19 @@ Singleton {
             Quickshell.execDetached(["curl", "-s", "-X", "POST", "-H", "Authorization: Bearer " + token, "-H", "Content-Type: application/json", "-d", bodyStr, `https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}/modify`]);
         });
 
-        let models = [inboxMessages, sentMessages, spamMessages, starredMessages, importantMessages, purchasesMessages, searchMessagesModel];
-        for (let m of models) {
-            for (let i = 0; i < m.count; i++) {
-                if (m.get(i).id === messageId) {
-                    m.setProperty(i, "starred", !currentState);
+        var models = [inboxMessages, sentMessages, spamMessages, starredMessages, importantMessages, purchasesMessages, searchMessagesModel, currentThreadMessages];
+        for (var i = 0; i < models.length; i++) {
+            var m = models[i];
+            for (var j = 0; j < m.count; j++) {
+                if (m.get(j).id === messageId) {
+                    if (m === starredMessages && currentState) {
+                        if (m.get(j).unread) {
+                            root.decrementUnreadForModel(m);
+                        }
+                        m.remove(j);
+                    } else {
+                        m.setProperty(j, "starred", !currentState);
+                    }
                     break;
                 }
             }
@@ -910,7 +1012,7 @@ Singleton {
     function trashMessage(messageId) {
         console.log("[EmailService] Trashing message:", messageId);
         _ensureValidToken(token => {
-            Quickshell.execDetached(["curl", "-s", "-X", "POST", "-H", "Authorization: Bearer " + token, `https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}/trash`]);
+            Quickshell.execDetached(["python3", Directories.scriptPath + "/email/delete_email.py", token, messageId, "trash"]);
         });
         _removeFromModels(messageId);
     }
@@ -918,13 +1020,21 @@ Singleton {
     function deleteMessagePermanent(messageId) {
         console.log("[EmailService] Permanently deleting message:", messageId);
         _ensureValidToken(token => {
-            Quickshell.execDetached(["curl", "-s", "-X", "DELETE", "-H", "Authorization: Bearer " + token, `https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}`]);
+            Quickshell.execDetached(["python3", Directories.scriptPath + "/email/delete_email.py", token, messageId, "permanent"]);
+        });
+        _removeFromModels(messageId);
+    }
+
+    function restoreMessage(messageId) {
+        console.log("[EmailService] Restoring message from trash:", messageId);
+        _ensureValidToken(token => {
+            Quickshell.execDetached(["python3", Directories.scriptPath + "/email/delete_email.py", token, messageId, "untrash"]);
         });
         _removeFromModels(messageId);
     }
 
     function _removeFromModels(messageId) {
-        let models = [inboxMessages, sentMessages, spamMessages, starredMessages, importantMessages, purchasesMessages, trashMessages, searchMessagesModel];
+        let models = [inboxMessages, sentMessages, spamMessages, starredMessages, importantMessages, purchasesMessages, trashMessages, searchMessagesModel, currentThreadMessages];
         for (let m of models) {
             for (let i = 0; i < m.count; i++) {
                 let item = m.get(i);
@@ -934,7 +1044,7 @@ Singleton {
                     }
                     m.remove(i);
                     console.log("[EmailService] Removed from model:", messageId);
-                    // continue to other models
+                    break;
                 }
             }
         }
@@ -1024,12 +1134,61 @@ Singleton {
     function downloadAttachment(messageId, attachmentId, filename, targetDir) {
         if (_refreshToken === "")
             return;
-        let bestToken = _getBestToken();
-        let cmd = ["python3", Directories.scriptPath + "/email/download_email_attachment.py", bestToken, messageId, attachmentId, filename];
+        var bestToken = _getBestToken();
+        var cmd = ["python3", Directories.scriptPath + "/email/download_email_attachment.py", bestToken, messageId, attachmentId, filename];
         if (targetDir) {
             cmd.push(targetDir);
         }
         emailAttachmentDownloader.command = cmd;
         emailAttachmentDownloader.running = true;
+    }
+
+    Process {
+        id: threadFetcher
+        command: ["echo", ""]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    var data = JSON.parse(text);
+                    if (data && data.length > 0) {
+                        root.currentThreadMessages.clear();
+                        data.reverse();
+                        for (var i = 0; i < data.length; i++) {
+                            var msg = data[i];
+                            root.currentThreadMessages.append({
+                                id: msg.id,
+                                threadId: msg.threadId,
+                                from: msg.from,
+                                subject: msg.subject,
+                                date: msg.date,
+                                snippet: msg.snippet,
+                                body: msg.body,
+                                attachments: msg.attachments || [],
+                                unread: msg.unread,
+                                starred: msg.starred,
+                                timestamp: msg.timestamp,
+                                labelsString: (msg.labels || []).join(",")
+                            });
+                        }
+                    }
+                } catch (e) {
+                    root.currentThreadMessages.clear();
+                    console.warn("[Gmail] Thread parse error:", e);
+                }
+                root.loadingEmailBody = false;
+            }
+        }
+        onExited: function (exitCode, exitStatus) {
+            if (exitCode !== 0)
+                root.loadingEmailBody = false;
+        }
+    }
+
+    function fetchThread(threadId) {
+        currentThreadMessages.clear();
+        loadingEmailBody = true;
+        var bestToken = _getBestToken();
+        threadFetcher.command = ["python3", Directories.scriptPath + "/email/fetch_thread.py", bestToken, threadId];
+        threadFetcher.running = true;
     }
 }

@@ -10,9 +10,17 @@ RippleButton {
     property bool showPing: false
 
     property real buttonPadding: 5
-    implicitWidth: distroIcon.width + buttonPadding * 2
-    implicitHeight: distroIcon.height + buttonPadding * 2
-    buttonRadius: Appearance.rounding.full
+    implicitWidth: distroIcon.width + buttonPadding * 2 + 10
+    implicitHeight: distroIcon.height + buttonPadding * 2 + 4
+
+    property real startRadius: Appearance.rounding.full
+    property real endRadius: Appearance.rounding.full
+
+    topLeftRadius: startRadius
+    bottomLeftRadius: startRadius
+    topRightRadius: endRadius
+    bottomRightRadius: endRadius
+
     colBackgroundHover: Appearance.colors.colLayer1Hover
     colRipple: Appearance.colors.colLayer1Active
     colBackgroundToggled: Appearance.colors.colSecondaryContainer
