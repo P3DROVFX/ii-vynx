@@ -9,6 +9,9 @@ RowLayout {
     spacing: 10
     Layout.leftMargin: 8
     Layout.rightMargin: 8
+    Layout.fillWidth: true
+    Layout.topMargin: 4
+    Layout.bottomMargin: 4
 
     property string text: ""
     property string buttonIcon: ""
@@ -17,7 +20,7 @@ RowLayout {
     property bool usePercentTooltip: true
     property real from: slider.from
     property real to: slider.to
-    property real textWidth: 120
+    property real textWidth: 180
 
     readonly property string currentSearch: SearchRegistry.currentSearch
     onCurrentSearchChanged: {
@@ -26,36 +29,40 @@ RowLayout {
         }
     }
 
-    
-    RowLayout {
-        id: row
-        spacing: 10
-
-        OptionalMaterialSymbol {
-            opacity: 1 - highlightOverlay.opacity
-            id: iconWidget
-            icon: root.buttonIcon
-            iconSize: Appearance.font.pixelSize.larger
-        }
-        StyledText {
-            opacity: 1 - highlightOverlay.opacity
-            id: labelWidget
+    ColumnLayout {
+        RowLayout {
+            id: row
+            spacing: 10
             Layout.preferredWidth: root.textWidth
-            text: root.text
-            color: Appearance.colors.colOnSecondaryContainer
+
+            OptionalMaterialSymbol {
+                opacity: 1 - highlightOverlay.opacity
+                id: iconWidget
+                icon: root.buttonIcon
+                iconSize: Appearance.font.pixelSize.larger
+            }
+            StyledText {
+                opacity: 1 - highlightOverlay.opacity
+                id: labelWidget
+                Layout.fillWidth: true
+                text: root.text
+                color: Appearance.colors.colOnSecondaryContainer
+                elide: Text.ElideRight
+            }
+            HighlightOverlay {
+                id: highlightOverlay
+                visible: false
+            }
         }
-        HighlightOverlay {
-            id: highlightOverlay
-            visible: false
+        
+        StyledSlider {
+            id: slider
+            configuration: StyledSlider.Configuration.M
+            usePercentTooltip: root.usePercentTooltip
+            value: root.value
+            from: root.from
+            to: root.to
+            Layout.fillWidth: true
         }
-    }
-    
-    StyledSlider {
-        id: slider
-        configuration: StyledSlider.Configuration.XS
-        usePercentTooltip: root.usePercentTooltip
-        value: root.value
-        from: root.from
-        to: root.to
     }
 }

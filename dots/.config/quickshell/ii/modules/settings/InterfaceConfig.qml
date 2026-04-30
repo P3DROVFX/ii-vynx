@@ -124,6 +124,48 @@ ContentPage {
             }
         }
     }
+    
+    ContentSection {
+        icon: "opacity"
+        title: Translation.tr("Transparency")
+
+        ConfigRow {
+            ConfigSwitch {
+                buttonIcon: "ev_shadow"
+                text: Translation.tr("Enable transparency")
+                checked: Config.options.appearance.transparency.enable
+                onCheckedChanged: {
+                    Config.options.appearance.transparency.enable = checked;
+                }
+            }
+            ConfigSwitch {
+                buttonIcon: "opacity"
+                text: Translation.tr("Popup transparency")
+                checked: Config.options.appearance.transparency.popups
+                onCheckedChanged: {
+                    Config.options.appearance.transparency.popups = checked;
+                }
+            }
+        }
+
+        ConfigSlider {
+            buttonIcon: "blur_on"
+            text: Translation.tr("Background transparency")
+            value: Config.options.appearance.transparency.backgroundTransparency
+            onValueChanged: {
+                Config.options.appearance.transparency.backgroundTransparency = value;
+            }
+        }
+
+        ConfigSlider {
+            buttonIcon: "opacity"
+            text: Translation.tr("Content transparency")
+            value: Config.options.appearance.transparency.contentTransparency
+            onValueChanged: {
+                Config.options.appearance.transparency.contentTransparency = value;
+            }
+        }
+    }
 
     ContentSection {
         icon: "call_to_action"
