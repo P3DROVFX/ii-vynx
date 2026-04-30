@@ -1,9 +1,12 @@
+pragma ComponentBehavior: Bound
+
 import qs.modules.common
 import qs.modules.common.functions
 import qs.modules.common.widgets
 import qs.services
 import QtQuick
 import QtQuick.Layouts
+import Quickshell
 
 Item {
     id: root
@@ -11,6 +14,32 @@ Item {
     property var device
     signal dismissed()
     signal disconnectRequested()
+
+    readonly property bool isHovered: backgroundMa.containsMouse
+
+    onDeviceChanged: {
+        dismissTimer.restart();
+    }
+
+    onIsHoveredChanged: {
+        if (isHovered) {
+            dismissTimer.stop();
+        } else {
+            dismissTimer.restart();
+        }
+    }
+
+    Component.onCompleted: {
+        if (!isHovered) dismissTimer.start();
+    }
+
+    // Auto-dismiss timer — stays open while hovered, or it should be
+    Timer {
+        id: dismissTimer
+        interval: 5000
+        repeat: false
+        onTriggered: root.dismissed()
+    }
 
     // Expose contentBackground for mask in parent PanelWindow
     property alias contentBackground: contentBackground
@@ -65,10 +94,10 @@ Item {
 
     Rectangle {
         id: contentBackground
-        x: Appearance.sizes.elevationMargin
-        y: Appearance.sizes.elevationMargin
-        width: popupWidth
-        height: contentLayout.implicitHeight + verticalPadding * 2
+        anchors {
+            fill: parent
+            margins: Appearance.sizes.elevationMargin
+        }
         radius: Appearance.rounding.large
         color: Appearance.m3colors.m3surfaceContainer
         border.width: 1
@@ -333,17 +362,25 @@ Item {
                         hoverEnabled: true
                         onClicked: {
                             root.dismissed();
+                            Quickshell.execDetached(["blueman-manager"]);
                         }
                     }
                 }
             }
         }
 
-        // Click anywhere on the card to dismiss
-        MouseArea {
-            anchors.fill: parent
-            z: -1  // Behind the buttons
-            onClicked: root.dismissed()
-        }
+        // backgroundMa moved to root for better detection
+    }
+
+    // Click anywhere on the card/margins to dismiss
+    MouseArea {
+        id: backgroundMa
+        anchors.fill: parent
+        z: -1
+        hoverEnabled: true
+        onWheel: wheel => wheel.accepted = true
+        onClicked: root.dismissed()
+        onPressed: mouse => mouse.accepted = true
+        onReleased: mouse => mouse.accepted = true
     }
 }

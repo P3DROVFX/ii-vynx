@@ -11,14 +11,6 @@ import Quickshell.Hyprland
 Scope {
     id: root
 
-    // Auto-dismiss timer
-    Timer {
-        id: dismissTimer
-        interval: 8000
-        running: GlobalStates.bluetoothConnectionPopupOpen
-        onTriggered: GlobalStates.bluetoothConnectionPopupOpen = false
-    }
-
     // Listen for new connections
     Connections {
         target: BluetoothStatus
@@ -26,7 +18,6 @@ Scope {
             if (Config.options.bar.tooltips.enableBluetoothConnectionPopup) {
                 GlobalStates.bluetoothConnectionPopupDevice = device;
                 GlobalStates.bluetoothConnectionPopupOpen = true;
-                dismissTimer.restart();
             }
         }
     }
