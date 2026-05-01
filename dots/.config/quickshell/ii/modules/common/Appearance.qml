@@ -199,16 +199,50 @@ Singleton {
     }
 
     rounding: QtObject {
-        property int unsharpen: Config.options.appearance.sharpMode ? 0 : 2
-        property int unsharpenmore: Config.options.appearance.sharpMode ? 0 : 6
-        property int verysmall: Config.options.appearance.sharpMode ? 0 : 8
-        property int small: Config.options.appearance.sharpMode ? 0 : 12
-        property int normal: Config.options.appearance.sharpMode ? 0 : 17
-        property int large: Config.options.appearance.sharpMode ? 0 : 23
-        property int verylarge: Config.options.appearance.sharpMode ? 0 : 30
-        property int full: Config.options.appearance.sharpMode ? 0 : 9999
+        property real scale: {
+            let mode = Config.options.appearance.globalRounding;
+            if (mode === "sharp" || Config.options.appearance.sharpMode) return 0.0;
+            if (mode === "normal") return 17.0 / 24.0;
+            if (mode === "verylarge") return 32.0 / 24.0;
+            return 1.0; // "large" is 24 (default)
+        }
+
+        property int unsharpen: Math.round(2 * scale)
+        property int unsharpenmore: Math.round(6 * scale)
+        property int verysmall: Math.round(8 * scale)
+        property int small: Math.round(12 * scale)
+        property int normal: Math.round(17 * scale)
+        property int large: Math.round(24 * scale)
+        property int verylarge: Math.round(32 * scale)
+        property int full: scale === 0 ? 0 : 9999
         property int screenRounding: large
-        property int windowRounding: Config.options.appearance.sharpMode ? 0 : 18
+        property int windowRounding: Math.round(18 * scale)
+
+        onWindowRoundingChanged: {
+            if (Config.options.appearance.toggleWindowRounding && Config.ready) {
+                Quickshell.execDetached(["hyprctl", "keyword", "decoration:rounding", windowRounding.toString()]);
+            }
+        }
+    }
+
+    property int blurSize: Config.options.appearance.blurSize ?? 8
+    onBlurSizeChanged: {
+        if (Config.ready) {
+            Quickshell.execDetached(["hyprctl", "keyword", "decoration:blur:size", blurSize.toString()]);
+        }
+    }
+
+    Timer {
+        id: startupRoundingTimer
+        interval: 1500
+        running: Config.ready
+        repeat: false
+        onTriggered: {
+            if (Config.options.appearance.toggleWindowRounding) {
+                Quickshell.execDetached(["hyprctl", "keyword", "decoration:rounding", root.rounding.windowRounding.toString()]);
+            }
+            Quickshell.execDetached(["hyprctl", "keyword", "decoration:blur:size", root.blurSize.toString()]);
+        }
     }
 
     font: QtObject {
@@ -230,8 +264,7 @@ Singleton {
             property var numbers: ({
                     "wght": 450
                 })
-            property var title: ({
-                    // Slightly bold weight for title
+            property var title: ({ // Slightly bold weight for title
                     "wght": 550 // Weight (Lowered to compensate for increased grade)
                 })
         }
@@ -283,6 +316,20 @@ Singleton {
             }
         }
 
+        property QtObject elementMoveSmall: QtObject {
+            property int duration: animationCurves.expressiveFastSpatialDuration
+            property int type: Easing.BezierSpline
+            property list<real> bezierCurve: animationCurves.expressiveFastSpatial
+            property int velocity: 650
+            property Component numberAnimation: Component {
+                NumberAnimation {
+                    duration: root.animation.elementMoveSmall.duration
+                    easing.type: root.animation.elementMoveSmall.type
+                    easing.bezierCurve: root.animation.elementMoveSmall.bezierCurve
+                }
+            }
+        }
+
         property QtObject elementMoveEnter: QtObject {
             property int duration: 400
             property int type: Easing.BezierSpline
@@ -309,6 +356,28 @@ Singleton {
                     duration: root.animation.elementMoveExit.duration
                     easing.type: root.animation.elementMoveExit.type
                     easing.bezierCurve: root.animation.elementMoveExit.bezierCurve
+                }
+            }
+        }
+
+        property QtObject elementMoveSlow: QtObject {
+            property int duration: animationCurves.expressiveEffectsDuration * 2.5
+            property int type: Easing.BezierSpline
+            property list<real> bezierCurve: animationCurves.expressiveEffects
+            property int velocity: 850
+            property Component colorAnimation: Component {
+                ColorAnimation {
+                    duration: root.animation.elementMoveSlow.duration
+                    easing.type: root.animation.elementMoveSlow.type
+                    easing.bezierCurve: root.animation.elementMoveSlow.bezierCurve
+                }
+            }
+            property Component numberAnimation: Component {
+                NumberAnimation {
+                    alwaysRunToEnd: true
+                    duration: root.animation.elementMoveSlow.duration
+                    easing.type: root.animation.elementMoveSlow.type
+                    easing.bezierCurve: root.animation.elementMoveSlow.bezierCurve
                 }
             }
         }
@@ -368,7 +437,7 @@ Singleton {
         property QtObject scroll: QtObject {
             property int duration: 200
             property int type: Easing.BezierSpline
-            property list<real> bezierCurve: animationCurves.standardDecel
+            property list<real> bezierCurve: root.animationCurves.standardDecel
         }
 
         property QtObject menuDecel: QtObject {

@@ -20,6 +20,8 @@ RowLayout {
     property bool usePercentTooltip: true
     property real from: slider.from
     property real to: slider.to
+    property alias stepSize: slider.stepSize
+    property alias snapMode: slider.snapMode
     property real textWidth: 180
 
     readonly property string currentSearch: SearchRegistry.currentSearch

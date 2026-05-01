@@ -16,9 +16,9 @@ Item {
     Rectangle {
         anchors.fill: parent
         color: Appearance.colors.colLayer0
-        topLeftRadius: Appearance.rounding.large
+        topLeftRadius: Appearance.rounding.windowRounding
         topRightRadius: Appearance.rounding.small
-        bottomLeftRadius: Appearance.rounding.large
+        bottomLeftRadius: Appearance.rounding.windowRounding
         bottomRightRadius: Appearance.rounding.small
     }
 

@@ -62,7 +62,7 @@ Row {
                 anchors.horizontalCenter: parent.horizontalCenter
                 width: parent.width - 4
                 height: 40
-                radius: Appearance.rounding.large
+                radius: Appearance.rounding.windowRounding
                 color: allDayEvents.length > 0 ? Appearance.colors.colPrimaryContainer : isToday ? Appearance.colors.colPrimary : Appearance.colors.colSurfaceContainerHigh
 
                 StyledText {

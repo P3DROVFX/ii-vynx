@@ -13,6 +13,8 @@ Flow {
     property color colBackgroundHover: Appearance.colors.colSecondaryContainerHover
     property color colBackgroundActive: Appearance.colors.colSecondaryContainerActive
 
+    property bool fillEqually: false
+
     spacing: 2
     property list<var> options: [
         {
@@ -42,6 +44,8 @@ Flow {
             id: paletteButton
             required property var modelData
             required property int index
+
+            width: root.fillEqually ? Math.floor((root.width - (root.options.length - 1) * root.spacing) / root.options.length) : implicitWidth
             onYChanged: {
                 if (index === 0) {
                     paletteButton.leftmost = true

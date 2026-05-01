@@ -88,9 +88,9 @@ Item {
         anchors.fill: parent
         color: Appearance.colors.colLayer0
         topLeftRadius: Appearance.rounding.small
-        topRightRadius: Appearance.rounding.verylarge
+        topRightRadius: Appearance.rounding.windowRounding
         bottomLeftRadius: Appearance.rounding.small
-        bottomRightRadius: Appearance.rounding.verylarge
+        bottomRightRadius: Appearance.rounding.windowRounding
         antialiasing: true
     }
 

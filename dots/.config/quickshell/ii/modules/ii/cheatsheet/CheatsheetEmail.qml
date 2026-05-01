@@ -44,14 +44,14 @@ Item {
     Rectangle {
         anchors.fill: parent
         color: "transparent" //Appearance.colors.colLayer4 we can use this, but i'm not sure on what to use.
-        radius: Appearance.rounding.verylarge
+        radius: Appearance.rounding.windowRounding
         border.width: 1
         border.color: Appearance.colors.colOutlineVariant
     }
 
     RowLayout {
         anchors.fill: parent
-        anchors.margins: 12
+        anchors.margins: Math.max(12, Appearance.rounding.windowRounding / 2.0)
         spacing: 4
 
         // Navigation
@@ -252,7 +252,7 @@ Item {
                 color: Appearance.colors.colLayer0
                 visible: EmailService.loading && emailInbox.model.count === 0 && EmailService.authenticated && root.activeTab !== "settings"
                 z: 100
-                radius: Appearance.rounding.verylarge
+                radius: Appearance.rounding.windowRounding
 
                 ColumnLayout {
                     anchors.centerIn: parent

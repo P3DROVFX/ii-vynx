@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Controls
 import qs
 import qs.services
 import qs.modules.common
@@ -163,6 +164,21 @@ ContentPage {
             value: Config.options.appearance.transparency.contentTransparency
             onValueChanged: {
                 Config.options.appearance.transparency.contentTransparency = value;
+            }
+        }
+
+        ConfigSlider {
+            buttonIcon: "lens_blur"
+            text: Translation.tr("Blur Size")
+            usePercentTooltip: false
+            from: 0
+            to: 30
+            stepSize: 5
+            snapMode: Slider.SnapAlways
+            stopIndicatorValues: [0, 5, 10, 15, 20, 25, 30]
+            value: Config.options.appearance.blurSize ?? 8
+            onValueChanged: {
+                Config.options.appearance.blurSize = Math.round(value);
             }
         }
     }

@@ -4,51 +4,53 @@ import qs.modules.common
 import qs.modules.common.widgets
 
 SectionCard {
-    id: root
-
+    id: resourceCardRoot
+    
     Layout.fillWidth: true
     Layout.fillHeight: true
     Layout.preferredWidth: 180
     showDivider: false
-
+    
     property string resourceName: ""
     property string resourceValueText: ""
     property real resourcePercentage: 0
     property color highlightColor: Appearance.colors.colPrimary
-
+    
     // Expose extra content below the progress bar
     default property alias extraContent: extraColumn.data
-
+    
     ColumnLayout {
         Layout.fillWidth: true
         spacing: 8
 
         RowLayout {
             Layout.fillWidth: true
-            StyledText {
-                text: root.resourceName
+            StyledText { 
+                text: resourceCardRoot.resourceName
                 font.pixelSize: Appearance.font.pixelSize.small
-                color: Appearance.colors.colOnSurfaceVariant
+                color: Appearance.colors.colOnSurfaceVariant 
             }
-            Item {
-                Layout.fillWidth: true
-            }
-            StyledText {
-                text: root.resourceValueText
+            Item { Layout.fillWidth: true }
+            StyledText { 
+                text: resourceCardRoot.resourceValueText
                 font.weight: Font.DemiBold
             }
         }
-
+        
         StyledProgressBar {
-            visible: root.resourcePercentage >= 0
+            visible: resourceCardRoot.resourcePercentage >= 0
             Layout.fillWidth: true
-            value: root.resourcePercentage
-            highlightColor: root.highlightColor
+            value: root.active ? resourceCardRoot.resourcePercentage : 0
+            highlightColor: resourceCardRoot.highlightColor
+
+            Behavior on value {
+                animation: Appearance.animation.elementMoveSlow.numberAnimation.createObject(this) 
+            }
         }
 
         ColumnLayout {
+            visible: resourceCardRoot.extraContent.length > 0
             id: extraColumn
-            visible: root.extraContent.length > 0
             Layout.fillWidth: true
             Layout.topMargin: parent.spacing * 2
             spacing: 12

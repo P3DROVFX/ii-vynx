@@ -125,6 +125,7 @@ Singleton {
                 property int fakeScreenRounding: 2 // 0: None | 1: Always | 2: When not fullscreen | 3: Wrapped
                 property int wrappedFrameThickness: 10
                 property bool sharpMode: false
+                property string globalRounding: "large" // Options: "sharp", "normal", "large", "verylarge"
                 property int defaultBorderRadius: 18
                 property bool toggleWindowRounding: true // Changes Hyprland window rounding to 0 if sharpMode is true
                 property JsonObject fonts: JsonObject {
@@ -140,9 +141,11 @@ Singleton {
                 property JsonObject transparency: JsonObject {
                     property bool enable: false
                     property bool automatic: true
+                    property bool popups: true
                     property real backgroundTransparency: 0.11
                     property real contentTransparency: 0.57
                 }
+                property int blurSize: 10
                 property JsonObject wallpaperTheming: JsonObject {
                     property bool enableAppsAndShell: true
                     property bool enableQtApps: true
@@ -741,6 +744,10 @@ Singleton {
                             {
                                 "size": 2,
                                 "type": "nightLight"
+                            },
+                            {
+                                "size": 1,
+                                "type": "soundcoreAnc"
                             }
                         ]
                     }
@@ -767,6 +774,11 @@ Singleton {
                 property bool battery: false
                 property bool pomodoro: false
                 property string theme: "freedesktop"
+            }
+
+            property JsonObject soundcore: JsonObject {
+                property string macAddress: "E8:EE:CC:96:31:3A"
+                property string model: "SoundcoreA3028"
             }
 
             property JsonObject time: JsonObject {
@@ -798,9 +810,7 @@ Singleton {
                 property bool useSystemFileDialog: false
                 property list<var> directories: [
                     {
-                        "icon": "wallpaper",
-                        "name": "Wallpapers",
-                        "path": `${Directories.pictures}/Wallpapers`
+                        "path": FileUtils.trimFileProtocol(`${Directories.home}/Pictures/Wallpapers`)
                     }
                 ]
             }

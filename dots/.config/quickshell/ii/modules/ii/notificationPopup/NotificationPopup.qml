@@ -39,8 +39,8 @@ Scope {
                 top: parent.top
                 bottom: parent.bottom
                 right: parent.right
-                rightMargin: 4
-                topMargin: 4
+                rightMargin: Math.max(Appearance.sizes.hyprlandGapsOut, Appearance.rounding.windowRounding * 0.5)
+                topMargin: Math.max(Appearance.sizes.hyprlandGapsOut, Appearance.rounding.windowRounding * 0.5)
             }
             implicitWidth: parent.width - Appearance.sizes.elevationMargin * 2
             popup: true

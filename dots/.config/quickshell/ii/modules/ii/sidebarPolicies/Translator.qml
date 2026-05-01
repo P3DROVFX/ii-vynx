@@ -2,23 +2,51 @@ import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.common.functions
-import qs.modules.ii.sidebarPolicies.translator
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Controls
 import Quickshell
 import Quickshell.Io
 
 /**
  * Translator widget with the `trans` commandline tool.
+ * Redesigned for Material 3 Expressive
  */
 Item {
     id: root
 
     // Sizes
-    property real padding: 4
+    property real padding: Appearance.rounding.small
+
+    // Colors
+    property color colLangBtn: Appearance.colors.colSecondaryContainer
+    property color colLangBtnHover: Appearance.colors.colSecondaryContainerHover
+    property color colLangBtnActive: Appearance.colors.colSecondaryContainerActive
+    property color colLangText: Appearance.colors.colOnSecondaryContainer
+
+    property color colSwapBtn: Appearance.colors.colTertiaryContainer
+    property color colSwapBtnHover: Appearance.colors.colTertiaryContainerHover
+    property color colSwapBtnActive: Appearance.colors.colTertiaryContainerActive
+    property color colSwapIcon: Appearance.colors.colOnTertiaryContainer
+
+    property color colInputBox: Appearance.colors.colPrimaryContainer
+    property color colInputText: Appearance.colors.colOnPrimaryContainer
+
+    property color colResultBox: Appearance.colors.colSurfaceContainerHigh
+    property color colResultText: Appearance.colors.colOnSurface
+
+    property color colPasteBtn: colResultBox
+    property color colPasteBtnHover: Appearance.colors.colSurfaceContainerHighestHover
+    property color colPasteBtnActive: Appearance.colors.colSurfaceContainerHighestActive
+    property color colPasteIcon: colResultText
+
+    property color colResultActionBtn: colInputBox
+    property color colResultActionBtnHover: Appearance.colors.colPrimaryContainerHover
+    property color colResultActionBtnActive: Appearance.colors.colPrimaryContainerActive
+    property color colResultActionIcon: colInputText
 
     // Widgets
-    property var inputField: inputCanvas.inputTextArea
+    property var inputField: inputTextArea
 
     // Widget variables
     property bool translationFor: false // Indicates if the translation is for an autocorrected text
@@ -36,12 +64,12 @@ Item {
 
     function showLanguageSelectorDialog(isTargetLang: bool) {
         root.languageSelectorTarget = isTargetLang;
-        root.showLanguageSelector = true
+        root.showLanguageSelector = true;
     }
 
-    onFocusChanged: (focus) => {
+    onFocusChanged: focus => {
         if (focus) {
-            root.inputField.forceActiveFocus()
+            root.inputField.forceActiveFocus();
         }
     }
 
@@ -51,7 +79,6 @@ Item {
         repeat: false
         onTriggered: () => {
             if (root.inputField.text.trim().length > 0) {
-                // console.log("Translating with command:", translateProc.command);
                 translateProc.running = false;
                 translateProc.buffer = ""; // Clear the buffer
                 translateProc.running = true; // Restart the process
@@ -63,10 +90,7 @@ Item {
 
     Process {
         id: translateProc
-        command: ["bash", "-c", `trans -brief -no-bidi`
-            + ` -source '${StringUtils.shellSingleQuoteEscape(root.sourceLanguage)}'`
-            + ` -target '${StringUtils.shellSingleQuoteEscape(root.targetLanguage)}'`
-            + ` '${StringUtils.shellSingleQuoteEscape(root.inputField.text.trim())}'`]
+        command: ["bash", "-c", `trans -brief -no-bidi` + ` -source '${StringUtils.shellSingleQuoteEscape(root.sourceLanguage)}'` + ` -target '${StringUtils.shellSingleQuoteEscape(root.targetLanguage)}'` + ` '${StringUtils.shellSingleQuoteEscape(root.inputField.text.trim())}'`]
         property string buffer: ""
         stdout: SplitParser {
             onRead: data => {
@@ -74,7 +98,6 @@ Item {
             }
         }
         onExited: (exitCode, exitStatus) => {
-            // With -brief mode, we get output with no metadata
             root.translatedText = translateProc.buffer.trim();
         }
     }
@@ -90,13 +113,10 @@ Item {
             }
         }
         onExited: (exitCode, exitStatus) => {
-            // Ensure "auto" is always the first language
-            let langs = getLanguagesProc.bufferList
-                .filter(lang => lang.trim().length > 0 && lang !== "auto")
-                .sort((a, b) => a.localeCompare(b));
+            let langs = getLanguagesProc.bufferList.filter(lang => lang.trim().length > 0 && lang !== "auto").sort((a, b) => a.localeCompare(b));
             langs.unshift("auto");
             root.languages = langs;
-            getLanguagesProc.bufferList = []; // Clear the buffer
+            getLanguagesProc.bufferList = [];
         }
     }
 
@@ -105,115 +125,252 @@ Item {
             fill: parent
             margins: root.padding
         }
+        spacing: 8
 
-        StyledFlickable {
+        // Language Selectors Row
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: Appearance.rounding.small
+
+            RippleButton {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 50
+                Layout.preferredWidth: 1
+                buttonRadius: Appearance.rounding.full
+                colBackground: pressed ? colLangBtnActive : (hovered ? colLangBtnHover : colLangBtn)
+
+                contentItem: RowLayout {
+                    anchors.fill: parent
+                    spacing: 8
+                    Item {
+                        Layout.fillWidth: true
+                    }
+                    StyledText {
+                        Layout.fillWidth: true
+                        Layout.maximumWidth: implicitWidth
+                        elide: Text.ElideRight
+                        horizontalAlignment: Text.AlignHCenter
+                        text: root.sourceLanguage
+                        color: colLangText
+                        font.pixelSize: Appearance.font.pixelSize.normal
+                        font.bold: true
+                    }
+                    MaterialSymbol {
+                        text: "arrow_drop_down"
+                        color: colLangText
+                        iconSize: Appearance.font.pixelSize.larger
+                    }
+                    Item {
+                        Layout.fillWidth: true
+                    }
+                }
+                onClicked: root.showLanguageSelectorDialog(false)
+            }
+
+            RippleButton {
+                implicitWidth: 50
+                implicitHeight: 50
+                buttonRadius: Appearance.rounding.full
+                colBackground: pressed ? colSwapBtnActive : (hovered ? colSwapBtnHover : colSwapBtn)
+                contentItem: Item {
+                    anchors.fill: parent
+                    MaterialSymbol {
+                        anchors.centerIn: parent
+                        text: "swap_horiz"
+                        color: colSwapIcon
+                        iconSize: Appearance.font.pixelSize.larger
+                    }
+                }
+                onClicked: {
+                    let temp = root.sourceLanguage;
+                    root.sourceLanguage = root.targetLanguage;
+                    root.targetLanguage = temp;
+                    // Trigger translation
+                    if (root.inputField.text.trim().length > 0) {
+                        translateTimer.restart();
+                    }
+                }
+            }
+
+            RippleButton {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 50
+                Layout.preferredWidth: 1
+                buttonRadius: Appearance.rounding.full
+                colBackground: pressed ? colLangBtnActive : (hovered ? colLangBtnHover : colLangBtn)
+
+                contentItem: RowLayout {
+                    anchors.fill: parent
+                    spacing: 8
+                    Item {
+                        Layout.fillWidth: true
+                    }
+                    StyledText {
+                        Layout.fillWidth: true
+                        Layout.maximumWidth: implicitWidth
+                        elide: Text.ElideRight
+                        horizontalAlignment: Text.AlignHCenter
+                        text: root.targetLanguage
+                        color: colLangText
+                        font.pixelSize: Appearance.font.pixelSize.normal
+                        font.bold: true
+                    }
+                    MaterialSymbol {
+                        text: "arrow_drop_down"
+                        color: colLangText
+                        iconSize: Appearance.font.pixelSize.larger
+                    }
+                    Item {
+                        Layout.fillWidth: true
+                    }
+                }
+                onClicked: root.showLanguageSelectorDialog(true)
+            }
+        }
+
+        // Input Area (Source)
+        Rectangle {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            contentHeight: contentColumn.implicitHeight
+            radius: Appearance.rounding.large
+            color: colInputBox
 
             ColumnLayout {
-                id: contentColumn
                 anchors.fill: parent
+                anchors.margins: Appearance.rounding.normal
 
-                LanguageSelectorButton { // Target language button
-                    id: targetLanguageButton
-                    displayText: root.targetLanguage
-                    onClicked: {
-                        root.showLanguageSelectorDialog(true);
+                StyledFlickable {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    clip: true
+
+                    StyledTextArea {
+                        id: inputTextArea
+                        width: parent.width
+                        placeholderText: Translation.tr("Translate text")
+                        wrapMode: TextEdit.Wrap
+                        font.pixelSize: Appearance.font.pixelSize.huge // Material 3 Expressive
+                        color: colInputText
+                        background: null
+                        onTextChanged: translateTimer.restart()
                     }
                 }
 
-                TextCanvas { // Content translation
-                    id: outputCanvas
-                    isInput: false
-                    placeholderText: Translation.tr("Translation goes here...")
-                    property bool hasTranslation: (root.translatedText.trim().length > 0)
-                    text: hasTranslation ? root.translatedText : ""
-                    GroupButton {
-                        id: copyButton
-                        baseWidth: height
-                        buttonRadius: Appearance.rounding.small
-                        enabled: outputCanvas.displayedText.trim().length > 0
-                        contentItem: MaterialSymbol {
-                            anchors.centerIn: parent
-                            horizontalAlignment: Text.AlignHCenter
-                            iconSize: Appearance.font.pixelSize.larger
-                            text: "content_copy"
-                            color: copyButton.enabled ? Appearance.colors.colOnLayer1 : Appearance.colors.colSubtext
-                        }
-                        onClicked: {
-                            Quickshell.clipboardText = outputCanvas.displayedText
-                        }
+                RowLayout {
+                    Layout.fillWidth: true
+                    StyledText {
+                        text: root.inputField.text.length + " characters"
+                        color: Appearance.colors.colSubtext
+                        font.pixelSize: Appearance.font.pixelSize.smaller
                     }
-                    GroupButton {
-                        id: searchButton
-                        baseWidth: height
-                        buttonRadius: Appearance.rounding.small
-                        enabled: outputCanvas.displayedText.trim().length > 0
-                        contentItem: MaterialSymbol {
-                            anchors.centerIn: parent
-                            horizontalAlignment: Text.AlignHCenter
-                            iconSize: Appearance.font.pixelSize.larger
-                            text: "travel_explore"
-                            color: searchButton.enabled ? Appearance.colors.colOnLayer1 : Appearance.colors.colSubtext
+                    Item {
+                        Layout.fillWidth: true
+                    }
+                    RippleButton {
+                        implicitWidth: 40
+                        implicitHeight: 40
+                        buttonRadius: Appearance.rounding.full
+                        colBackground: pressed ? colPasteBtnActive : (hovered ? colPasteBtnHover : colPasteBtn)
+                        contentItem: Item {
+                            anchors.fill: parent
+                            MaterialSymbol {
+                                anchors.centerIn: parent
+                                text: "close"
+                                color: colPasteIcon
+                            }
+                        }
+                        onClicked: root.inputField.text = ""
+                        visible: root.inputField.text.length > 0
+                    }
+                    RippleButton {
+                        implicitWidth: 40
+                        implicitHeight: 40
+                        buttonRadius: Appearance.rounding.full
+                        colBackground: pressed ? colPasteBtnActive : (hovered ? colPasteBtnHover : colPasteBtn)
+                        contentItem: Item {
+                            anchors.fill: parent
+                            MaterialSymbol {
+                                anchors.centerIn: parent
+                                text: "content_paste"
+                                color: colPasteIcon
+                            }
+                        }
+                        onClicked: root.inputField.text = Quickshell.clipboardText
+                    }
+                }
+            }
+        }
+
+        // Output Area (Target)
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            radius: Appearance.rounding.large
+            color: colResultBox
+
+            ColumnLayout {
+                anchors.fill: parent
+                anchors.margins: Appearance.rounding.normal
+
+                StyledFlickable {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    clip: true
+                    contentHeight: outputText.implicitHeight
+
+                    StyledText {
+                        id: outputText
+                        width: parent.width
+                        wrapMode: Text.Wrap
+                        text: root.translatedText
+                        font.pixelSize: Appearance.font.pixelSize.huge // Material 3 Expressive
+                        color: colResultText
+                    }
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    Item {
+                        Layout.fillWidth: true
+                    }
+                    RippleButton {
+                        implicitWidth: 40
+                        implicitHeight: 40
+                        buttonRadius: Appearance.rounding.full
+                        colBackground: pressed ? colResultActionBtnActive : (hovered ? colResultActionBtnHover : colResultActionBtn)
+                        contentItem: Item {
+                            anchors.fill: parent
+                            MaterialSymbol {
+                                anchors.centerIn: parent
+                                text: "content_copy"
+                                color: colResultActionIcon
+                            }
+                        }
+                        onClicked: Quickshell.clipboardText = root.translatedText
+                        visible: root.translatedText.length > 0
+                    }
+                    RippleButton {
+                        implicitWidth: 40
+                        implicitHeight: 40
+                        buttonRadius: Appearance.rounding.full
+                        colBackground: pressed ? colResultActionBtnActive : (hovered ? colResultActionBtnHover : colResultActionBtn)
+                        contentItem: Item {
+                            anchors.fill: parent
+                            MaterialSymbol {
+                                anchors.centerIn: parent
+                                text: "travel_explore"
+                                color: colResultActionIcon
+                            }
                         }
                         onClicked: {
-                            let url = Config.options.search.engineBaseUrl + outputCanvas.displayedText;
+                            let url = Config.options.search.engineBaseUrl + root.translatedText;
                             for (let site of Config.options.search.excludedSites) {
                                 url += ` -site:${site}`;
                             }
                             Qt.openUrlExternally(url);
                         }
+                        visible: root.translatedText.length > 0
                     }
-                }
-
-            }    
-        }
-
-        LanguageSelectorButton { // Source language button
-            id: sourceLanguageButton
-            displayText: root.sourceLanguage
-            onClicked: {
-                root.showLanguageSelectorDialog(false);
-            }
-        }
-
-        TextCanvas { // Content input
-            id: inputCanvas
-            isInput: true
-            placeholderText: Translation.tr("Enter text to translate...")
-            onInputTextChanged: {
-                translateTimer.restart();
-            }
-            GroupButton {
-                id: pasteButton
-                baseWidth: height
-                buttonRadius: Appearance.rounding.small
-                contentItem: MaterialSymbol {
-                    anchors.centerIn: parent
-                    horizontalAlignment: Text.AlignHCenter
-                    iconSize: Appearance.font.pixelSize.larger
-                    text: "content_paste"
-                    color: deleteButton.enabled ? Appearance.colors.colOnLayer1 : Appearance.colors.colSubtext
-                }
-                onClicked: {
-                    root.inputField.text = Quickshell.clipboardText
-                }
-            }
-            GroupButton {
-                id: deleteButton
-                baseWidth: height
-                buttonRadius: Appearance.rounding.small
-                enabled: inputCanvas.inputTextArea.text.length > 0
-                contentItem: MaterialSymbol {
-                    anchors.centerIn: parent
-                    horizontalAlignment: Text.AlignHCenter
-                    iconSize: Appearance.font.pixelSize.larger
-                    text: "close"
-                    color: deleteButton.enabled ? Appearance.colors.colOnLayer1 : Appearance.colors.colSubtext
-                }
-                onClicked: {
-                    root.inputField.text = ""
                 }
             }
         }
@@ -232,9 +389,10 @@ Item {
             onCanceled: () => {
                 root.showLanguageSelector = false;
             }
-            onSelected: (result) => {
+            onSelected: result => {
                 root.showLanguageSelector = false;
-                if (!result || result.length === 0) return; // No selection made
+                if (!result || result.length === 0)
+                    return; // No selection made
 
                 if (root.languageSelectorTarget) {
                     root.targetLanguage = result;

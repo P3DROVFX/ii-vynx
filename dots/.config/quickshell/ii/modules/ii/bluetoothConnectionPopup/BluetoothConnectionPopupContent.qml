@@ -275,6 +275,37 @@ Item {
                 }
             }
 
+            // === SOUNDCORE ANC MODE INDICATOR ===
+            Loader {
+                active: root.device?.name === "Soundcore Life Q30"
+                Layout.fillWidth: true
+                Layout.topMargin: 4
+                sourceComponent: RowLayout {
+                    spacing: 8
+                    MaterialSymbol {
+                        text: {
+                            if (SoundcoreService.currentMode === "Normal") return "hearing";
+                            if (SoundcoreService.currentMode === "Transparency") return "visibility";
+                            if (SoundcoreService.currentMode === "NoiseCanceling") return "noise_control_off";
+                            return "hearing";
+                        }
+                        iconSize: 18
+                        color: Appearance.colors.colPrimary
+                    }
+                    StyledText {
+                        text: {
+                            if (SoundcoreService.currentMode === "Normal") return Translation.tr("Normal");
+                            if (SoundcoreService.currentMode === "Transparency") return Translation.tr("Transparency");
+                            if (SoundcoreService.currentMode === "NoiseCanceling") return Translation.tr("ANC");
+                            return Translation.tr("Normal");
+                        }
+                        font.pixelSize: Appearance.font.pixelSize.normal
+                        font.weight: Font.Medium
+                        color: Appearance.colors.colOnSurface
+                    }
+                }
+            }
+
             // === ACTION BUTTONS ===
             RowLayout {
                 Layout.fillWidth: true

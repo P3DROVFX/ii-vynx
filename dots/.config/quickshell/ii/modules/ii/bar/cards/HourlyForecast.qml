@@ -56,9 +56,14 @@ SectionCard {
                         anchors.bottomMargin: 4
                         anchors.horizontalCenter: parent.horizontalCenter
                         width: parent.width
-                        height: barHeight
+                        height: root.active ? barHeight : 0 
                         radius: Appearance.rounding.normal
                         color: isCurrentHour ? Appearance.colors.colPrimaryContainer : Appearance.colors.colSecondaryContainer
+
+
+                        Behavior on height {
+                            animation: Appearance.animation.elementMoveSlow.numberAnimation.createObject(this) 
+                        }
 
                         ColumnLayout {
                             anchors.top: parent.top

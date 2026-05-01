@@ -58,7 +58,7 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        radius: Appearance.rounding.large
+        radius: Appearance.rounding.windowRounding
         color: isToday ? todayHighlightFill : dayIdx % 2 == 0 ? dayBackgroundFill : dayBackgroundFillVariant
         border.width: isToday ? 1 : 0
         border.color: isToday ? todayHighlightBorder : "transparent"

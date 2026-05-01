@@ -25,41 +25,6 @@ StyledPopup {
         anchors.centerIn: parent
         spacing: 12
 
-        // Header
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 8
-
-            MaterialShape {
-                shapeString: "Circle"
-                implicitSize: 32
-                color: Appearance.colors.colPrimaryContainer
-
-                MaterialSymbol {
-                    anchors.centerIn: parent
-                    text: "bluetooth"
-                    iconSize: Appearance.font.pixelSize.normal
-                    color: Appearance.colors.colOnPrimaryContainer
-                }
-            }
-
-            StyledText {
-                Layout.fillWidth: true
-                font.pixelSize: Appearance.font.pixelSize.large
-                font.family: Appearance.font.family.expressive
-                font.weight: Font.Bold
-                text: Translation.tr("Bluetooth Devices")
-                color: Appearance.colors.colOnSurface
-            }
-        }
-
-        Rectangle {
-            Layout.fillWidth: true
-            height: 2
-            color: Appearance.colors.colSurfaceContainerHighest
-            radius: 1
-        }
-
         // Empty state placeholder
         Item {
             Layout.fillWidth: true
@@ -299,6 +264,80 @@ StyledPopup {
                                         if (modelData.battery <= 0.15)
                                             return Appearance.m3colors.m3error;
                                         return Appearance.colors.colOnSurface;
+                                    }
+                                }
+                            }
+
+                            // ANC Modes (Anker Soundcore Q30 Only)
+                            RowLayout {
+                                Layout.fillWidth: true
+                                Layout.topMargin: 12
+                                Layout.alignment: Qt.AlignRight
+                                visible: modelData.address === "E8:EE:CC:96:31:3A"
+                                spacing: 0
+
+                                readonly property string currentMode: SoundcoreService.currentMode
+                                
+                                // ANC (Noise Canceling)
+                                Item {
+                                    Layout.preferredWidth: 32
+                                    Layout.preferredHeight: 32
+                                    Rectangle {
+                                        anchors.centerIn: parent
+                                        width: 32; height: 32; radius: 16
+                                        color: parent.parent.currentMode === "NoiseCanceling" ? Appearance.colors.colPrimary : Appearance.colors.colSurfaceContainerHighest
+                                        MaterialSymbol {
+                                            anchors.centerIn: parent
+                                            text: "noise_control_off"
+                                            iconSize: 18
+                                            color: parent.parent.parent.currentMode === "NoiseCanceling" ? Appearance.colors.colOnPrimary : Appearance.colors.colOnSurfaceVariant
+                                        }
+                                    }
+                                }
+
+                                Rectangle {
+                                    Layout.fillWidth: true
+                                    height: 2
+                                    color: Appearance.colors.colSurfaceContainerHighest
+                                }
+
+                                // Normal
+                                Item {
+                                    Layout.preferredWidth: 32
+                                    Layout.preferredHeight: 32
+                                    Rectangle {
+                                        anchors.centerIn: parent
+                                        width: 32; height: 32; radius: 16
+                                        color: parent.parent.currentMode === "Normal" ? Appearance.colors.colPrimary : Appearance.colors.colSurfaceContainerHighest
+                                        MaterialSymbol {
+                                            anchors.centerIn: parent
+                                            text: "hearing"
+                                            iconSize: 18
+                                            color: parent.parent.parent.currentMode === "Normal" ? Appearance.colors.colOnPrimary : Appearance.colors.colOnSurfaceVariant
+                                        }
+                                    }
+                                }
+
+                                Rectangle {
+                                    Layout.fillWidth: true
+                                    height: 2
+                                    color: Appearance.colors.colSurfaceContainerHighest
+                                }
+
+                                // Transparency
+                                Item {
+                                    Layout.preferredWidth: 32
+                                    Layout.preferredHeight: 32
+                                    Rectangle {
+                                        anchors.centerIn: parent
+                                        width: 32; height: 32; radius: 16
+                                        color: parent.parent.currentMode === "Transparency" ? Appearance.colors.colPrimary : Appearance.colors.colSurfaceContainerHighest
+                                        MaterialSymbol {
+                                            anchors.centerIn: parent
+                                            text: "visibility"
+                                            iconSize: 18
+                                            color: parent.parent.parent.currentMode === "Transparency" ? Appearance.colors.colOnPrimary : Appearance.colors.colOnSurfaceVariant
+                                        }
                                     }
                                 }
                             }

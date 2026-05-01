@@ -35,42 +35,6 @@ StyledPopup {
         anchors.centerIn: parent
         spacing: 16
 
-        // Header
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 8
-
-            MaterialShape {
-                shapeString: "Circle"
-                implicitSize: 32
-                color: Appearance.colors.colPrimaryContainer
-
-                MaterialSymbol {
-                    anchors.centerIn: parent
-                    text: "battery_std"
-                    iconSize: Appearance.font.pixelSize.normal
-                    color: Appearance.colors.colOnPrimaryContainer
-                }
-            }
-
-            StyledText {
-                Layout.fillWidth: true
-                font.pixelSize: Appearance.font.pixelSize.large
-                font.family: Appearance.font.family.expressive
-                font.weight: Font.Bold
-                text: Translation.tr("Battery Status")
-                color: Appearance.colors.colOnSurface
-            }
-        }
-
-        // Divider
-        Rectangle {
-            Layout.fillWidth: true
-            height: 2
-            color: Appearance.colors.colSurfaceContainerHighest
-            radius: 1
-        }
-
         // HERO CARD
         Rectangle {
             Layout.preferredWidth: 380

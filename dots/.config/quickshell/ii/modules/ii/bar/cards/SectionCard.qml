@@ -5,7 +5,7 @@ import qs.modules.common
 import qs.modules.common.widgets
 
 Rectangle {
-    id: root
+    id: sectionCardRoot
 
     Layout.fillWidth: true
     implicitWidth: 320
@@ -35,8 +35,8 @@ Rectangle {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: parent.top
-        anchors.margins: root.margins
-        spacing: root.spacing
+        anchors.margins: sectionCardRoot.margins
+        spacing: sectionCardRoot.spacing
 
         RowLayout {
             Layout.fillWidth: true
@@ -44,16 +44,16 @@ Rectangle {
 
             MaterialShape {
                 id: shapeItem
-                shapeString: root.shapeString
-                implicitSize: root.shapeSize
-                color: root.shapeColor
+                shapeString: sectionCardRoot.shapeString
+                implicitSize: sectionCardRoot.shapeSize
+                color: sectionCardRoot.shapeColor
 
                 MaterialSymbol {
                     id: iconSymbol
                     visible: iconSymbol.text !== "" && shapeItem.children.length <= 1
                     anchors.centerIn: parent
                     iconSize: Appearance.font.pixelSize.normal
-                    color: root.symbolColor
+                    color: sectionCardRoot.symbolColor
                 }
             }
 
@@ -71,8 +71,8 @@ Rectangle {
                 Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
 
                 StyledText {
-                    visible: root.headerExtraText !== ""
-                    text: root.headerExtraText
+                    visible: sectionCardRoot.headerExtraText !== ""
+                    text: sectionCardRoot.headerExtraText
                     font.pixelSize: Appearance.font.pixelSize.small
                     color: Appearance.colors.colOnSurfaceVariant
                 }
@@ -80,7 +80,7 @@ Rectangle {
         }
 
         Rectangle {
-            visible: root.showDivider
+            visible: sectionCardRoot.showDivider
             Layout.fillWidth: true
             height: 2
             color: Appearance.colors.colSurfaceContainerHighest
@@ -90,7 +90,7 @@ Rectangle {
         ColumnLayout {
             id: contentColumn
             Layout.fillWidth: true
-            spacing: root.spacing
+            spacing: sectionCardRoot.spacing
 
             StyledText {
                 id: subtitleText

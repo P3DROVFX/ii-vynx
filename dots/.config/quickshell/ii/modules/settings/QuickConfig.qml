@@ -357,7 +357,7 @@ ContentPage {
             }
         }
 
-        ConfigRow {
+        ColumnLayout {
             ContentSubsection {
                 title: Translation.tr("Bar background style")
                 Layout.fillWidth: true
@@ -393,27 +393,31 @@ ContentPage {
                 Layout.fillWidth: false
 
                 ConfigSelectionArray {
-                    currentValue: Config.options.appearance.sharpMode
+                    currentValue: Config.options.appearance.globalRounding
                     onSelected: newValue => {
-                        Config.options.appearance.sharpMode = newValue;
-                        if (!Config.options.appearance.toggleWindowRounding)
-                            return;
-                        if (newValue) {
-                            Quickshell.execDetached(["hyprctl", "keyword", "decoration:rounding", "0"]);
-                        } else {
-                            Quickshell.execDetached(["hyprctl", "keyword", "decoration:rounding", "18"]); // NOTE: Is using 18 okay here?
-                        }
+                        Config.options.appearance.globalRounding = newValue;
+                        Config.options.appearance.sharpMode = (newValue === "sharp");
                     }
                     options: [
                         {
-                            displayName: Translation.tr("Default"),
-                            icon: "rounded_corner",
-                            value: false
-                        },
-                        {
                             displayName: Translation.tr("Sharp"),
                             icon: "square",
-                            value: true
+                            value: "sharp"
+                        },
+                        {
+                            displayName: Translation.tr("Normal"),
+                            icon: "rounded_corner",
+                            value: "normal"
+                        },
+                        {
+                            displayName: Translation.tr("Large"),
+                            icon: "lens_blur",
+                            value: "large"
+                        },
+                        {
+                            displayName: Translation.tr("V. Large"),
+                            icon: "circle",
+                            value: "verylarge"
                         }
                     ]
                 }

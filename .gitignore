@@ -16,3 +16,5 @@ __pycache__/
 # Emacs auto backup file
 *~
 /.env
+/dots/.config/quickshell/ii/scripts/ytmusic/generate-ytmusic-theme.sh
+/dots/.config/quickshell/ii/scripts/email/test_gmail.qml

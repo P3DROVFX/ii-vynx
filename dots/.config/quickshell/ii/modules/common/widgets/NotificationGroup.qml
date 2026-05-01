@@ -27,13 +27,10 @@ MouseArea { // Notification group area
     property var parentDragIndex: qmlParent?.dragIndex
     property var parentDragDistance: qmlParent?.dragDistance
     property var dragIndexDiff: Math.abs(parentDragIndex - index)
-    property real xOffset: dragIndexDiff == 0 ? parentDragDistance : 
-        Math.abs(parentDragDistance) > dragConfirmThreshold ? 0 :
-        dragIndexDiff == 1 ? (parentDragDistance * 0.3) :
-        dragIndexDiff == 2 ? (parentDragDistance * 0.1) : 0
+    property real xOffset: dragIndexDiff == 0 ? parentDragDistance : Math.abs(parentDragDistance) > dragConfirmThreshold ? 0 : dragIndexDiff == 1 ? (parentDragDistance * 0.3) : dragIndexDiff == 2 ? (parentDragDistance * 0.1) : 0
 
     function destroyWithAnimation(left = false) {
-        root.qmlParent.resetDrag()
+        root.qmlParent.resetDrag();
         background.anchors.leftMargin = background.anchors.leftMargin; // Break binding
         destroyAnimation.left = left;
         destroyAnimation.running = true;
@@ -41,13 +38,16 @@ MouseArea { // Notification group area
 
     hoverEnabled: true
     onContainsMouseChanged: {
-        if (!root.popup) return;
-        if (root.containsMouse) root.notifications.forEach(notif => {
-            Notifications.cancelTimeout(notif.notificationId);
-        });
-        else root.notifications.forEach(notif => {
-            Notifications.timeoutNotification(notif.notificationId);
-        });
+        if (!root.popup)
+            return;
+        if (root.containsMouse)
+            root.notifications.forEach(notif => {
+                Notifications.cancelTimeout(notif.notificationId);
+            });
+        else
+            root.notifications.forEach(notif => {
+                Notifications.timeoutNotification(notif.notificationId);
+            });
     }
 
     SequentialAnimation { // Drag finish animation
@@ -64,7 +64,7 @@ MouseArea { // Notification group area
             easing.bezierCurve: Appearance.animation.elementMove.bezierCurve
         }
         onFinished: () => {
-            root.notifications.forEach((notif) => {
+            root.notifications.forEach(notif => {
                 Qt.callLater(() => {
                     Notifications.discardNotification(notif.notificationId);
                 });
@@ -73,8 +73,10 @@ MouseArea { // Notification group area
     }
 
     function toggleExpanded() {
-        if (expanded) implicitHeightAnim.enabled = true;
-        else implicitHeightAnim.enabled = false;
+        if (expanded)
+            implicitHeightAnim.enabled = true;
+        else
+            implicitHeightAnim.enabled = false;
         root.expanded = !root.expanded;
     }
 
@@ -86,12 +88,12 @@ MouseArea { // Notification group area
         acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
 
         onPressed: {
-            if (mouse.button === Qt.RightButton) 
+            if (mouse.button === Qt.RightButton)
                 root.toggleExpanded();
         }
 
-        onClicked: (mouse) => {
-            if (mouse.button === Qt.MiddleButton) 
+        onClicked: mouse => {
+            if (mouse.button === Qt.MiddleButton)
                 root.destroyWithAnimation();
         }
 
@@ -108,7 +110,7 @@ MouseArea { // Notification group area
         onDragReleased: (diffX, diffY) => {
             if (Math.abs(diffX) > root.dragConfirmThreshold)
                 root.destroyWithAnimation(diffX < 0);
-            else 
+            else
                 dragManager.resetDrag();
         }
     }
@@ -122,7 +124,7 @@ MouseArea { // Notification group area
         anchors.left: parent.left
         width: parent.width
         color: popup ? Appearance.colors.colBackgroundSurfaceContainer : Appearance.colors.colLayer2
-        radius: Appearance.rounding.normal
+        radius: Appearance.rounding.windowRounding
         anchors.leftMargin: root.xOffset
 
         Behavior on anchors.leftMargin {
@@ -133,11 +135,9 @@ MouseArea { // Notification group area
                 easing.bezierCurve: Appearance.animationCurves.expressiveFastSpatial
             }
         }
-        
+
         clip: true
-        implicitHeight: root.expanded ? 
-            row.implicitHeight + padding * 2 :
-            Math.min(80, row.implicitHeight + padding * 2)
+        implicitHeight: root.expanded ? row.implicitHeight + padding * 2 : Math.min(80, row.implicitHeight + padding * 2)
 
         Behavior on implicitHeight {
             id: implicitHeightAnim
@@ -158,15 +158,12 @@ MouseArea { // Notification group area
                 image: root?.multipleNotifications ? "" : notificationGroup?.notifications[0]?.image ?? ""
                 appIcon: root.notificationGroup?.appIcon
                 summary: root.notificationGroup?.notifications[root.notificationCount - 1]?.summary
-                urgency: root.notifications.some(n => n.urgency === NotificationUrgency.Critical.toString()) ? 
-                    NotificationUrgency.Critical : NotificationUrgency.Normal
+                urgency: root.notifications.some(n => n.urgency === NotificationUrgency.Critical.toString()) ? NotificationUrgency.Critical : NotificationUrgency.Normal
             }
 
             ColumnLayout { // Content
                 Layout.fillWidth: true
-                spacing: expanded ? (root.multipleNotifications ? 
-                    (notificationGroup?.notifications[root.notificationCount - 1].image != "") ? 35 : 
-                    5 : 0) : 0
+                spacing: expanded ? (root.multipleNotifications ? (notificationGroup?.notifications[root.notificationCount - 1].image != "") ? 35 : 5 : 0) : 0
                 // spacing: 00
                 Behavior on spacing {
                     animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
@@ -190,15 +187,9 @@ MouseArea { // Notification group area
                             id: appName
                             elide: Text.ElideRight
                             Layout.fillWidth: true
-                            text: (topRow.showAppName ?
-                                notificationGroup?.appName :
-                                notificationGroup?.notifications[0]?.summary) || ""
-                            font.pixelSize: topRow.showAppName ?
-                                topRow.fontSize :
-                                Appearance.font.pixelSize.small
-                            color: topRow.showAppName ?
-                                Appearance.colors.colSubtext :
-                                Appearance.colors.colOnLayer2
+                            text: (topRow.showAppName ? notificationGroup?.appName : notificationGroup?.notifications[0]?.summary) || ""
+                            font.pixelSize: topRow.showAppName ? topRow.fontSize : Appearance.font.pixelSize.small
+                            color: topRow.showAppName ? Appearance.colors.colSubtext : Appearance.colors.colOnLayer2
                         }
                         StyledText {
                             id: timeText
@@ -217,8 +208,12 @@ MouseArea { // Notification group area
                         count: root.notificationCount
                         expanded: root.expanded
                         fontSize: topRow.fontSize
-                        onClicked: { root.toggleExpanded() }
-                        altAction: () => { root.toggleExpanded() }
+                        onClicked: {
+                            root.toggleExpanded();
+                        }
+                        altAction: () => {
+                            root.toggleExpanded();
+                        }
 
                         StyledToolTip {
                             text: Translation.tr("Tip: right-clicking a group\nalso expands it")
@@ -237,8 +232,7 @@ MouseArea { // Notification group area
                         animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
                     }
                     model: ScriptModel {
-                        values: root.expanded ? root.notifications.slice().reverse() : 
-                            root.notifications.slice().reverse().slice(0, 2)
+                        values: root.expanded ? root.notifications.slice().reverse() : root.notifications.slice().reverse().slice(0, 2)
                     }
                     delegate: NotificationItem {
                         required property int index
@@ -252,7 +246,6 @@ MouseArea { // Notification group area
                         anchors.right: parent?.right
                     }
                 }
-
             }
         }
     }

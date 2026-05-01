@@ -10,7 +10,7 @@ import Qt.labs.synchronizer
 Item {
     id: root
     required property var scopeRoot
-    property int sidebarPadding: 10
+    property int sidebarPadding: 12
     anchors.fill: parent
     property bool aiChatEnabled: Config.options.policies.ai !== 0  
     property bool translatorEnabled: Config.options.policies.translator !== 0
@@ -45,7 +45,10 @@ Item {
     ColumnLayout {
         anchors {
             fill: parent
-            margins: sidebarPadding
+            leftMargin: sidebarPadding
+            rightMargin: sidebarPadding
+            bottomMargin: sidebarPadding
+            topMargin: 24
         }
         spacing: sidebarPadding
 
@@ -69,12 +72,12 @@ Item {
             implicitWidth: swipeView.implicitWidth
             implicitHeight: swipeView.implicitHeight
             radius: Appearance.rounding.normal
-            color: Appearance.colors.colLayer1
+            color: "transparent"
 
             SwipeView { // Content pages
                 id: swipeView
                 anchors.fill: parent
-                spacing: 10
+                spacing: 8
                 currentIndex: Persistent.states.sidebar.policies.tab
                 onCurrentIndexChanged: Persistent.states.sidebar.policies.tab = currentIndex
 
