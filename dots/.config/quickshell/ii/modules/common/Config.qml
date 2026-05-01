@@ -184,6 +184,12 @@ Singleton {
                 property string terminal: "kitty -1" // This is only for shell actions
                 property string update: "kitty -1 --hold=yes fish -i -c 'pkexec pacman -Syu'"
                 property string volumeMixer: `~/.config/hypr/hyprland/scripts/launch_first_available.sh "pavucontrol-qt" "pavucontrol"`
+                
+                property var bluetoothDeviceImages: [
+                    { "mac": "E8:EE:CC:96:31:3A", "image": "anker_q30_.png" },
+                    { "mac": "40:35:E6:31:8B:AC", "image": "galaxy_buds_3.png" },
+                    { "mac": "64:1B:2F:9B:95:CE", "image": "samsung_s23.png" }
+                ]
             }
 
             property JsonObject background: JsonObject {

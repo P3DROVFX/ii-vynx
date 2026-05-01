@@ -18,3 +18,6 @@ __pycache__/
 /.env
 /dots/.config/quickshell/ii/scripts/ytmusic/generate-ytmusic-theme.sh
 /dots/.config/quickshell/ii/scripts/email/test_gmail.qml
+/dots/.config/quickshell/ii/scripts/sync_to_vynx.sh
+/dots/.config/quickshell/ii/scripts/colors/switchwall.sh
+/dots/.config/quickshell/ii/assets/images/devices/device_68_7D_6B_94_0B_C2.png

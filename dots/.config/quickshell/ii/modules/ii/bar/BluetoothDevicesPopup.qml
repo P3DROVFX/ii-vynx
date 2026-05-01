@@ -13,12 +13,12 @@ StyledPopup {
     function getDeviceImageSource(device) {
         if (!device)
             return "";
-        const mapping = {
-            "E8:EE:CC:96:31:3A": Qt.resolvedUrl("../../../assets/images/devices/anker_q30_.png"),
-            "40:35:E6:31:8B:AC": Qt.resolvedUrl("../../../assets/images/devices/galaxy_buds_3.png"),
-            "64:1B:2F:9B:95:CE": Qt.resolvedUrl("../../../assets/images/devices/samsung_s23.png")
-        };
-        return mapping[device.address] || "";
+        
+        let custom = Config.options.apps.bluetoothDeviceImages.find(d => d.mac === device.address);
+        if (custom) {
+            return Qt.resolvedUrl("../../../assets/images/devices/" + custom.image);
+        }
+        return "";
     }
 
     ColumnLayout {
