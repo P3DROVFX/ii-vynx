@@ -67,11 +67,6 @@ ApplicationWindow {
             component: "modules/settings/AdvancedConfig.qml"
         },
         {
-            name: Translation.tr("System"),
-            icon: "memory",
-            component: "modules/settings/SystemConfig.qml"
-        },
-        {
             name: Translation.tr("About"),
             icon: "info",
             component: "modules/settings/About.qml"

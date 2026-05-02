@@ -135,7 +135,9 @@ Singleton {
             root.localList = JSON.parse(fileContents)
 
             for (let i=0; i< root.localList.length; i++){
-              root.localList[i]['date'] = new Date(root.localList[i]['date'])
+              let d = root.localList[i]['date'];
+              root.localList[i]['date'] = d ? new Date(d) : new Date();
+              root.localList[i]['hasDate'] = d !== undefined && d !== null;
             }
 
             console.log("[To Do] File loaded")

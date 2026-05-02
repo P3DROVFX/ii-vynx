@@ -303,6 +303,11 @@ ContentPage {
                             displayName: Translation.tr("Cookie"),
                             icon: "cookie",
                             value: "cookie"
+                        },
+                        {
+                            displayName: Translation.tr("Nagasaki"),
+                            icon: "grid_view",
+                            value: "nagasaki"
                         }
                     ]
                 }
@@ -326,6 +331,11 @@ ContentPage {
                             displayName: Translation.tr("Cookie"),
                             icon: "cookie",
                             value: "cookie"
+                        },
+                        {
+                            displayName: Translation.tr("Nagasaki"),
+                            icon: "grid_view",
+                            value: "nagasaki"
                         }
                     ]
                 }

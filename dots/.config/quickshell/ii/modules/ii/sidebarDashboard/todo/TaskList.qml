@@ -117,6 +117,25 @@ Item {
                         font.strikeout: todoItem._optimisticDone
                     }
 
+                    Rectangle {
+                        id: dateChip
+                        visible: todoItem.modelData.hasDate
+                        Layout.alignment: Qt.AlignVCenter
+                        implicitWidth: dateText.implicitWidth + 16
+                        implicitHeight: dateText.implicitHeight + 4
+                        color: Appearance.m3colors.m3tertiaryContainer
+                        radius: Appearance.rounding.full
+
+                        StyledText {
+                            id: dateText
+                            anchors.centerIn: parent
+                            text: todoItem.modelData.hasDate ? Qt.formatDateTime(todoItem.modelData.date, "dd/MM") : ""
+                            color: Appearance.m3colors.m3onTertiaryContainer
+                            font.pixelSize: Appearance.font.pixelSize.smaller
+                            font.weight: Font.Medium
+                        }
+                    }
+
                     TodoItemActionButton {
                         Layout.alignment: Qt.AlignVCenter
                         implicitWidth: 32

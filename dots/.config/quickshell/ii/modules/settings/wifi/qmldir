@@ -1,6 +1,0 @@
-WifiToggleCard WifiToggleCard.qml
-SpeedGauge SpeedGauge.qml
-WifiNetworkCard WifiNetworkCard.qml
-WifiSearchField WifiSearchField.qml
-WifiFilterChips WifiFilterChips.qml
-WifiConnectionDialog WifiConnectionDialog.qml

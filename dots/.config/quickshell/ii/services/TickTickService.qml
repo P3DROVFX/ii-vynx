@@ -35,7 +35,8 @@ Singleton {
     // ── Public API ────────────────────────────────────────────────
 
     function refresh() {
-        if (!root.available) return;
+        if (!root.available)
+            return;
         root.syncing = true;
         root.fetchTasksFromInbox();
     }
@@ -47,7 +48,8 @@ Singleton {
     }
 
     function createTask(title) {
-        if (!root.available) return;
+        if (!root.available)
+            return;
         let body = JSON.stringify({
             "title": title,
             "projectId": root.inboxProjectId
@@ -58,7 +60,8 @@ Singleton {
     }
 
     function completeTask(taskId, projectId) {
-        if (!root.available) return;
+        if (!root.available)
+            return;
         let pid = projectId || root.inboxProjectId;
         let cmd = `curl -s -X POST "${root.apiBase}/project/${pid}/task/${taskId}/complete" -H "Authorization: Bearer ${root.accessToken}"`;
         completeTaskProcess.command[2] = cmd;
@@ -66,7 +69,8 @@ Singleton {
     }
 
     function deleteTask(taskId, projectId) {
-        if (!root.available) return;
+        if (!root.available)
+            return;
         let pid = projectId || root.inboxProjectId;
         let cmd = `curl -s -X DELETE "${root.apiBase}/project/${pid}/task/${taskId}" -H "Authorization: Bearer ${root.accessToken}"`;
         deleteTaskProcess.command[2] = cmd;
@@ -88,14 +92,19 @@ Singleton {
         let lines = text.split("\n");
         for (let i = 0; i < lines.length; i++) {
             let line = lines[i].trim();
-            if (line.startsWith("#") || line.length === 0) continue;
+            if (line.startsWith("#") || line.length === 0)
+                continue;
             let eqIdx = line.indexOf("=");
-            if (eqIdx < 0) continue;
+            if (eqIdx < 0)
+                continue;
             let key = line.substring(0, eqIdx).trim();
             let val = line.substring(eqIdx + 1).trim();
-            if (key === "TICKTICK_CLIENT_ID") root.clientId = val;
-            else if (key === "TICKTICK_CLIENT_SECRET") root.clientSecret = val;
-            else if (key === "TICKTICK_ACCESS_TOKEN") root.accessToken = val;
+            if (key === "TICKTICK_CLIENT_ID")
+                root.clientId = val;
+            else if (key === "TICKTICK_CLIENT_SECRET")
+                root.clientSecret = val;
+            else if (key === "TICKTICK_ACCESS_TOKEN")
+                root.accessToken = val;
         }
         if (root.available) {
             console.log("[TickTick] Credentials loaded, fetching tasks...");
@@ -137,6 +146,7 @@ Singleton {
                             "content": t.title || "",
                             "done": (t.status !== undefined) ? (t.status === 2) : false,
                             "date": t.dueDate ? new Date(t.dueDate) : new Date(),
+                            "hasDate": t.dueDate !== undefined && t.dueDate !== null
                         });
                     }
                     root.tasks = parsed;

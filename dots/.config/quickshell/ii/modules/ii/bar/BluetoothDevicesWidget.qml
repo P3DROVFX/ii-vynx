@@ -104,8 +104,11 @@ MouseArea {
         }
     }
 
-    BluetoothDevicesPopup {
-        id: popup
-        hoverTarget: root
+    Loader {
+        id: popupLoader
+        source: Config.options.bar.bluetoothDevicesLayout === "expressive" ? "ExpressiveBluetoothDevicesPopup.qml" : "BluetoothDevicesPopup.qml"
+        onLoaded: {
+            item.hoverTarget = root;
+        }
     }
 }

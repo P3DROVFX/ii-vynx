@@ -425,6 +425,7 @@ Singleton {
                     property bool enableColorPickerPopup: true
                     property bool enableBluetoothConnectionPopup: true
                 }
+                property string bluetoothDevicesLayout: "classic" // Options: classic, expressive
                 property JsonObject sizes: JsonObject {
                     property int height: 40 // horizontal mode
                     property int width: 46 // vertical mode

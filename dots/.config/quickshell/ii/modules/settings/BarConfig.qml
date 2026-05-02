@@ -665,6 +665,30 @@ ContentPage {
     ContentSection {
         icon: "tooltip"
         title: Translation.tr("Tooltips")
+
+        ContentSubsection {
+            title: Translation.tr("Bluetooth devices layout")
+            tooltip: Translation.tr("Choose the layout for the Bluetooth devices popup in the bar")
+            ConfigSelectionArray {
+                currentValue: Config.options.bar.bluetoothDevicesLayout
+                onSelected: newValue => {
+                    Config.options.bar.bluetoothDevicesLayout = newValue;
+                }
+                options: [
+                    {
+                        displayName: Translation.tr("Classic"),
+                        icon: "style",
+                        value: "classic"
+                    },
+                    {
+                        displayName: Translation.tr("Expressive"),
+                        icon: "fluid_med",
+                        value: "expressive"
+                    }
+                ]
+            }
+        }
+
         ConfigSwitch {
             buttonIcon: "ads_click"
             text: Translation.tr("Click to show")

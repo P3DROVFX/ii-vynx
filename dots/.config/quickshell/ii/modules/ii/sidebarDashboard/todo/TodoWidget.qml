@@ -82,7 +82,12 @@ Item {
                     });
                 }).filter(function(item) {
                     return !item.done;
-                }).reverse()
+                }).sort(function(a, b) {
+                    if (a.hasDate && !b.hasDate) return -1;
+                    if (!a.hasDate && b.hasDate) return 1;
+                    if (a.hasDate && b.hasDate) return a.date - b.date;
+                    return b.originalIndex - a.originalIndex;
+                })
             }
 
             TaskList {
@@ -96,7 +101,12 @@ Item {
                     });
                 }).filter(function(item) {
                     return item.done;
-                }).reverse()
+                }).sort(function(a, b) {
+                    if (a.hasDate && !b.hasDate) return -1;
+                    if (!a.hasDate && b.hasDate) return 1;
+                    if (a.hasDate && b.hasDate) return b.date - a.date; // Newest finished tasks first
+                    return b.originalIndex - a.originalIndex;
+                })
             }
 
         }
