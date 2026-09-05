@@ -1,0 +1,273 @@
+pragma ComponentBehavior: Bound
+
+import QtQuick
+import QtQuick.Layouts
+
+import qs
+import qs.services
+import qs.modules.common
+import qs.modules.common.widgets
+
+/**
+ * The app inside the window: a rail of places, a list of notes, and the note itself.
+ *
+ * Three panes because notes are three questions at once — *where am I*, *which note*, and
+ * *what does it say* — and answering them in one column means a trip back and forth for
+ * every note anyone looks at. It collapses to two and then to one, in that order, because
+ * the rail is the part a person can hold in their head and the note is the part they
+ * cannot.
+ */
+Item {
+    id: root
+
+    signal closeRequested()
+    signal maximizeToggled()
+
+    readonly property var state: Persistent.states.notes
+
+    // ── Breakpoints ───────────────────────────────────────────────────────
+    // Measured from the panel, never from the screen: the window is resizable, and a
+    // layout that reads the monitor would keep a three-pane layout inside a panel far too
+    // narrow for it.
+    readonly property bool compact: root.width < 760
+    readonly property bool railExpanded: root.width >= 1100 && root.state.railExpanded
+
+    // ── Selection ─────────────────────────────────────────────────────────
+
+    readonly property string query: topBar.query
+
+    readonly property bool trashScope: root.state.scope === "trash"
+
+    /// Every note the current place contains, before the search box narrows it.
+    readonly property var scopedNotes: {
+        const all = Array.from(NotesService.index.notes ?? []);
+        const scope = root.state.scope;
+        if (scope === "trash")
+            return all.filter(note => note.trashedAt > 0);
+        const live = all.filter(note => note.trashedAt === 0);
+        if (scope === "favorites")
+            return live.filter(note => note.favorite);
+        if (scope === "recent")
+            return live.slice().sort((a, b) => b.modified - a.modified).slice(0, 20);
+        if (scope === "all" || scope.length === 0)
+            return live;
+        return live.filter(note => note.notebookId === scope || note.sectionId === scope);
+    }
+
+    readonly property var visibleNotes: {
+        const term = root.query.trim().toLowerCase();
+        const scoped = root.scopedNotes;
+        const matched = term.length === 0 ? scoped : scoped.filter(note =>
+            note.title.toLowerCase().includes(term) || note.preview.toLowerCase().includes(term));
+        // Pinned first, then most recently touched. Sorted here rather than in the model so
+        // the empty state and the count agree with what is drawn.
+        return matched.slice().sort((a, b) => {
+            if (a.pinned !== b.pinned)
+                return a.pinned ? -1 : 1;
+            return b.modified - a.modified;
+        });
+    }
+
+    readonly property string selectedId: {
+        const wanted = root.state.noteId;
+        if (root.visibleNotes.some(note => note.id === wanted))
+            return wanted;
+        return root.visibleNotes.length > 0 ? root.visibleNotes[0].id : "";
+    }
+
+    readonly property var selectedNote: root.visibleNotes.find(note => note.id === root.selectedId) ?? null
+
+    /// The bar says where you are, not what you have open. The note's own title is right
+    /// there in the pane beside it, and printing it twice tells the reader nothing and
+    /// costs them the one thing the bar could have said.
+    readonly property string scopeName: {
+        const scope = root.state.scope;
+        if (scope === "trash")
+            return Translation.tr("Trash");
+        if (scope === "favorites")
+            return Translation.tr("Favourites");
+        if (scope === "recent")
+            return Translation.tr("Recent");
+        if (scope === "all" || scope.length === 0)
+            return Translation.tr("All notes");
+        for (const notebook of NotesService.notebooks) {
+            if (notebook.id === scope)
+                return notebook.title;
+            for (const section of notebook.sections) {
+                if (section.id === scope)
+                    return `${notebook.title} · ${section.title}`;
+            }
+        }
+        return Translation.tr("All notes");
+    }
+
+    function select(noteId): void {
+        root.state.noteId = String(noteId ?? "");
+        if (root.compact)
+            root.showingDetail = true;
+    }
+
+    /// Only meaningful in the one-pane layout, where list and note take turns.
+    property bool showingDetail: false
+
+    // ── Actions ───────────────────────────────────────────────────────────
+
+    function createNote(): void {
+        const noteId = NotesService.createNote({ title: "" });
+        root.state.noteId = noteId;
+        root.showingDetail = true;
+    }
+
+    function deleteSelected(): void {
+        if (root.selectedId.length === 0)
+            return;
+        if (root.trashScope)
+            NotesService.purgeNote(root.selectedId);
+        else
+            NotesService.deleteNote(root.selectedId);
+        root.state.noteId = "";
+    }
+
+    function restoreSelected(): void {
+        if (root.selectedId.length > 0)
+            NotesService.restoreNote(root.selectedId);
+    }
+
+    function toggleFavorite(): void {
+        const note = root.selectedNote;
+        if (note)
+            NotesService.updateMeta(note.id, { favorite: !note.favorite });
+    }
+
+    function togglePinned(): void {
+        const note = root.selectedNote;
+        if (note)
+            NotesService.updateMeta(note.id, { pinned: !note.pinned });
+    }
+
+    // A note the app was asked to open, from a widget, the overlay or an IPC call.
+    function consumePendingNote(): void {
+        const wanted = GlobalStates.notesAppPendingNote;
+        if (wanted.length === 0)
+            return;
+        GlobalStates.notesAppPendingNote = "";
+        if (NotesService.notes.some(note => note.id === wanted)) {
+            root.state.scope = "all";
+            root.select(wanted);
+        }
+    }
+
+    Component.onCompleted: root.consumePendingNote()
+
+    Connections {
+        target: GlobalStates
+        function onNotesAppPendingNoteChanged() {
+            root.consumePendingNote();
+        }
+    }
+
+    Keys.onPressed: event => {
+        if (event.key === Qt.Key_Escape) {
+            if (root.compact && root.showingDetail) {
+                root.showingDetail = false;
+            } else if (topBar.query.length > 0) {
+                topBar.clearSearch();
+            } else {
+                root.closeRequested();
+            }
+            event.accepted = true;
+        } else if (event.key === Qt.Key_N && (event.modifiers & Qt.ControlModifier)) {
+            root.createNote();
+            event.accepted = true;
+        } else if (event.key === Qt.Key_F && (event.modifiers & Qt.ControlModifier)) {
+            topBar.focusSearch();
+            event.accepted = true;
+        }
+    }
+
+    // ── Layout ────────────────────────────────────────────────────────────
+
+    ColumnLayout {
+        anchors.fill: parent
+        spacing: 0
+
+        NotesTopBar {
+            id: topBar
+            Layout.fillWidth: true
+            title: root.scopeName
+            subtitle: root.query.trim().length > 0
+                ? Translation.tr("%1 of %2 notes").arg(root.visibleNotes.length).arg(root.scopedNotes.length)
+                : Translation.tr("%1 notes").arg(root.visibleNotes.length)
+            showBack: root.compact && root.showingDetail
+            maximized: root.state.maximized
+
+            onBackRequested: root.showingDetail = false
+            onMaximizeRequested: root.maximizeToggled()
+            onCloseRequested: root.closeRequested()
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            spacing: 0
+
+            NotesNavigationRail {
+                Layout.fillHeight: true
+                Layout.preferredWidth: expanded ? 208 : 76
+                visible: !root.compact
+                expanded: root.railExpanded
+                scope: root.state.scope
+                canExpand: root.width >= 1100
+
+                onScopePicked: scope => {
+                    root.state.scope = scope;
+                    root.state.noteId = "";
+                }
+                onExpandToggled: root.state.railExpanded = !root.state.railExpanded
+
+                Behavior on Layout.preferredWidth {
+                    animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                }
+            }
+
+            NotesList {
+                id: notesList
+                Layout.fillHeight: true
+                Layout.preferredWidth: root.compact ? root.width : root.state.listWidth
+                Layout.fillWidth: root.compact
+                visible: !root.compact || !root.showingDetail
+                notes: root.visibleNotes
+                selectedId: root.selectedId
+                searching: root.query.trim().length > 0
+                trash: root.trashScope
+
+                onNotePicked: noteId => root.select(noteId)
+                onCreateRequested: root.createNote()
+            }
+
+            Rectangle {
+                Layout.fillHeight: true
+                Layout.preferredWidth: 1
+                visible: !root.compact
+                color: Appearance.colors.colOutlineVariant
+            }
+
+            NotesDetail {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                visible: !root.compact || root.showingDetail
+                note: root.selectedNote
+                trash: root.trashScope
+
+                onDeleteRequested: root.deleteSelected()
+                onRestoreRequested: root.restoreSelected()
+                onFavoriteToggled: root.toggleFavorite()
+                onPinToggled: root.togglePinned()
+                onTitleEdited: title => {
+                    if (root.selectedId.length > 0)
+                        NotesService.updateMeta(root.selectedId, { title: title });
+                }
+            }
+        }
+    }
+}

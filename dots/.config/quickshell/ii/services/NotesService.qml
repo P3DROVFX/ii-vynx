@@ -142,10 +142,12 @@ Singleton {
             ? Doc.normalizeDocument(opts.document, note.id)
             : Doc.newDocument(note.id);
 
+        // Seeded first: committing the index is what creates the object that owns this
+        // note's file, and handing it the document afterwards would be a race with it.
+        store.seedDocument(note.id, document);
         const records = root.allNoteRecords();
         records.push(Doc.noteFromDocument(note, document, note.created));
         root.commitIndex(records);
-        root.writeDocument(note.id, document);
         return note.id;
     }
 

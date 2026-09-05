@@ -86,6 +86,26 @@ Scope {
         return file ? file.document : null;
     }
 
+    /**
+     * A document for a note whose writer does not exist yet.
+     *
+     * Called before the index entry that brings the writer into being. The alternative —
+     * write the index, then hand the document to whatever object appeared — is a race
+     * against object creation, and the loser is somebody's first paragraph.
+     */
+    property var seeds: ({})
+
+    function seedDocument(noteId: string, document: var): void {
+        root.seeds[noteId] = Doc.normalizeDocument(document, noteId);
+    }
+
+    function takeSeed(noteId: string): var {
+        const seed = root.seeds[noteId] ?? null;
+        if (seed !== null)
+            root.seeds[noteId] = undefined;
+        return seed;
+    }
+
     function putDocument(noteId: string, document: var): bool {
         const file = root.fileFor(noteId);
         if (!file)
@@ -128,6 +148,7 @@ Scope {
             required property string modelData
             noteId: modelData
             path: `${root.docsDir}/${modelData}.json`
+            initialDocument: root.takeSeed(modelData)
             onDocumentLoaded: (id, value) => root.documentReady(id, value)
             onDocumentSaved: () => root.writeFinished(true, "")
             onDocumentFailed: (id, reason) => {

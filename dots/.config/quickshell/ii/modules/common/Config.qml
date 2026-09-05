@@ -4538,6 +4538,19 @@ Singleton {
                 }
             }
 
+            /**
+             * The notes app.
+             *
+             * Deliberately small. Everything about how notes look and behave — paper,
+             * typography, ink, autosave, cloud, AI — lives inside the app itself, where
+             * the person changing it can see what they are changing. What belongs out
+             * here is only what has to be answerable before the app exists: whether it
+             * exists at all.
+             */
+            property JsonObject notes: JsonObject {
+                property bool enable: true
+            }
+
             property JsonObject overlay: JsonObject {
                 property bool openingZoomAnimation: true
                 property bool darkenScreen: true

@@ -335,6 +335,26 @@ Singleton {
                 }
             }
 
+            /**
+             * The notes app's window and where the user last was in it.
+             *
+             * `Persistent`, not `Config`: a window position is a fact about this screen,
+             * and a preset carrying somebody else's geometry would place the window off
+             * the edge of a monitor that does not exist here. Same reasoning the backup
+             * folder and the Google Drive settings already follow.
+             */
+            property JsonObject notes: JsonObject {
+                property real width: 1180
+                property real height: 720
+                property bool maximized: false
+                /// Empty means "no note open"; the app falls back to the most recent.
+                property string noteId: ""
+                /// "all" | "recent" | "favorites" | "trash" | a notebook or section id.
+                property string scope: "all"
+                property real listWidth: 320
+                property bool railExpanded: true
+            }
+
             property JsonObject cheatsheet: JsonObject {
                 property int tabIndex: 0
                 property list<string> sectionOrder: []

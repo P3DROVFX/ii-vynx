@@ -27,6 +27,16 @@ Scope {
     /// The document as it currently is. Assigned by the store; written out on a delay.
     property var document: null
 
+    /**
+     * The document of a note that was made a moment ago, handed over instead of read.
+     *
+     * A new note's index entry is written first, so the note exists the instant it is
+     * made — which means this object is created before any file exists for it. Reading
+     * one anyway works, but it logs a failed read for every note anybody creates, and a
+     * log full of "read failed" is a log nobody trusts.
+     */
+    property var initialDocument: null
+
     property int debounceInterval: 400
     /// A write happens at least this often while somebody is still typing. Without a
     /// ceiling the debounce never fires during continuous typing, and a long paragraph
@@ -102,6 +112,10 @@ Scope {
         id: file
         path: Qt.resolvedUrl(root.path)
         atomicWrites: true
+        // A FileView reads as soon as it has a path. For a note created a moment ago there
+        // is nothing to read, and letting it try logs a failed read for every note anybody
+        // makes — which teaches whoever reads the log to ignore failed reads.
+        preload: root.initialDocument === null
 
         onLoaded: {
             root.loaded = true;
@@ -147,7 +161,12 @@ Scope {
         }
     }
 
-    Component.onCompleted: file.reload()
+    Component.onCompleted: {
+        if (root.initialDocument !== null)
+            root.put(root.initialDocument);
+        else
+            file.reload();
+    }
 
     Component.onDestruction: {
         // Whatever the debounce was still holding belongs to the user.
