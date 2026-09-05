@@ -7,6 +7,7 @@ import qs
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
+import qs.modules.ii.notes
 
 /**
  * The app inside the window: a rail of places, a list of notes, and the note itself.
@@ -189,7 +190,8 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        spacing: 0
+        anchors.margins: NotesMetrics.paneGap
+        spacing: NotesMetrics.paneGap
 
         NotesTopBar {
             id: topBar
@@ -200,7 +202,10 @@ Item {
                 : Translation.tr("%1 notes").arg(root.visibleNotes.length)
             showBack: root.compact && root.showingDetail
             maximized: root.state.maximized
+            showRailToggle: !root.compact && root.width >= 1100
+            railExpanded: root.railExpanded
 
+            onRailToggled: root.state.railExpanded = !root.state.railExpanded
             onBackRequested: root.showingDetail = false
             onMaximizeRequested: root.maximizeToggled()
             onCloseRequested: root.closeRequested()
@@ -209,21 +214,20 @@ Item {
         RowLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            spacing: 0
+            spacing: NotesMetrics.paneGap
 
             NotesNavigationRail {
                 Layout.fillHeight: true
-                Layout.preferredWidth: expanded ? 208 : 76
+                Layout.preferredWidth: expanded ? NotesMetrics.railExpandedWidth : NotesMetrics.railCollapsedWidth
                 visible: !root.compact
                 expanded: root.railExpanded
                 scope: root.state.scope
-                canExpand: root.width >= 1100
 
                 onScopePicked: scope => {
                     root.state.scope = scope;
                     root.state.noteId = "";
                 }
-                onExpandToggled: root.state.railExpanded = !root.state.railExpanded
+                onCreateRequested: root.createNote()
 
                 Behavior on Layout.preferredWidth {
                     animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
@@ -242,14 +246,6 @@ Item {
                 trash: root.trashScope
 
                 onNotePicked: noteId => root.select(noteId)
-                onCreateRequested: root.createNote()
-            }
-
-            Rectangle {
-                Layout.fillHeight: true
-                Layout.preferredWidth: 1
-                visible: !root.compact
-                color: Appearance.colors.colOutlineVariant
             }
 
             NotesDetail {

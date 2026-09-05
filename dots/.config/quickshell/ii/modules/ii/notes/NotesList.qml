@@ -6,6 +6,7 @@ import QtQuick.Layouts
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
+import qs.modules.ii.notes
 
 /// Which note. A list of cards, and the one button that makes another one.
 Item {
@@ -21,15 +22,20 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        color: Appearance.colors.colLayer1
+        radius: Appearance.rounding.large
+        color: Appearance.m3colors.m3surfaceContainerHigh
+        clip: true
     }
 
     StyledListView {
         id: list
         anchors.fill: parent
-        anchors.margins: 10
+        anchors.margins: NotesMetrics.panePadding
+        // Zero here ran the last card into the window's rounded corner, which clipped it.
         anchors.bottomMargin: 0
-        spacing: 6
+        topMargin: 0
+        bottomMargin: NotesMetrics.panePadding
+        spacing: NotesMetrics.cardSpacing
         clip: true
         model: root.notes
         // The cards arrive one after another rather than all at once. It is the app's
@@ -38,16 +44,18 @@ Item {
 
         delegate: NotesListCard {
             required property var modelData
+            required property int index
             width: list.width
+            isFirst: index === 0
+            isLast: index === root.notes.length - 1
             note: modelData
             current: modelData.id === root.selectedId
             onTriggered: root.notePicked(modelData.id)
         }
 
-        // Room for the button that floats over the end of the list.
         footer: Item {
             width: 1
-            height: 78
+            height: NotesMetrics.panePadding
         }
     }
 
@@ -66,23 +74,4 @@ Item {
                 : Translation.tr("Write the first one. It saves itself."))
     }
 
-    /**
-     * The one thing this pane is for, floating over it.
-     *
-     * Expressive puts the primary action on top of the content rather than in a bar above
-     * it, so it stays in the same place whether the list is empty or long.
-     */
-    FloatingActionButton {
-        anchors {
-            right: parent.right
-            bottom: parent.bottom
-            rightMargin: 16
-            bottomMargin: 16
-        }
-        iconText: "add"
-        buttonText: Translation.tr("New note")
-        expanded: !root.trash && root.width > 240
-        visible: !root.trash
-        onClicked: root.createRequested()
-    }
 }

@@ -148,8 +148,12 @@ PanelWindow {
         Rectangle {
             id: surface
             anchors.fill: parent
-            radius: Appearance.rounding.verylarge
-            color: Appearance.colors.colLayer0
+            radius: Appearance.rounding.windowRounding
+            // The same surface every Cheatsheet page uses. Opaque when transparency is
+            // off, so the panes inside keep the contrast they were designed with.
+            color: Config.options.appearance.transparency.enable
+                ? Appearance.colors.colLayer0
+                : Appearance.m3colors.m3surfaceContainerLow
             clip: true
 
             NotesAppContent {

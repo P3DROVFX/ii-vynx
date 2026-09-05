@@ -63,10 +63,42 @@ class ThemeTests(unittest.TestCase):
     def test_selection_changes_shape_and_not_only_colour(self):
         # Expressive says the selected thing is a different shape. It is also what keeps
         # the state readable in a theme where the container colour is quiet.
-        rail_item = read(APP_DIR / "NotesRailItem.qml")
-        self.assertIn("buttonRadius: root.current ?", rail_item)
-        card = read(APP_DIR / "NotesListCard.qml")
-        self.assertIn("buttonRadius: root.current ?", card)
+        for name in ("NotesRailItem.qml", "NotesListCard.qml"):
+            body = read(APP_DIR / name)
+            for corner in ("topLeftRadius", "bottomLeftRadius"):
+                self.assertRegex(body, rf"{corner}:\s*root\.current\s*\?",
+                                 f"{name} does not reshape on selection")
+
+    def test_rows_are_shaped_as_a_group(self):
+        # A stack of rows reads as one block, shaped at its ends, and the selected row
+        # rounds fully and steps out of it. It is how the Cheatsheet's mail sidebar divides
+        # a list into groups without drawing anything between them.
+        for name in ("NotesRailItem.qml", "NotesListCard.qml"):
+            body = read(APP_DIR / name)
+            self.assertIn("property bool isFirst", body)
+            self.assertIn("property bool isLast", body)
+            self.assertIn("Appearance.rounding.full", body)
+
+    def test_nothing_is_separated_by_a_line(self):
+        # The house style separates sections with air and a corner radius, never a rule.
+        # A one-pixel Rectangle spanning a pane is how that decision gets undone by
+        # accident, so it is refused here rather than noticed later in a screenshot.
+        for path in app_files():
+            body = read(path)
+            for marker in ("colOutlineVariant", "colOutline\b"):
+                self.assertNotIn("colOutlineVariant", body,
+                                 f"{path.name} draws a divider line")
+
+    def test_panes_are_opaque_slabs(self):
+        # The theme's layered colours are transparency-adjusted and collapse into each
+        # other over a wallpaper: measured on a real screenshot, two adjacent panes came
+        # out one channel-step apart. These surfaces are opaque, and they are the ones the
+        # Cheatsheet's own pages use.
+        for name in ("NotesNavigationRail.qml", "NotesList.qml", "NotesDetail.qml"):
+            body = read(APP_DIR / name)
+            self.assertIn("Appearance.m3colors.m3surfaceContainerHigh", body,
+                          f"{name} is not drawn as a slab")
+            self.assertIn("radius: Appearance.rounding.large", body)
 
 
 class TranslationTests(unittest.TestCase):

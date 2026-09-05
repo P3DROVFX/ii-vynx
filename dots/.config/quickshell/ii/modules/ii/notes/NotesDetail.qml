@@ -6,6 +6,7 @@ import QtQuick.Layouts
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
+import qs.modules.ii.notes
 import "../../../services/notes/NotesMarkdown.js" as Markdown
 
 /**
@@ -49,7 +50,9 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        color: Appearance.colors.colLayer0
+        radius: Appearance.rounding.large
+        color: Appearance.m3colors.m3surfaceContainerHigh
+        clip: true
     }
 
     PagePlaceholder {
@@ -69,10 +72,12 @@ Item {
 
         RowLayout {
             Layout.fillWidth: true
-            Layout.leftMargin: 28
-            Layout.rightMargin: 12
-            Layout.topMargin: 20
-            spacing: 6
+            // The title, the metadata and the prose all start on the same line. They were
+            // 28, 30 and 30, which is invisible as a decision and obvious as a wobble.
+            Layout.leftMargin: NotesMetrics.readingPadding
+            Layout.rightMargin: NotesMetrics.panePadding
+            Layout.topMargin: 22
+            spacing: 4
 
             Item {
                 Layout.fillWidth: true
@@ -137,10 +142,10 @@ Item {
 
         RowLayout {
             Layout.fillWidth: true
-            Layout.leftMargin: 30
-            Layout.rightMargin: 24
-            Layout.topMargin: 2
-            spacing: 10
+            Layout.leftMargin: NotesMetrics.readingPadding
+            Layout.rightMargin: NotesMetrics.readingPadding
+            Layout.topMargin: 0
+            spacing: 12
 
             StyledText {
                 text: root.note
@@ -165,7 +170,8 @@ Item {
         Flickable {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.topMargin: 14
+            Layout.topMargin: 18
+            Layout.bottomMargin: NotesMetrics.panePadding
             contentHeight: bodyColumn.implicitHeight
             clip: true
 
@@ -176,11 +182,9 @@ Item {
 
                 StyledText {
                     Layout.fillWidth: true
-                    Layout.leftMargin: 30
-                    Layout.rightMargin: 30
-                    // A comfortable measure. Text running the full width of a maximised
-                    // window is text nobody finishes a paragraph of.
-                    Layout.maximumWidth: 760
+                    Layout.leftMargin: NotesMetrics.readingPadding
+                    Layout.rightMargin: NotesMetrics.readingPadding
+                    Layout.maximumWidth: NotesMetrics.readingWidth
                     text: root.bodyText
                     textFormat: Text.MarkdownText
                     wrapMode: Text.WordWrap
@@ -205,9 +209,15 @@ Item {
 
                     delegate: Image {
                         required property string modelData
-                        Layout.leftMargin: 30
-                        Layout.maximumWidth: 620
-                        Layout.preferredWidth: Math.min(620, implicitWidth)
+                        Layout.leftMargin: NotesMetrics.readingPadding
+                        Layout.rightMargin: NotesMetrics.readingPadding
+                        // Bounded by the pane, not only by the reading measure: a drawing
+                        // wider than the window ran off the right edge of its own note.
+                        readonly property real available: Math.max(80,
+                            Math.min(NotesMetrics.readingWidth,
+                                     bodyColumn.width - NotesMetrics.readingPadding * 2))
+                        Layout.maximumWidth: available
+                        Layout.preferredWidth: Math.min(available, implicitWidth)
                         Layout.preferredHeight: implicitWidth > 0
                             ? Layout.preferredWidth * (implicitHeight / implicitWidth)
                             : 0
@@ -222,7 +232,7 @@ Item {
                 }
 
                 Item {
-                    Layout.preferredHeight: 24
+                    Layout.preferredHeight: NotesMetrics.readingPadding
                 }
             }
         }

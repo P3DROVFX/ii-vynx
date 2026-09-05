@@ -3,7 +3,9 @@ import QtQuick.Layouts
 
 import qs.services
 import qs.modules.common
+import qs.modules.common.functions
 import qs.modules.common.widgets
+import qs.modules.ii.notes
 
 /**
  * One note in the list.
@@ -17,24 +19,55 @@ RippleButton {
 
     required property var note
     property bool current: false
+    /// Where this card sits in the list, which is what shapes its corners.
+    property bool isFirst: false
+    property bool isLast: false
 
     signal triggered()
 
-    implicitHeight: layout.implicitHeight + 24
-    buttonRadius: root.current ? Appearance.rounding.large : Appearance.rounding.normal
+    // The control's own padding, rather than a margin per row plus a hand-computed
+    // height. Those disagreed with each other by a couple of pixels — enough to look like
+    // a mistake, not enough to look deliberate — and `Button` was quietly adding its
+    // default padding to the height on top of that.
+    leftPadding: NotesMetrics.cardPadding
+    rightPadding: NotesMetrics.cardPadding
+    topPadding: NotesMetrics.rowPaddingVertical
+    bottomPadding: NotesMetrics.rowPaddingVertical
     toggled: root.current
-    colBackground: Appearance.colors.colLayer2
+
+    /// The same grouped shape the rail uses: the list is one block, shaped at its ends,
+    /// and the note you are on rounds fully and steps out of it.
+    topLeftRadius: root.current
+        ? Appearance.rounding.full
+        : (root.isFirst ? Appearance.rounding.large : Appearance.rounding.verysmall)
+    topRightRadius: root.topLeftRadius
+    bottomLeftRadius: root.current
+        ? Appearance.rounding.full
+        : (root.isLast ? Appearance.rounding.large : Appearance.rounding.verysmall)
+    bottomRightRadius: root.bottomLeftRadius
+
+    Behavior on topLeftRadius {
+        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+    }
+    Behavior on bottomLeftRadius {
+        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+    }
+    // Filled, on the opaque surface of the pane behind it.
+    //
+    // The first attempt used the theme's layered colours, which are transparency-adjusted:
+    // measured on a real screenshot, a card sat ten channel-steps from its own pane, which
+    // is not an edge anybody can see. These two surfaces are opaque and are the pair the
+    // Cheatsheet's own lists use.
+    colBackground: Appearance.m3colors.m3surfaceContainerHighest
+    colBackgroundHover: Appearance.colors.colSecondaryContainerHover
+    colBackgroundToggledHover: Appearance.colors.colSecondaryContainerHover
     colBackgroundToggled: Appearance.colors.colSecondaryContainer
 
     onClicked: root.triggered()
 
-    Behavior on buttonRadius {
-        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
-    }
-
     readonly property color colText: root.current
         ? Appearance.m3colors.m3onSecondaryContainer
-        : Appearance.colors.colOnLayer1
+        : Appearance.colors.colOnSurfaceVariant
 
     /// Today shows a time, this year a day and month, anything older the year as well.
     /// A list where every row says the same date is a list with no dates in it.
@@ -53,12 +86,10 @@ RippleButton {
 
     contentItem: ColumnLayout {
         id: layout
-        spacing: 3
+        spacing: NotesMetrics.cardLineSpacing
 
         RowLayout {
             Layout.fillWidth: true
-            Layout.leftMargin: 14
-            Layout.rightMargin: 12
             spacing: 8
 
             MaterialSymbol {
@@ -96,14 +127,12 @@ RippleButton {
 
         StyledText {
             Layout.fillWidth: true
-            Layout.leftMargin: 14
-            Layout.rightMargin: 12
             text: root.note.preview.length > 0 ? root.note.preview : Translation.tr("Empty")
             font.pixelSize: Appearance.font.pixelSize.smaller
             color: root.current
                 ? Appearance.m3colors.m3onSecondaryContainer
                 : Appearance.colors.colSubtext
-            opacity: root.note.preview.length > 0 ? 1 : 0.6
+            opacity: root.note.preview.length > 0 ? 0.9 : 0.55
             maximumLineCount: 2
             wrapMode: Text.WordWrap
             elide: Text.ElideRight
@@ -111,8 +140,6 @@ RippleButton {
 
         RowLayout {
             Layout.fillWidth: true
-            Layout.leftMargin: 14
-            Layout.rightMargin: 12
             Layout.topMargin: 2
             spacing: 6
 
