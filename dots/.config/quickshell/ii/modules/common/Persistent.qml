@@ -350,7 +350,11 @@ Singleton {
                 property string noteId: ""
                 /// "all" | "recent" | "favorites" | "trash" | a notebook or section id.
                 property string scope: "all"
-                property real listWidth: 320
+                /// Both panes are dragged by the user, so both are facts about how they
+                /// like to work rather than about this machine's screen — but they live
+                /// here beside the window size, which is.
+                property real railWidth: 300
+                property real listWidth: 380
                 property bool railExpanded: true
             }
 

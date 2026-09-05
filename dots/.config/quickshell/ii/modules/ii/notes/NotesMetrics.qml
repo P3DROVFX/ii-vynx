@@ -56,7 +56,7 @@ Singleton {
 
     /// Rail rows, list rows and icon buttons all sit on this, so a row in one pane lines
     /// up with a row in the next.
-    readonly property int rowHeight: 48
+    readonly property int rowHeight: 56
     readonly property int iconButtonSize: 44
 
     /// The floating button, and the space a list keeps free underneath itself so the last
@@ -84,8 +84,13 @@ Singleton {
     readonly property int groupEndRadius: Appearance.rounding.scale === 0 ? 0 : Appearance.rounding.large
     readonly property int groupJoinRadius: Appearance.rounding.scale === 0 ? 0 : Appearance.rounding.verysmall
 
-    readonly property int railExpandedWidth: 216
-    readonly property int railCollapsedWidth: 76
+    readonly property int railExpandedWidth: 300
+    readonly property int railCollapsedWidth: 88
     readonly property int topBarHeight: 64
-    readonly property int searchMaximumWidth: 420
+
+    /// How far the rail and the list may be dragged.
+    readonly property int railMinimumWidth: 220
+    readonly property int railMaximumWidth: 460
+    readonly property int listMinimumWidth: 260
+    readonly property int listMaximumWidth: 620
 }

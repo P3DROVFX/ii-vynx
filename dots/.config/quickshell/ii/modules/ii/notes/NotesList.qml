@@ -55,8 +55,8 @@ Item {
             onTriggered: root.notePicked(modelData.id)
         }
 
+        // Air after the last card, so it does not end flush against the pane's corner.
         footer: Item {
-            width: 1
             height: NotesMetrics.panePadding
         }
     }

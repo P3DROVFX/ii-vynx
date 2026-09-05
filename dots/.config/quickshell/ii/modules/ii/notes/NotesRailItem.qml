@@ -7,12 +7,14 @@ import qs.modules.common.widgets
 /**
  * One place in the rail.
  *
- * The shape follows the Settings sidebar's smart-radius scheme, which is the project's
- * current one: the selected row is a pill, **and so are the edges facing it** on the rows
- * immediately above and below, so the selection appears to press a notch into the group
- * rather than to float in a slot cut out of it. Every pill is capped at the `large` token
- * rather than being fully round — an uncapped `height / 2` on a tall row eats its own
- * corners and leaves crescent gaps against its neighbours.
+ * Built to match the Cheatsheet's mail sidebar row: 56 high, an icon and a label at the
+ * same size, a count as a round badge on the right, and the group shaped only at its ends.
+ *
+ * Two departures, both because this list is not that one. The pill radius is capped at the
+ * `large` token instead of being a raw half-height — the Settings design system's rule,
+ * and what stops a tall row from eating its own corners. And the rows facing the selected
+ * one round as well, so the selection presses a notch into the group rather than floating
+ * in a hole cut out of it.
  */
 RippleButton {
     id: root
@@ -23,7 +25,6 @@ RippleButton {
     property int count: 0
     property bool current: false
 
-    /// Where this row sits in its group, and whether its neighbours are the selected one.
     property bool isFirst: false
     property bool isLast: false
     property bool prevIsCurrent: false
@@ -34,18 +35,20 @@ RippleButton {
     implicitHeight: NotesMetrics.rowHeight
     padding: 0
     toggled: root.current
-    colBackground: Appearance.colors.colLayer2
-    colBackgroundHover: Appearance.colors.colLayer2Hover
-    colBackgroundActive: Appearance.colors.colLayer2Active
-    // Selection is secondary, the action above it is primary. The Settings sidebar uses
-    // primary for its active row, but nothing sits above that one: here it would have put
-    // two large blocks of the same colour against each other, and "where I am" would have
-    // shouted as loudly as "make a note".
-    colBackgroundToggled: Appearance.colors.colSecondaryContainer
-    colBackgroundToggledHover: Appearance.colors.colSecondaryContainerHover
-    colBackgroundToggledActive: Appearance.colors.colSecondaryContainerActive
+
+    colBackground: Appearance.colors.colSecondaryContainer
+    colBackgroundHover: Appearance.colors.colSecondaryContainerHover
+    colBackgroundActive: Appearance.colors.colSecondaryContainerActive
+    colBackgroundToggled: Appearance.colors.colPrimary
+    colBackgroundToggledHover: Appearance.colors.colPrimaryHover
+    colBackgroundToggledActive: Appearance.colors.colPrimaryActive
 
     onClicked: root.triggered()
+
+    scale: root.down ? 0.95 : (root.hovered ? 1.02 : 1.0)
+    Behavior on scale {
+        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+    }
 
     readonly property real pillRadius: NotesMetrics.pillRadius(root.implicitHeight)
     readonly property bool topIsPill: root.current || root.down || root.prevIsCurrent
@@ -64,24 +67,24 @@ RippleButton {
     }
 
     readonly property color colText: root.current
-        ? Appearance.m3colors.m3onSecondaryContainer
-        : Appearance.colors.colOnLayer2
+        ? Appearance.colors.colOnPrimary
+        : Appearance.colors.colOnSurfaceVariant
 
-    contentItem: RowLayout {
-        spacing: 0
+    contentItem: Item {
+        anchors.fill: parent
 
-        Item {
-            // The icon sits on the same centre whether the rail is open or shut, so
-            // collapsing the rail does not shuffle every glyph sideways.
-            Layout.preferredWidth: NotesMetrics.rowHeight
-            Layout.fillWidth: !root.expanded
-            Layout.fillHeight: true
-            Layout.alignment: Qt.AlignLeft
+        RowLayout {
+            anchors.fill: parent
+            anchors.leftMargin: root.expanded ? 20 : 0
+            anchors.rightMargin: root.expanded ? 14 : 0
+            spacing: 14
 
             MaterialSymbol {
-                anchors.centerIn: parent
+                Layout.alignment: Qt.AlignVCenter
+                Layout.fillWidth: !root.expanded
+                horizontalAlignment: Text.AlignHCenter
                 text: root.symbol
-                iconSize: 22
+                iconSize: Appearance.font.pixelSize.huge
                 fill: root.current ? 1 : 0
                 color: root.colText
 
@@ -89,25 +92,39 @@ RippleButton {
                     animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
                 }
             }
-        }
 
-        StyledText {
-            Layout.fillWidth: true
-            text: root.label
-            visible: root.expanded
-            elide: Text.ElideRight
-            font.pixelSize: Appearance.font.pixelSize.small
-            font.weight: root.current ? Font.DemiBold : Font.Normal
-            color: root.colText
-        }
+            StyledText {
+                Layout.fillWidth: true
+                Layout.alignment: Qt.AlignVCenter
+                text: root.label
+                visible: root.expanded
+                elide: Text.ElideRight
+                font.pixelSize: Appearance.font.pixelSize.large
+                font.weight: root.current ? Font.DemiBold : Font.Normal
+                color: root.colText
+            }
 
-        StyledText {
-            Layout.rightMargin: NotesMetrics.cardPadding
-            text: root.count
-            visible: root.expanded && root.count > 0
-            font.pixelSize: Appearance.font.pixelSize.smaller
-            color: root.current ? Appearance.m3colors.m3onSecondaryContainer : Appearance.colors.colSubtext
-            opacity: root.current ? 0.85 : 1
+            Rectangle {
+                Layout.alignment: Qt.AlignVCenter
+                implicitWidth: 26
+                implicitHeight: 26
+                radius: Appearance.rounding.full
+                visible: root.expanded && root.count > 0
+                color: root.current
+                    ? Qt.rgba(1, 1, 1, 0.18)
+                    : Appearance.colors.colSecondaryContainer
+                antialiasing: true
+
+                StyledText {
+                    anchors.centerIn: parent
+                    text: root.count
+                    font.pixelSize: Appearance.font.pixelSize.smaller
+                    font.weight: Font.Bold
+                    color: root.current
+                        ? Appearance.colors.colOnPrimary
+                        : Appearance.m3colors.m3onSecondaryContainer
+                }
+            }
         }
     }
 

@@ -84,13 +84,14 @@ class ThemeTests(unittest.TestCase):
 
     def test_nothing_is_separated_by_a_line(self):
         # The house style separates sections with air and a corner radius, never a rule.
-        # A one-pixel Rectangle spanning a pane is how that decision gets undone by
-        # accident, so it is refused here rather than noticed later in a screenshot.
+        # What that forbids is a hairline rectangle spanning a pane — not the outline
+        # colour itself. The mail sidebar's own search field is an outlined pill, and an
+        # outline around a control is not a divider between sections.
+        hairline = re.compile(r"^\s*(?:Layout\.preferred)?(?:width|height|Width|Height):\s*1\s*$")
         for path in app_files():
-            body = read(path)
-            for marker in ("colOutlineVariant", "colOutline\b"):
-                self.assertNotIn("colOutlineVariant", body,
-                                 f"{path.name} draws a divider line")
+            for number, line in enumerate(read(path).splitlines(), start=1):
+                if hairline.match(line):
+                    self.fail(f"{path.name}:{number} looks like a divider rule")
 
     def test_panes_are_opaque_slabs(self):
         # The theme's layered colours are transparency-adjusted and collapse into each
@@ -191,10 +192,21 @@ class WindowBehaviourTests(unittest.TestCase):
         self.assertIn("function pillRadius", read(APP_DIR / "NotesMetrics.qml"))
         self.assertIn("Math.min(itemHeight / 2, Appearance.rounding.large)",
                       read(APP_DIR / "NotesMetrics.qml"))
-        for name in ("NotesRailItem.qml", "NotesListCard.qml", "NotesNavigationRail.qml"):
+        # Only the corner radii of the big rows are checked. `rounding.full` on a 26px
+        # count badge is a circle, which is what it should be; the rule is about elements
+        # tall enough for a half-height radius to swallow their own content.
+        corners = re.compile(r"^\s*(?:top|bottom)(?:Left|Right)Radius:.*rounding\.full")
+        for name in ("NotesRailItem.qml", "NotesListCard.qml", "NotesNavigationRail.qml",
+                     "NotesSearchBox.qml"):
             body = read(APP_DIR / name)
-            self.assertNotIn("Appearance.rounding.full", body,
-                             f"{name} uses an uncapped pill radius")
+            for number, line in enumerate(body.splitlines(), start=1):
+                if corners.match(line):
+                    self.fail(f"{name}:{number} rounds a row with an uncapped pill")
+            # A row's own height must go through the cap, so a future edit cannot quietly
+            # reintroduce a raw half-height on something tall.
+            if name != "NotesNavigationRail.qml":
+                self.assertIn("NotesMetrics.pillRadius", body,
+                              f"{name} does not cap its pill radius")
 
     def test_selection_reshapes_its_neighbours_too(self):
         # The Settings sidebar's scheme: the edges facing the selected row round as well,

@@ -204,6 +204,9 @@ Item {
             railExpanded: root.railExpanded
 
             onRailToggled: root.state.railExpanded = !root.state.railExpanded
+            // The app's own settings do not exist yet; until they do this opens the one
+            // switch about Notes that lives outside the app, rather than a dead button.
+            onSettingsRequested: GlobalStates.openSettingsPage("overlays", "", "")
             onBackRequested: root.showingDetail = false
             onCloseRequested: root.closeRequested()
         }
@@ -211,12 +214,17 @@ Item {
         RowLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            spacing: NotesMetrics.paneGap
+            // Zero, because the gap between panes is now a splitter that occupies it. Two
+            // sources of the same space would make the seam twice as wide as it looks.
+            spacing: 0
 
             NotesNavigationRail {
                 id: rail
                 Layout.fillHeight: true
-                Layout.preferredWidth: expanded ? NotesMetrics.railExpandedWidth : NotesMetrics.railCollapsedWidth
+                Layout.preferredWidth: expanded
+                    ? Math.max(NotesMetrics.railMinimumWidth,
+                               Math.min(NotesMetrics.railMaximumWidth, root.state.railWidth))
+                    : NotesMetrics.railCollapsedWidth
                 visible: !root.compact
                 expanded: root.railExpanded
                 scope: root.state.scope
@@ -229,17 +237,26 @@ Item {
                 // The app's own settings do not exist yet; until they do this opens the
                 // one switch about Notes that lives outside the app, rather than a button
                 // that does nothing.
-                onSettingsRequested: GlobalStates.openSettingsPage("overlays", "", "")
 
                 Behavior on Layout.preferredWidth {
                     animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
                 }
             }
 
+            NotesPaneSplitter {
+                Layout.fillHeight: true
+                visible: !root.compact && root.railExpanded
+                onMoved: delta => root.state.railWidth = Math.max(NotesMetrics.railMinimumWidth,
+                    Math.min(NotesMetrics.railMaximumWidth, root.state.railWidth + delta))
+            }
+
             NotesList {
                 id: notesList
                 Layout.fillHeight: true
-                Layout.preferredWidth: root.compact ? root.width : root.state.listWidth
+                Layout.preferredWidth: root.compact
+                    ? root.width
+                    : Math.max(NotesMetrics.listMinimumWidth,
+                               Math.min(NotesMetrics.listMaximumWidth, root.state.listWidth))
                 Layout.fillWidth: root.compact
                 visible: !root.compact || !root.showingDetail
                 notes: root.visibleNotes
@@ -248,6 +265,13 @@ Item {
                 trash: root.trashScope
 
                 onNotePicked: noteId => root.select(noteId)
+            }
+
+            NotesPaneSplitter {
+                Layout.fillHeight: true
+                visible: !root.compact
+                onMoved: delta => root.state.listWidth = Math.max(NotesMetrics.listMinimumWidth,
+                    Math.min(NotesMetrics.listMaximumWidth, root.state.listWidth + delta))
             }
 
             NotesDetail {
