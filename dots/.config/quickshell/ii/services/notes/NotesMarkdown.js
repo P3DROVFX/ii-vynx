@@ -414,3 +414,74 @@ function splitRow(line) {
     cells.push(current.trim());
     return cells;
 }
+
+// ── Putting a parsed document back onto the one it came from ────────────────
+
+/**
+ * Fields a block owns that markdown has no way to write down.
+ *
+ * They are not lost when a document is edited as text — they are restored from the
+ * document that was there before, matched block to block. Without this, editing a note in
+ * a markdown-shaped surface silently flattens the drawing's proportions and throws away
+ * its vector strokes, and the user's only clue is that the picture looks wrong later.
+ */
+var CARRIED_FIELDS = { ink: ["aspect", "strokes"], image: ["width"], table: ["header"] };
+
+/**
+ * `parsed` re-anchored onto `previous`.
+ *
+ * Two things are recovered. The fields above, and — just as important — the **block ids**.
+ * `fromMarkdown` mints a fresh id for every block, so a surface that re-parsed on each
+ * keystroke would replace the whole document every time: undo would have nothing stable
+ * to point at, revisions would show every line as changed, and the editor's cursor would
+ * be inside a block that no longer exists.
+ *
+ * Matching is by asset for the blocks that name a file, and otherwise the next unclaimed
+ * block of the same type, preferring one whose text is identical. That is a heuristic and
+ * it is allowed to be: being wrong costs a new id for one block, never content.
+ */
+function mergeParsed(previous, parsed) {
+    var before = Doc.normalizeDocument(previous);
+    var after = Doc.normalizeDocument(parsed, before.id);
+    var claimed = {};
+
+    var blocks = after.blocks.map(function (item) {
+        var donor = findDonor(before.blocks, item, claimed);
+        if (!donor)
+            return item;
+        claimed[donor.id] = true;
+        var merged = { id: donor.id };
+        for (var key in item) {
+            if (key !== "id")
+                merged[key] = item[key];
+        }
+        var carried = CARRIED_FIELDS[item.type] || [];
+        for (var i = 0; i < carried.length; i++) {
+            if (donor.hasOwnProperty(carried[i]))
+                merged[carried[i]] = donor[carried[i]];
+        }
+        return Doc.normalizeBlock(merged);
+    });
+
+    return Doc.normalizeDocument({ id: before.id, blocks: blocks }, before.id);
+}
+
+function findDonor(candidates, item, claimed) {
+    var sameType = [];
+    for (var i = 0; i < candidates.length; i++) {
+        if (candidates[i].type !== item.type || claimed[candidates[i].id])
+            continue;
+        // A block that names a file is the same block as long as it names the same file,
+        // wherever it moved to in the document.
+        if (item.hasOwnProperty("asset") && item.asset.length > 0)
+            return candidates[i].asset === item.asset ? candidates[i] : null;
+        sameType.push(candidates[i]);
+    }
+    if (sameType.length === 0)
+        return null;
+    for (var j = 0; j < sameType.length; j++) {
+        if (sameType[j].hasOwnProperty("text") && sameType[j].text === item.text)
+            return sameType[j];
+    }
+    return sameType[0];
+}

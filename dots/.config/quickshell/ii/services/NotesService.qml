@@ -7,244 +7,643 @@ import Quickshell.Io
 import qs
 import qs.modules.common
 import qs.services
+import qs.services.notes
+import "notes/NotesDocument.js" as Doc
+import "notes/NotesMarkdown.js" as Markdown
+import "notes/NotesMigration.js" as Migration
 
 /**
- * The single owner of notes.json.
+ * The single owner of the notes store.
  *
- * UI components may keep a local view of `tabsData`, but they never open the
- * file or write JSON themselves. This matters when the notes overlay is open:
- * an AI append and a text-editor debounce must be merged by one writer rather
- * than racing two FileViews against each other.
+ * A note used to be `{ title, icon, content, sketch }` inside one `notes.json` that was
+ * read and rewritten in full on every keystroke. It is now an entry in an index plus a
+ * document of addressable blocks in a file of its own — which is what lets a note hold a
+ * heading, an indented list, a code block, a picture and a drawing at once, and what stops
+ * typing in one note from rewriting every other one.
+ *
+ * Two APIs live here on purpose.
+ *
+ *   **The store API** (`notes`, `createNote`, `applyOps`, `loadDocument`, …) is what the
+ *   notes app is built on.
+ *
+ *   **The legacy API** (`tabsData`, `updateTab`, `replaceTabs`, `createSketch`, …) is the
+ *   exact surface the game overlay, the two desktop widgets and the AI integration
+ *   already call, projected onto the new model. Those surfaces are not touched in this
+ *   change and must not regress: a note written in the overlay is the same note the app
+ *   opens, in both directions, from the first commit rather than at the end.
+ *
+ * The bridge is temporary by design. It goes when those surfaces are ported.
  */
 Singleton {
     id: root
 
-    readonly property var defaultTabs: [
-        { title: "Tab 1", icon: "article", content: "" },
-        { title: "Tab 2", icon: "article", content: "" },
-        { title: "Tab 3", icon: "article", content: "" }
-    ]
-    property var tabsData: ({ tabs: root.defaultTabs })
+    readonly property NotesStore store: NotesStore {
+        onReady: root.onStoreReady()
+        onIndexUpdated: root.rebuildProjection()
+        onDocumentReady: (noteId, document) => root.onDocumentReady(noteId, document)
+        onWriteFinished: (ok, error) => root.writeFinished(ok, error)
+        onCommitted: (tag, result) => root.onCommitted(tag, result)
+    }
+
+    // ── State ─────────────────────────────────────────────────────────────
+
+    /// The store is readable and, if there was anything to migrate, migrated.
     property bool ready: false
-    property bool writing: false
-    property string lastError: ""
-    property real initTimestamp: Date.now()
-    property int missingFileGracePeriod: 2000
-    property int missingFileRetryInterval: 1500
-    property var pendingData: null
+    property string lastError: store.lastError
+
+    readonly property var index: store.index
+    /// Notes that are not in the trash, in index order.
+    readonly property var notes: Doc.asArray(store.index.notes).filter(note => note.trashedAt === 0)
+    readonly property var notebooks: Doc.asArray(store.index.notebooks)
 
     signal dataChanged()
     signal writeFinished(bool success, string error)
+    signal noteChanged(string noteId)
+    signal migrationCompleted(int count)
 
-    function cloneTabs(value): var {
-        const source = Array.isArray(value?.tabs) ? value.tabs : root.defaultTabs;
-        return source.map(tab => ({
-            title: String(tab?.title ?? "Tab"),
-            icon: String(tab?.icon ?? "article"),
-            content: String(tab?.content ?? ""),
-            // Absolute path to a drawing, or "" for a note that is only text. Carried
-            // through every clone so an edit to a sketch note's text does not silently
-            // drop the picture — which is what an unlisted key does here.
-            sketch: String(tab?.sketch ?? "")
-        }));
+    // ── Store API ─────────────────────────────────────────────────────────
+
+    function noteById(noteId: string): var {
+        return root.notes.find(note => note.id === noteId) ?? null;
     }
 
-    function normalized(value): var {
-        const tabs = root.cloneTabs(value);
-        return { tabs: tabs.length > 0 ? tabs : root.cloneTabs({ tabs: root.defaultTabs }) };
+    function noteIndexOf(noteId: string): int {
+        return root.notes.findIndex(note => note.id === noteId);
     }
 
-    function parseText(text): var {
-        try {
-            const parsed = JSON.parse(String(text ?? ""));
-            return root.normalized(parsed);
-        } catch (error) {
-            root.lastError = "Could not parse notes.json";
-            return root.normalized({ tabs: root.defaultTabs });
+    function documentOf(noteId: string): var {
+        return store.documentOf(noteId);
+    }
+
+    function assetPath(noteId: string, asset: string): string {
+        return store.assetPath(noteId, asset);
+    }
+
+    /**
+     * Writes the index, replacing the note records wholesale.
+     *
+     * Everything that changes structure goes through here so there is one place that
+     * normalises, refreshes residents and republishes.
+     */
+    function commitIndex(notesList: var, notebooksList = null): void {
+        store.putIndex({
+            schema: Doc.INDEX_SCHEMA,
+            notebooks: notebooksList === null ? store.index.notebooks : notebooksList,
+            notes: notesList
+        });
+    }
+
+    function allNoteRecords(): var {
+        return Doc.asArray(store.index.notes).map(note => Doc.normalizeNote(note));
+    }
+
+    function defaultNotebookId(): string {
+        const books = Doc.asArray(store.index.notebooks);
+        return books.length > 0 ? books[0].id : "";
+    }
+
+    function defaultSectionId(): string {
+        const books = Doc.asArray(store.index.notebooks);
+        if (books.length === 0)
+            return "";
+        const sections = Doc.asArray(books[0].sections);
+        return sections.length > 0 ? sections[0].id : "";
+    }
+
+    /// Makes sure there is somewhere for a note to live. A store whose only notebook was
+    /// deleted still has to accept the next note.
+    function ensureNotebook(): void {
+        if (Doc.asArray(store.index.notebooks).length > 0)
+            return;
+        const notebook = Doc.normalizeNotebook({
+            title: Translation.tr("Notes"),
+            icon: "book",
+            sections: [{ title: Translation.tr("General") }]
+        });
+        store.putIndex({
+            schema: Doc.INDEX_SCHEMA,
+            notebooks: [notebook],
+            notes: store.index.notes
+        });
+    }
+
+    function createNote(options = null): string {
+        root.ensureNotebook();
+        const opts = options ?? ({});
+        const note = Doc.newNote({
+            title: opts.title,
+            icon: opts.icon,
+            notebookId: opts.notebookId ?? root.defaultNotebookId(),
+            sectionId: opts.sectionId ?? root.defaultSectionId(),
+            tags: opts.tags,
+            created: Date.now()
+        });
+        const document = opts.document
+            ? Doc.normalizeDocument(opts.document, note.id)
+            : Doc.newDocument(note.id);
+
+        const records = root.allNoteRecords();
+        records.push(Doc.noteFromDocument(note, document, note.created));
+        root.commitIndex(records);
+        root.writeDocument(note.id, document);
+        return note.id;
+    }
+
+    /// Applies block operations to a note and writes the result. The one mutation path.
+    function applyOps(noteId: string, ops: var): var {
+        const current = store.documentOf(noteId);
+        if (current === null)
+            return { ok: false, error: "notLoaded" };
+        const result = Doc.applyOps(current, ops);
+        if (!result.changed)
+            return { ok: true, changed: false, inverse: [] };
+        root.writeDocument(noteId, result.document);
+        return { ok: true, changed: true, inverse: result.inverse };
+    }
+
+    function updateMeta(noteId: string, patch: var): bool {
+        const records = root.allNoteRecords();
+        const at = records.findIndex(note => note.id === noteId);
+        if (at < 0)
+            return false;
+        const merged = Object.assign({}, records[at], patch ?? {});
+        merged.id = records[at].id;
+        records[at] = Doc.normalizeNote(merged);
+        root.commitIndex(records);
+        return true;
+    }
+
+    /// To the trash, not gone. `trashedAt` is the single fact: a note is in the trash if
+    /// and only if it carries a date.
+    function deleteNote(noteId: string): bool {
+        return root.updateMeta(noteId, { trashedAt: Date.now() });
+    }
+
+    function restoreNote(noteId: string): bool {
+        return root.updateMeta(noteId, { trashedAt: 0 });
+    }
+
+    /// Irreversible: the record, the document, the assets and the revisions.
+    function purgeNote(noteId: string): bool {
+        const records = root.allNoteRecords().filter(note => note.id !== noteId);
+        root.commitIndex(records);
+        store.purge(noteId);
+        return true;
+    }
+
+    function flush(noteId = ""): void {
+        if (String(noteId ?? "").length > 0)
+            store.flushDocument(noteId);
+        else
+            store.flushAll();
+    }
+
+    // ── Writing a document ────────────────────────────────────────────────
+    // A note's file only exists once the index that names it does, and the object that
+    // owns that file is created from the index. So a document written in the same turn as
+    // the note was created can arrive before its writer does; it waits here rather than
+    // being dropped.
+
+    property var pendingDocuments: ({})
+
+    function writeDocument(noteId: string, document: var): void {
+        const normalised = Doc.normalizeDocument(document, noteId);
+        root.contentOverrides[noteId] = undefined;
+        if (!store.putDocument(noteId, normalised)) {
+            root.pendingDocuments[noteId] = normalised;
+            pendingWriteTimer.restart();
+            return;
+        }
+        root.refreshNoteRecord(noteId, normalised);
+        root.rebuildProjection();
+        root.noteChanged(noteId);
+    }
+
+    Timer {
+        id: pendingWriteTimer
+        interval: 50
+        repeat: true
+        onTriggered: {
+            let remaining = false;
+            for (const noteId in root.pendingDocuments) {
+                const document = root.pendingDocuments[noteId];
+                if (document === undefined)
+                    continue;
+                if (store.putDocument(noteId, document)) {
+                    root.pendingDocuments[noteId] = undefined;
+                    root.refreshNoteRecord(noteId, document);
+                    root.noteChanged(noteId);
+                } else {
+                    remaining = true;
+                }
+            }
+            if (!remaining) {
+                pendingWriteTimer.stop();
+                root.rebuildProjection();
+            }
         }
     }
 
-    function publish(value): void {
-        root.tabsData = root.normalized(value);
+    /// Keeps the index's derived fields — preview, counts, icon, modified — in step with
+    /// the document. Nothing else computes a preview, so every surface shows the same
+    /// words.
+    function refreshNoteRecord(noteId: string, document: var): void {
+        const records = root.allNoteRecords();
+        const at = records.findIndex(note => note.id === noteId);
+        if (at < 0)
+            return;
+        const updated = Doc.noteFromDocument(records[at], document, Date.now());
+        if (updated.icon === "article")
+            updated.icon = Doc.iconFor(document);
+        if (JSON.stringify(updated) === JSON.stringify(records[at]))
+            return;
+        records[at] = updated;
+        root.commitIndex(records);
+    }
+
+    function onDocumentReady(noteId, document) {
+        // A document read from disk is the truth again; whatever text the bridge was
+        // holding verbatim for this note no longer applies.
+        root.contentOverrides[noteId] = undefined;
+        root.rebuildProjection();
+    }
+
+    // ── Bootstrap and migration ───────────────────────────────────────────
+
+    property bool legacySettled: false
+    property var legacyValue: null
+    property bool migrating: false
+
+    function onStoreReady() {
+        root.maybeMigrate();
+    }
+
+    function maybeMigrate() {
+        if (root.ready || root.migrating || !store.initialised || !store.indexLoaded)
+            return;
+        if (store.hasIndexFile) {
+            root.ready = true;
+            root.rebuildProjection();
+            root.reportReady("opened");
+            return;
+        }
+        if (!root.legacySettled) {
+            // Nothing on disk. Now — and only now — is the old file worth opening.
+            root.legacyWanted = true;
+            return;
+        }
+
+        root.migrating = true;
+        const plan = Migration.migrateLegacy(root.legacyValue, {
+            now: Date.now(),
+            notebookTitle: Translation.tr("Notes"),
+            sectionTitle: Translation.tr("General"),
+            untitled: Translation.tr("Untitled note")
+        });
+
+        const batch = {
+            files: Migration.filesFor(plan),
+            copies: plan.assets.map(asset => ({
+                from: asset.from,
+                to: `assets/${asset.noteId}/${asset.to}`
+            })),
+            // Renamed, never deleted: it is the only copy of everything written before the
+            // app existed.
+            renames: plan.stats.notes > 0 && root.legacyValue !== null
+                ? [{ from: Directories.notesPath, to: Directories.notesLegacyBackupPath }]
+                : []
+        };
+        // The copies name the file inside the store; the block names it relative to the
+        // note, which is what `assetPath` resolves.
+        store.commit(batch, "migrate");
+        root.migratedIndex = plan.index;
+        root.migrationCount = plan.stats.notes;
+    }
+
+    property int migrationCount: 0
+    property var migratedIndex: null
+
+    /// One line saying what the store holds. The notes app does not exist yet, so this is
+    /// the only way to see that the bridge found the notes rather than an empty store —
+    /// and it stays useful afterwards, when somebody asks why a note is missing.
+    function reportReady(how) {
+        const drawings = root.notes.filter(note => note.hasInk).length;
+        console.log(`[NotesService] ${how}: ${root.notes.length} notes, ${drawings} with ink,`,
+                    `${Doc.asArray(store.index.notes).length - root.notes.length} in the trash`);
+    }
+
+    function onCommitted(tag, result) {
+        if (tag !== "migrate")
+            return;
+        root.migrating = false;
+        root.ready = true;
+        if (result.error) {
+            root.lastError = String(result.error);
+            root.rebuildProjection();
+            return;
+        }
+        // The helper reported which files it actually wrote, so the plan's index is what
+        // is on disk. Adopting it is not an optimisation: a FileView that has loaded once
+        // does not re-announce a load, so a reload alone would leave the store holding the
+        // empty index it had a moment ago.
+        store.adoptIndex(root.migratedIndex);
+        root.migratedIndex = null;
+        root.reportReady(`migrated ${root.migrationCount} note(s) from notes.json`);
+        if (root.migrationCount > 0)
+            root.migrationCompleted(root.migrationCount);
+    }
+
+    /// Set only when the store turned out to have no index. A shell that has already
+    /// migrated never opens `notes.json` again — reading a file that was deliberately
+    /// renamed would log a failure on every single startup, for nothing.
+    property bool legacyWanted: false
+
+    FileView {
+        // Read only. The legacy file is never written again; it is renamed once its notes
+        // have been carried across.
+        id: legacyFile
+        path: root.legacyWanted ? Qt.resolvedUrl(Directories.notesPath) : ""
+
+        onLoaded: {
+            try {
+                root.legacyValue = JSON.parse(legacyFile.text());
+            } catch (error) {
+                root.legacyValue = null;
+            }
+            root.legacySettled = true;
+            root.maybeMigrate();
+        }
+
+        onLoadFailed: {
+            // No legacy file at all — a fresh install. There is simply nothing to carry.
+            root.legacyValue = null;
+            root.legacySettled = true;
+            root.maybeMigrate();
+        }
+    }
+
+    // ── The legacy bridge ─────────────────────────────────────────────────
+
+    readonly property var defaultTabs: [
+        { title: "Tab 1", icon: "article", content: "" }
+    ]
+
+    /// The projection the old surfaces read. One tab per non-trashed note, in index order.
+    property var tabsData: ({ tabs: [] })
+
+    /// Text the bridge hands back exactly as it was given.
+    ///
+    /// Re-deriving it from the document would round-trip through markdown, and a
+    /// normalisation that changed one character while somebody was typing would reset
+    /// their text field under the cursor.
+    property var contentOverrides: ({})
+
+    readonly property bool writing: store.writing
+    /// The old service exposed a pending-write buffer and the overlay reads it to draw a
+    /// "saving" hint. There is no single buffer any more, so this answers the only
+    /// question that was ever asked of it: is anything still on its way to disk.
+    readonly property var pendingData: store.writing ? ({}) : null
+
+    /// The blocks markdown shows as text. Ink is projected as the separate `sketch` field
+    /// the old shape has, so a drawing never appears to the user as `![ink](…)` inside
+    /// their own text.
+    function textBlocksOf(document): var {
+        return Doc.asArray(document.blocks).filter(item => item.type !== "ink");
+    }
+
+    function inkBlocksOf(document): var {
+        return Doc.asArray(document.blocks).filter(item => item.type === "ink");
+    }
+
+    function legacyContentOf(noteId, document): string {
+        const override = root.contentOverrides[noteId];
+        if (override !== undefined)
+            return override;
+        return Markdown.toMarkdown({ id: noteId, blocks: root.textBlocksOf(document) });
+    }
+
+    function legacySketchOf(noteId, document): string {
+        const ink = root.inkBlocksOf(document);
+        return ink.length > 0 ? store.assetPath(noteId, ink[0].asset) : "";
+    }
+
+    function rebuildProjection(): void {
+        const tabs = root.notes.map(note => {
+            const document = store.documentOf(note.id);
+            if (document === null) {
+                // The record exists, the file has not arrived yet. The preview is the
+                // honest answer for one frame; it is replaced as soon as the file loads.
+                return { noteId: note.id, title: note.title, icon: note.icon,
+                         content: note.preview, sketch: "" };
+            }
+            return {
+                noteId: note.id,
+                title: note.title,
+                icon: note.icon,
+                content: root.legacyContentOf(note.id, document),
+                sketch: root.legacySketchOf(note.id, document)
+            };
+        });
+        const next = { tabs: tabs };
+        if (JSON.stringify(next) === JSON.stringify(root.tabsData))
+            return;
+        root.tabsData = next;
         root.dataChanged();
     }
 
-    function loadFromDisk(): void {
-        if (!noteFile)
-            return;
-        root.ready = true;
-        // A reload triggered by our own write must not clobber newer in-memory edits.
-        if (root.writing || root.pendingData !== null) {
-            if (root.pendingData !== null)
-                writeDebounce.restart();
-            return;
-        }
-        root.publish(root.parseText(noteFile.text()));
-    }
-
-    function scheduleWrite(value): bool {
-        if (!root.ready) {
-            root.pendingData = root.normalized(value);
-            return false;
-        }
-        root.pendingData = root.normalized(value);
-        writeDebounce.restart();
-        return true;
-    }
-
-    function replaceTabs(value): bool {
-        return root.scheduleWrite(value);
-    }
-
-    function flush(): bool {
-        if (!root.ready || root.pendingData === null)
-            return false;
-        root.publish(root.pendingData);
-        root.pendingData = null;
-        const payload = JSON.stringify(root.tabsData, null, 2);
-        // FileView silently drops a setText that matches what it already holds, and
-        // emits no signal for it — so treat it as done instead of waiting forever.
-        if (payload === noteFile.text()) {
-            root.writing = false;
-            writeWatchdog.stop();
-            root.writeFinished(true, "");
-            return true;
-        }
-        root.writing = true;
-        writeWatchdog.restart();
-        noteFile.setText(payload);
-        return true;
-    }
-
-    function reload(): void {
-        noteFile.reload();
+    function noteIdForTab(index: int): string {
+        const tabs = Doc.asArray(root.tabsData.tabs);
+        if (index < 0 || index >= tabs.length)
+            return "";
+        return String(tabs[index].noteId ?? "");
     }
 
     function snapshot(): var {
-        return root.normalized(root.tabsData);
+        return JSON.parse(JSON.stringify(root.tabsData));
+    }
+
+    function reload(): void {
+        store.reloadIndex();
+    }
+
+    /**
+     * Replaces a note's text, keeping everything markdown cannot say.
+     *
+     * The drawing is the reason this is not just a parse: markdown carries the file a
+     * drawing points at but not its proportions or its vector strokes, and re-anchoring
+     * onto the previous document is what keeps an edit to the *text* from quietly
+     * flattening the *picture*.
+     */
+    function documentFromLegacyContent(noteId, content): var {
+        const previous = store.documentOf(noteId) ?? Doc.newDocument(noteId);
+        const parsed = Markdown.fromMarkdown(content, { noteId: noteId });
+        const blocks = Doc.asArray(parsed.blocks).concat(root.inkBlocksOf(previous));
+        return Markdown.mergeParsed(previous, { id: noteId, blocks: blocks });
     }
 
     function updateTab(index: int, content: string): bool {
-        const tabs = root.cloneTabs(root.tabsData);
-        if (index < 0 || index >= tabs.length)
+        const noteId = root.noteIdForTab(index);
+        if (noteId.length === 0)
             return false;
-        tabs[index].content = String(content ?? "");
-        return root.scheduleWrite({ tabs: tabs });
+        const text = String(content ?? "");
+        if (root.contentOverrides[noteId] === text)
+            return true;
+        const document = root.documentFromLegacyContent(noteId, text);
+        root.writeDocument(noteId, document);
+        root.contentOverrides[noteId] = text;
+        root.rebuildProjection();
+        return true;
     }
 
     function updateTabMetadata(index: int, title: string, icon: string): bool {
-        const tabs = root.cloneTabs(root.tabsData);
-        if (index < 0 || index >= tabs.length)
+        const noteId = root.noteIdForTab(index);
+        if (noteId.length === 0)
             return false;
-        tabs[index].title = String(title ?? "").split("\n")[0] || "Tab";
-        tabs[index].icon = String(icon ?? "article").split("\n")[0] || "article";
-        return root.scheduleWrite({ tabs: tabs });
+        return root.updateMeta(noteId, {
+            title: String(title ?? "").split("\n")[0] || "Tab",
+            icon: String(icon ?? "article").split("\n")[0] || "article"
+        });
+    }
+
+    function deleteTab(index: int): bool {
+        const noteId = root.noteIdForTab(index);
+        if (noteId.length === 0)
+            return false;
+        root.deleteNote(noteId);
+        // The old shape can never be empty: the overlay draws a tab strip and an editor,
+        // and both need something to point at.
+        if (root.notes.length === 0)
+            root.createNote({ title: "Tab 1" });
+        return true;
+    }
+
+    /**
+     * The whole tab list at once — how the old surfaces add and remove notes.
+     *
+     * Matched by the `noteId` the projection carries on each tab. The callers all build
+     * their new list by slicing the one they were given, so the tabs that survive keep
+     * their identity, and only the ones they invented arrive without an id.
+     */
+    function replaceTabs(value: var): bool {
+        const incoming = Doc.asArray(value?.tabs);
+        const existing = root.allNoteRecords();
+        const known = {};
+        existing.forEach(note => known[note.id] = note);
+
+        const kept = {};
+        const order = [];
+        for (const tab of incoming) {
+            const noteId = String(tab?.noteId ?? "");
+            if (noteId.length > 0 && known[noteId] && known[noteId].trashedAt === 0) {
+                kept[noteId] = true;
+                order.push(noteId);
+                const record = known[noteId];
+                const title = String(tab.title ?? "").split("\n")[0];
+                const icon = String(tab.icon ?? "article").split("\n")[0] || "article";
+                if (record.title !== title || record.icon !== icon)
+                    known[noteId] = Doc.normalizeNote(Object.assign({}, record, { title: title, icon: icon }));
+                const currentContent = root.legacyContentOf(noteId, store.documentOf(noteId) ?? Doc.newDocument(noteId));
+                const wanted = String(tab.content ?? "");
+                if (currentContent !== wanted)
+                    root.updateTabById(noteId, wanted);
+                continue;
+            }
+            order.push(root.createNoteFromTab(tab));
+        }
+
+        // Anything the caller left out is a note they removed.
+        const records = root.allNoteRecords().map(note => {
+            if (known[note.id] && known[note.id] !== note)
+                note = known[note.id];
+            if (note.trashedAt === 0 && !kept[note.id] && !order.includes(note.id))
+                return Doc.normalizeNote(Object.assign({}, note, { trashedAt: Date.now() }));
+            return note;
+        });
+        root.commitIndex(records);
+        return true;
+    }
+
+    function updateTabById(noteId, content) {
+        const text = String(content ?? "");
+        root.writeDocument(noteId, root.documentFromLegacyContent(noteId, text));
+        root.contentOverrides[noteId] = text;
+    }
+
+    function createNoteFromTab(tab): string {
+        const content = String(tab?.content ?? "");
+        const sketch = String(tab?.sketch ?? "");
+        const noteId = root.createNote({
+            title: String(tab?.title ?? "").split("\n")[0],
+            icon: String(tab?.icon ?? "article").split("\n")[0] || "article"
+        });
+        const blocks = Doc.asArray(Markdown.fromMarkdown(content, { noteId: noteId }).blocks);
+        if (sketch.length > 0)
+            blocks.push(Doc.block("ink", { asset: sketch }));
+        root.writeDocument(noteId, { id: noteId, blocks: blocks });
+        root.contentOverrides[noteId] = content;
+        return noteId;
     }
 
     function append(index: int, text: string, provenance = null): var {
-        const tabs = root.cloneTabs(root.tabsData);
-        if (index < 0 || index >= tabs.length)
+        const noteId = root.noteIdForTab(index);
+        if (noteId.length === 0)
             return { ok: false, error: "unknownNote" };
         const addition = String(text ?? "").trim();
         if (addition.length === 0)
             return { ok: false, error: "emptyText" };
-        const previous = String(tabs[index].content ?? "").trimEnd();
-        tabs[index].content = previous.length > 0 ? `${previous}\n\n${addition}` : addition;
-        if (!root.scheduleWrite({ tabs: tabs }))
+
+        const document = store.documentOf(noteId);
+        if (document === null)
             return { ok: false, error: "notReady" };
+        const previous = root.legacyContentOf(noteId, document).trimEnd();
+        const merged = previous.length > 0 ? `${previous}\n\n${addition}` : addition;
+        root.updateTabById(noteId, merged);
+        root.rebuildProjection();
+
+        const note = root.noteById(noteId);
         return {
             ok: true,
-            index: index,
-            title: tabs[index].title,
-            content: tabs[index].content,
+            index: root.noteIndexOf(noteId),
+            title: note ? note.title : "",
+            content: merged,
             provenance: root.safeProvenance(provenance)
         };
     }
 
     function create(title: string, content: string, provenance = null): var {
-        const noteTitle = String(title ?? "").trim() || "AI note";
+        if (!root.ready)
+            return { ok: false, error: "notReady" };
+        const noteTitle = String(title ?? "").trim() || Translation.tr("AI note");
         const noteContent = String(content ?? "").trim();
         if (noteContent.length === 0)
             return { ok: false, error: "emptyText" };
-        const tabs = root.cloneTabs(root.tabsData);
-        const tab = { title: noteTitle.slice(0, 120), icon: "article", content: noteContent };
-        tabs.push(tab);
-        if (!root.scheduleWrite({ tabs: tabs }))
-            return { ok: false, error: "notReady" };
+        const noteId = root.createNoteFromTab({
+            title: noteTitle.slice(0, 120), icon: "article", content: noteContent
+        });
+        root.rebuildProjection();
         return {
             ok: true,
-            index: tabs.length - 1,
-            title: tab.title,
-            content: tab.content,
+            index: root.noteIndexOf(noteId),
+            title: noteTitle.slice(0, 120),
+            content: noteContent,
             provenance: root.safeProvenance(provenance)
         };
     }
 
-    // ── Sketches ────────────────────────────────────────────────────────────
+    // ── Sketches ──────────────────────────────────────────────────────────
+
     /**
      * Where the next drawing goes.
      *
-     * Timestamped rather than numbered: the name is the only thing distinguishing two
-     * sketches on disk, and a counter that resets when the shell restarts overwrites the
-     * drawing someone made yesterday.
+     * Still the legacy sketches folder, and still timestamped. The tablet's live draw
+     * writes the file before any note exists to attach it to, so it cannot be written
+     * inside a note's asset folder — the note is created afterwards, from the path.
      */
     function newSketchPath(): string {
         const stamp = new Date().toISOString().replace(/[:.]/g, "-");
         return `${Directories.noteSketchesDir}/sketch-${stamp}.png`;
     }
 
-    /**
-     * Files a drawing that has already been written to `path` as a new note.
-     *
-     * The path, not the pixels: notes.json is read and rewritten whole on every keystroke
-     * in the notes overlay, and a base64 PNG inside it would be megabytes travelling
-     * through that loop for every character typed in an unrelated tab.
-     */
-    // `title` is deliberately untyped. A `string`-typed QML parameter coerces a missing
-    // argument to the literal text "undefined", so the optional title would have arrived
-    // as a four-syllable note name rather than as nothing to fall back from.
-    function createSketch(path: string, title): var {
-        const file = String(path ?? "").trim();
-        if (file.length === 0)
-            return { ok: false, error: "emptyPath" };
-        const noteTitle = String(title ?? "").trim()
-            || Translation.tr("Sketch %1").arg(Qt.formatDateTime(new Date(), "d MMM, HH:mm"));
-        const tabs = root.cloneTabs(root.tabsData);
-        const tab = { title: noteTitle.slice(0, 120), icon: "draw", content: "", sketch: file };
-        tabs.push(tab);
-        if (!root.scheduleWrite({ tabs: tabs }))
-            return { ok: false, error: "notReady" };
-        return { ok: true, index: tabs.length - 1, title: tab.title, sketch: file };
-    }
-
-    /**
-     * Attaches a drawing to an existing note, replacing whatever it had.
-     *
-     * Separate from `createSketch`, which makes a new note: drawing *into* the note you
-     * are looking at is the common case once notes can be drawn in at all, and creating a
-     * second note every time somebody added a line would be its own bug.
-     *
-     * The previous file is left on disk. Deleting it here would be right up until the
-     * moment two notes shared a path — which nothing prevents, since a path is just a
-     * string in a JSON file — and an orphaned PNG is a much smaller problem than a note
-     * whose picture vanished.
-     */
-    function setSketch(index: int, path: string): bool {
-        const tabs = root.cloneTabs(root.tabsData);
-        if (index < 0 || index >= tabs.length)
-            return false;
-        tabs[index].sketch = String(path ?? "");
-        if (tabs[index].icon === "article" && tabs[index].sketch.length > 0)
-            tabs[index].icon = "draw";
-        return root.scheduleWrite({ tabs: tabs });
-    }
-
-    function clearSketch(index: int): bool {
-        return root.setSketch(index, "");
-    }
-
-    /// Makes sure the sketch directory exists. Called before the first write rather than
-    /// at startup: a shell that never draws anything should not create the folder.
     function ensureSketchDir(): void {
         sketchDirMaker.running = false;
         Qt.callLater(() => sketchDirMaker.running = true);
@@ -255,14 +654,46 @@ Singleton {
         command: ["mkdir", "-p", Directories.noteSketchesDir]
     }
 
-    function deleteTab(index: int): bool {
-        const tabs = root.cloneTabs(root.tabsData);
-        if (index < 0 || index >= tabs.length)
+    function createSketch(path: string, title): var {
+        const file = String(path ?? "").trim();
+        if (file.length === 0)
+            return { ok: false, error: "emptyPath" };
+        if (!root.ready)
+            return { ok: false, error: "notReady" };
+        const noteTitle = String(title ?? "").trim()
+            || Translation.tr("Sketch %1").arg(Qt.formatDateTime(new Date(), "d MMM, HH:mm"));
+        const noteId = root.createNote({ title: noteTitle.slice(0, 120), icon: "draw" });
+        root.writeDocument(noteId, {
+            id: noteId,
+            blocks: [Doc.block("text", {}), Doc.block("ink", { asset: file })]
+        });
+        root.rebuildProjection();
+        return { ok: true, index: root.noteIndexOf(noteId), title: noteTitle, sketch: file };
+    }
+
+    function setSketch(index: int, path: string): bool {
+        const noteId = root.noteIdForTab(index);
+        if (noteId.length === 0)
             return false;
-        tabs.splice(index, 1);
-        if (tabs.length === 0)
-            tabs.push({ title: "Tab 1", icon: "article", content: "" });
-        return root.scheduleWrite({ tabs: tabs });
+        const document = store.documentOf(noteId);
+        if (document === null)
+            return false;
+        const file = String(path ?? "");
+        const blocks = root.textBlocksOf(document);
+        if (file.length > 0)
+            blocks.push(Doc.block("ink", { asset: file }));
+        root.writeDocument(noteId, { id: noteId, blocks: blocks });
+        if (file.length > 0) {
+            const note = root.noteById(noteId);
+            if (note && note.icon === "article")
+                root.updateMeta(noteId, { icon: "draw" });
+        }
+        root.rebuildProjection();
+        return true;
+    }
+
+    function clearSketch(index: int): bool {
+        return root.setSketch(index, "");
     }
 
     function safeProvenance(value): var {
@@ -271,72 +702,5 @@ Singleton {
             sessionId: String(candidate.sessionId ?? "").slice(0, 120),
             messageId: String(candidate.messageId ?? "").slice(0, 120)
         };
-    }
-
-    Timer {
-        id: writeDebounce
-        interval: 150
-        repeat: false
-        onTriggered: root.flush()
-    }
-
-    Timer {
-        id: writeWatchdog
-        interval: 2000
-        repeat: false
-        onTriggered: {
-            root.writing = false;
-            if (root.pendingData !== null)
-                writeDebounce.restart();
-        }
-    }
-
-    Timer {
-        id: missingFileRetryTimer
-        interval: root.missingFileRetryInterval
-        repeat: false
-        onTriggered: root.reload()
-    }
-
-    FileView {
-        id: noteFile
-        path: Qt.resolvedUrl(Directories.notesPath)
-        watchChanges: true
-        atomicWrites: true
-        onLoaded: root.loadFromDisk()
-        onSaved: {
-            writeWatchdog.stop();
-            root.writing = false;
-            root.writeFinished(true, "");
-            if (root.pendingData !== null)
-                writeDebounce.restart();
-        }
-        onSaveFailed: error => {
-            writeWatchdog.stop();
-            root.writing = false;
-            root.lastError = `notes.json save failed: ${error}`;
-            root.writeFinished(false, root.lastError);
-        }
-        onLoadFailed: error => {
-            root.writing = false;
-            if (error !== FileViewError.FileNotFound) {
-                root.lastError = `notes.json load failed: ${error}`;
-                root.writeFinished(false, root.lastError);
-                return;
-            }
-            if (Date.now() - root.initTimestamp > root.missingFileGracePeriod) {
-                root.ready = true;
-                root.publish({ tabs: root.defaultTabs });
-                root.pendingData = root.tabsData;
-                root.flush();
-            } else {
-                missingFileRetryTimer.restart();
-            }
-        }
-    }
-
-    Component.onCompleted: {
-        root.reload();
-        root.ensureSketchDir();
     }
 }

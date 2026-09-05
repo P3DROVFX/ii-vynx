@@ -207,4 +207,64 @@ TestCase {
         const after = Markdown.fromMarkdown(Markdown.toMarkdown(before));
         compare(after.blocks[0].rows[0][0], "a|b");
     }
+
+    // ── Re-anchoring a parsed document onto the one it replaces ───────────
+
+    function test_merging_keeps_the_block_ids_the_editor_is_pointing_at() {
+        // A surface that re-parses on every keystroke would otherwise replace the whole
+        // document each time: undo with nothing stable to anchor to, and a cursor sitting
+        // in a block that no longer exists.
+        const before = Doc.normalizeDocument({
+            blocks: [
+                { id: "one", type: "heading", text: "Title" },
+                { id: "two", type: "text", text: "Body" }
+            ]
+        });
+        const merged = Markdown.mergeParsed(before, Markdown.fromMarkdown("# Title\n\nBody edited"));
+        compare(merged.blocks[0].id, "one");
+        compare(merged.blocks[1].id, "two");
+        compare(merged.blocks[1].text, "Body edited");
+    }
+
+    function test_merging_restores_what_markdown_cannot_write_down() {
+        const before = Doc.normalizeDocument({
+            blocks: [
+                { id: "ink", type: "ink", asset: "s.png", aspect: 2.4, strokes: "s.json" },
+                { id: "img", type: "image", asset: "p.png", width: 0.5 }
+            ]
+        });
+        const merged = Markdown.mergeParsed(before, Markdown.fromMarkdown(Markdown.toMarkdown(before)));
+        compare(merged.blocks[0].aspect, 2.4);
+        compare(merged.blocks[0].strokes, "s.json");
+        compare(merged.blocks[0].id, "ink");
+        compare(merged.blocks[1].width, 0.5);
+    }
+
+    function test_a_drawing_that_moved_is_still_the_same_drawing() {
+        // Matched by the file it names, not by position: a block that names a file is the
+        // same block wherever it ended up.
+        const before = Doc.normalizeDocument({
+            blocks: [
+                { id: "ink", type: "ink", asset: "s.png", aspect: 3, strokes: "s.json" },
+                { id: "txt", type: "text", text: "after" }
+            ]
+        });
+        const merged = Markdown.mergeParsed(before, Markdown.fromMarkdown("after\n\n![ink](s.png)"));
+        compare(merged.blocks[1].id, "ink");
+        compare(merged.blocks[1].aspect, 3);
+    }
+
+    function test_a_block_with_no_counterpart_simply_arrives() {
+        const before = Doc.normalizeDocument({ blocks: [{ id: "one", type: "text", text: "a" }] });
+        const merged = Markdown.mergeParsed(before, Markdown.fromMarkdown("a\n\nb\n\nc"));
+        compare(merged.blocks.length, 3);
+        compare(merged.blocks[0].id, "one");
+        verify(merged.blocks[1].id !== "one");
+    }
+
+    function test_merging_onto_nothing_is_just_the_parsed_document() {
+        const merged = Markdown.mergeParsed(null, Markdown.fromMarkdown("# Hi"));
+        compare(merged.blocks[0].type, "heading");
+        compare(merged.blocks[0].text, "Hi");
+    }
 }
