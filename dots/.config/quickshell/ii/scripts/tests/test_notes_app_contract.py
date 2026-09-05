@@ -56,18 +56,21 @@ class ThemeTests(unittest.TestCase):
                     self.fail(f"{path.name}:{number} hardcodes {found.group(0)}")
 
     def test_shape_and_motion_come_from_the_tokens(self):
-        window = read(WINDOW)
-        self.assertIn("Appearance.rounding.", window)
-        self.assertIn("Appearance.animationCurves.emphasized", window)
+        # The window itself draws no chrome any more — the compositor frames a toplevel —
+        # so the shape tokens live where the shapes are.
+        for name in ("NotesNavigationRail.qml", "NotesList.qml", "NotesDetail.qml"):
+            self.assertIn("Appearance.rounding.", read(APP_DIR / name))
+        for name in ("NotesRailItem.qml", "NotesListCard.qml"):
+            self.assertIn("Appearance.animation.elementMoveFast", read(APP_DIR / name))
 
     def test_selection_changes_shape_and_not_only_colour(self):
         # Expressive says the selected thing is a different shape. It is also what keeps
         # the state readable in a theme where the container colour is quiet.
         for name in ("NotesRailItem.qml", "NotesListCard.qml"):
             body = read(APP_DIR / name)
-            for corner in ("topLeftRadius", "bottomLeftRadius"):
-                self.assertRegex(body, rf"{corner}:\s*root\.current\s*\?",
-                                 f"{name} does not reshape on selection")
+            self.assertIn("topIsPill", body, f"{name} does not reshape on selection")
+            self.assertIn("bottomIsPill", body)
+            self.assertIn("NotesMetrics.pillRadius", body)
 
     def test_rows_are_shaped_as_a_group(self):
         # A stack of rows reads as one block, shaped at its ends, and the selected row
@@ -77,7 +80,7 @@ class ThemeTests(unittest.TestCase):
             body = read(APP_DIR / name)
             self.assertIn("property bool isFirst", body)
             self.assertIn("property bool isLast", body)
-            self.assertIn("Appearance.rounding.full", body)
+            self.assertIn("NotesMetrics.groupEndRadius", body)
 
     def test_nothing_is_separated_by_a_line(self):
         # The house style separates sections with air and a corner radius, never a rule.
@@ -112,6 +115,11 @@ class TranslationTests(unittest.TestCase):
                 # writes those in plain English too.
                 if path.name == "NotesApp.qml" and line.strip().startswith("description:"):
                     continue
+                # The window title is an identifier, not a label: the Hyprland rule that
+                # floats and centres this window matches on it, and a translated one would
+                # match nothing on a system that is not in English.
+                if path.name == "NotesAppWindow.qml" and line.strip().startswith("title:"):
+                    continue
                 found = pattern.match(line)
                 if not found:
                     continue
@@ -140,32 +148,62 @@ class OwnershipTests(unittest.TestCase):
 
 
 class WindowBehaviourTests(unittest.TestCase):
-    def test_the_window_is_a_dismissable_overlay_that_does_not_eat_the_desktop(self):
+    def test_the_window_is_an_ordinary_application_window(self):
+        # Not a layer surface. A layer surface floats above every workspace, belongs to
+        # none, and is dismissed by a click anywhere outside it — right for a reference
+        # card, wrong for somewhere you write, where clicking another window to read
+        # something must not throw away what you were looking at.
         window = read(WINDOW)
-        self.assertIn('WlrLayershell.namespace: "quickshell:notes"', window)
-        self.assertIn("WlrLayershell.layer: WlrLayer.Overlay", window)
-        # The mask is the panel only; everything around it belongs to what is underneath.
-        self.assertIn("mask: Region", window)
-        self.assertIn("item: inputMask", window)
-        self.assertIn("GlobalFocusGrab.addDismissable", window)
-        self.assertIn("GlobalFocusGrab.removeDismissable", window)
+        self.assertIn("FloatingWindow {", window)
+        self.assertIn('title: "ii Notes"', window)
+        for overlay_only in ("WlrLayershell", "mask: Region", "GlobalFocusGrab"):
+            self.assertNotIn(overlay_only, window,
+                             f"the window still behaves like an overlay ({overlay_only})")
+
+    def test_the_window_opens_large(self):
+        # A document window. Two panes of chrome and a page to write on do not fit in the
+        # size a dialog gets.
+        window = read(WINDOW)
+        self.assertIn("implicitWidth: Math.max(", window)
+        self.assertIn("minimumSize", window)
 
     def test_closing_the_window_does_not_lose_what_was_typed(self):
         window = read(WINDOW)
         self.assertIn("Component.onDestruction", window)
         self.assertIn("NotesService.flush()", window)
 
+    def test_a_compositor_close_clears_the_shell_state(self):
+        # The compositor can close a toplevel without asking. If the flag it was opened
+        # with is not cleared, the next open only toggles something that was never reset.
+        self.assertIn("onVisibleChanged", read(WINDOW))
+        self.assertIn("GlobalStates.notesAppOpen = false", read(WINDOW))
+
     def test_escape_closes_and_does_the_smaller_thing_first(self):
         content = read(CONTENT)
         self.assertIn("Qt.Key_Escape", content)
         self.assertIn("closeRequested()", content)
 
-    def test_the_remembered_geometry_is_clamped_to_the_screen(self):
-        # A window remembered from a monitor that is no longer plugged in must still open
-        # somewhere a person can reach it.
-        window = read(WINDOW)
-        self.assertIn("root.minimumWidth", window)
-        self.assertIn("Math.min(root.state.width, root.availableWidth)", window)
+    def test_no_active_element_is_a_full_pill(self):
+        # `height / 2` is the classic pill formula and it breaks on anything tall: the
+        # curve eats the content's corners and leaves crescent gaps against the rows above
+        # and below. The Settings design system caps it at the `large` token, and that cap
+        # lives in one function so it cannot be forgotten in one file.
+        self.assertIn("function pillRadius", read(APP_DIR / "NotesMetrics.qml"))
+        self.assertIn("Math.min(itemHeight / 2, Appearance.rounding.large)",
+                      read(APP_DIR / "NotesMetrics.qml"))
+        for name in ("NotesRailItem.qml", "NotesListCard.qml", "NotesNavigationRail.qml"):
+            body = read(APP_DIR / name)
+            self.assertNotIn("Appearance.rounding.full", body,
+                             f"{name} uses an uncapped pill radius")
+
+    def test_selection_reshapes_its_neighbours_too(self):
+        # The Settings sidebar's scheme: the edges facing the selected row round as well,
+        # so the selection presses a notch into the group instead of floating in a hole cut
+        # out of it.
+        for name in ("NotesRailItem.qml", "NotesListCard.qml"):
+            body = read(APP_DIR / name)
+            self.assertIn("prevIsCurrent", body)
+            self.assertIn("nextIsCurrent", body)
 
     def test_touch_targets_are_not_smaller_than_the_project_allows(self):
         # The app runs on the tablet family too.
@@ -204,7 +242,7 @@ class WiringTests(unittest.TestCase):
         # window on a monitor that does not exist here.
         persistent = read(PERSISTENT)
         block = persistent[persistent.index("property JsonObject notes: JsonObject {"):]
-        for name in ("width", "height", "maximized", "noteId", "scope"):
+        for name in ("width", "height", "noteId", "scope"):
             self.assertIn(name, block[:900])
 
     def test_the_family_builds_the_app_and_the_switch_can_turn_it_off(self):

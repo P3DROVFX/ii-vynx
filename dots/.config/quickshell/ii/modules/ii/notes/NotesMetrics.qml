@@ -64,6 +64,26 @@ Singleton {
     readonly property int fabMargin: 16
     readonly property int fabClearance: 88
 
+    // ── Shape ───────────────────────────────────────────────────────────
+    /**
+     * The pill radius for an element of this height, capped.
+     *
+     * `height / 2` alone is the classic pill formula and it breaks on anything tall: the
+     * curve eats the corners of the content, and a stack of tall pills leaves crescent
+     * gaps between them. The project's answer, from the Settings design system, is to cap
+     * it at the `large` token — a one-line row still reads as a pill, and a 90px card
+     * rounds to 24 instead of 45.
+     */
+    function pillRadius(itemHeight) {
+        if (Appearance.rounding.scale === 0)
+            return 0;
+        return Math.min(itemHeight / 2, Appearance.rounding.large);
+    }
+
+    /// The outer corners of a group, and the corners where two rows meet.
+    readonly property int groupEndRadius: Appearance.rounding.scale === 0 ? 0 : Appearance.rounding.large
+    readonly property int groupJoinRadius: Appearance.rounding.scale === 0 ? 0 : Appearance.rounding.verysmall
+
     readonly property int railExpandedWidth: 216
     readonly property int railCollapsedWidth: 76
     readonly property int topBarHeight: 64

@@ -25,13 +25,7 @@ import qs.modules.common
 Scope {
     id: root
 
-    /// Kept true through the close animation so the window can play it before being torn
-    /// down; `GlobalStates.notesAppOpen` is the intent, this is the presence.
-    property bool activeState: false
-
     function requestOpen(noteId = ""): void {
-        closeTimer.stop();
-        root.activeState = true;
         if (String(noteId ?? "").length > 0)
             GlobalStates.notesAppPendingNote = String(noteId);
         if (!GlobalStates.notesAppOpen)
@@ -39,9 +33,7 @@ Scope {
     }
 
     function requestClose(): void {
-        if (GlobalStates.notesAppOpen)
-            GlobalStates.notesAppOpen = false;
-        closeTimer.restart();
+        GlobalStates.notesAppOpen = false;
     }
 
     function requestToggle(): void {
@@ -51,27 +43,12 @@ Scope {
             root.requestOpen();
     }
 
-    Timer {
-        id: closeTimer
-        // Long enough for the exit animation to finish. Tearing the tree down mid-animation
-        // makes the window vanish rather than close.
-        interval: 400
-        onTriggered: root.activeState = false
-    }
-
-    Connections {
-        target: GlobalStates
-        function onNotesAppOpenChanged() {
-            if (GlobalStates.notesAppOpen)
-                root.requestOpen();
-            else
-                root.requestClose();
-        }
-    }
-
     Loader {
         id: windowLoader
-        active: root.activeState
+        // The window's own `visible` follows the same flag; the loader exists so the whole
+        // tree — every note, every pane — is built when it is wanted and released when it
+        // is not, rather than living for the lifetime of the shell.
+        active: GlobalStates.notesAppOpen
         sourceComponent: NotesAppWindow {
             onCloseRequested: root.requestClose()
         }

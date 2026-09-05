@@ -6,25 +6,38 @@ import QtQuick.Layouts
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
-import qs.modules.ii.notes
 
 /**
- * Where you are: the fixed places, then the notebooks, then the trash.
+ * Where you are, and everything that is about the whole app rather than one note.
  *
- * Expressive treats selection as a change of *shape*, not only of colour, so the current
- * place is a full pill while the others are transparent. That is also the reason the
- * selected item stays legible with the theme in either mode — the shape carries the state
- * even where the colour contrast is subtle.
+ * New note at the top, where the mail sidebar puts Compose. The places and the notebooks
+ * in the middle, each a group shaped at its ends. And at the bottom the three things that
+ * are not places at all — search, the trash, and the app's own settings — because a rail
+ * that mixes "which notes am I looking at" with "find something" and "change something"
+ * in one column makes all three harder to find.
+ *
+ * The bottom is a field and then a row, not three stacked buttons: three full-width
+ * buttons in a column read as three more places.
  */
 Item {
     id: root
 
     property bool expanded: true
     property string scope: "all"
+    readonly property string query: searchInput.text
 
     signal scopePicked(string scope)
-    signal expandToggled()
     signal createRequested()
+    signal settingsRequested()
+
+    function clearSearch(): void {
+        searchInput.text = "";
+    }
+
+    function focusSearch(): void {
+        searchInput.forceActiveFocus();
+        searchInput.selectAll();
+    }
 
     readonly property var places: [
         { id: "all", icon: "description", name: Translation.tr("All notes") },
@@ -48,10 +61,9 @@ Item {
         return live.filter(note => note.notebookId === scopeId || note.sectionId === scopeId).length;
     }
 
-    // A slab. Opaque on purpose: the theme's layered colours are transparency-adjusted
-    // and collapse into each other over a wallpaper — measured on a real screenshot, two
-    // adjacent panes came out one channel-step apart, which is not a boundary anyone can
-    // see. The Cheatsheet's pages all use this surface for the same reason.
+    // A slab. Opaque on purpose: the theme's layered colours are transparency-adjusted and
+    // collapse into each other over a wallpaper, so a boundary drawn with them is not one
+    // anybody can see. Every Cheatsheet page uses this surface for the same reason.
     Rectangle {
         anchors.fill: parent
         radius: Appearance.rounding.large
@@ -61,25 +73,15 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.topMargin: NotesMetrics.panePadding
-        anchors.bottomMargin: NotesMetrics.panePadding
-        anchors.leftMargin: NotesMetrics.panePadding
-        anchors.rightMargin: NotesMetrics.panePadding
+        anchors.margins: NotesMetrics.panePadding
         spacing: 4
 
-        /**
-         * The one thing this app is for, at the top of the rail.
-         *
-         * It used to float over the list, where it covered the text of whichever note
-         * happened to be under it. The Cheatsheet's mail sidebar puts Compose here, and it
-         * is the right place for the same reason: it is always visible, it never lands on
-         * top of content, and it is the first thing the eye reaches.
-         */
         RippleButton {
+            id: composeButton
             Layout.fillWidth: true
             Layout.bottomMargin: 8
             implicitHeight: 56
-            buttonRadius: Appearance.rounding.full
+            buttonRadius: NotesMetrics.pillRadius(composeButton.implicitHeight)
             colBackground: Appearance.colors.colPrimary
             colBackgroundHover: Appearance.colors.colPrimaryHover
             colBackgroundActive: Appearance.colors.colPrimaryActive
@@ -128,7 +130,6 @@ Item {
             ColumnLayout {
                 id: railColumn
                 width: parent.width
-                // Rows in a group touch, so their shaped ends read as one block.
                 spacing: 2
 
                 Repeater {
@@ -139,6 +140,8 @@ Item {
                         Layout.fillWidth: true
                         isFirst: index === 0
                         isLast: index === root.places.length - 1
+                        prevIsCurrent: index > 0 && root.scope === root.places[index - 1].id
+                        nextIsCurrent: index < root.places.length - 1 && root.scope === root.places[index + 1].id
                         expanded: root.expanded
                         symbol: modelData.icon
                         label: modelData.name
@@ -169,6 +172,8 @@ Item {
                         Layout.fillWidth: true
                         isFirst: index === 0
                         isLast: index === root.notebooks.length - 1
+                        prevIsCurrent: index > 0 && root.scope === root.notebooks[index - 1].id
+                        nextIsCurrent: index < root.notebooks.length - 1 && root.scope === root.notebooks[index + 1].id
                         expanded: root.expanded
                         symbol: modelData.icon.length > 0 ? modelData.icon : "book"
                         label: modelData.title
@@ -180,21 +185,112 @@ Item {
             }
         }
 
-        Item {
-            // Air, where a rule used to be.
-            Layout.preferredHeight: 8
+        /**
+         * Search, at the foot of the rail.
+         *
+         * It looks for notes anywhere, which is what the rail is about — not what the list
+         * beside it currently shows. Over the list it would have claimed the opposite.
+         */
+        Rectangle {
+            id: searchBox
+            Layout.fillWidth: true
+            Layout.topMargin: 8
+            implicitHeight: 44
+            radius: NotesMetrics.pillRadius(searchBox.implicitHeight)
+            color: searchInput.activeFocus
+                ? Appearance.m3colors.m3surfaceContainerHighest
+                : Appearance.colors.colLayer2
+
+            Behavior on color {
+                animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+            }
+
+            MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.IBeamCursor
+                onClicked: searchInput.forceActiveFocus()
+            }
+
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: 14
+                anchors.rightMargin: 6
+                spacing: 10
+
+                MaterialSymbol {
+                    text: "search"
+                    iconSize: 20
+                    color: Appearance.colors.colOnLayer2
+                }
+
+                Item {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    visible: root.expanded
+
+                    StyledTextInput {
+                        id: searchInput
+                        anchors.fill: parent
+                        verticalAlignment: TextInput.AlignVCenter
+                        color: Appearance.colors.colOnLayer2
+                        clip: true
+                        onAccepted: searchInput.focus = false
+                    }
+
+                    // `StyledTextInput` is a bare `TextInput`; there is no placeholder to
+                    // set, so it is drawn here rather than swapping in a heavier field.
+                    StyledText {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: Translation.tr("Search notes")
+                        font.pixelSize: Appearance.font.pixelSize.small
+                        color: Appearance.colors.colOnLayer1Inactive
+                        visible: searchInput.text.length === 0 && !searchInput.activeFocus
+                    }
+                }
+
+                NotesIconButton {
+                    symbol: "close"
+                    size: 32
+                    iconSize: 17
+                    tooltipText: Translation.tr("Clear the search")
+                    visible: root.expanded && searchInput.text.length > 0
+                    onTriggered: root.clearSearch()
+                }
+            }
+
+            StyledToolTip {
+                text: Translation.tr("Search notes")
+                extraVisibleCondition: !root.expanded
+            }
         }
 
-        NotesRailItem {
+        // A row, not two more full-width buttons. Stacked, they would read as two more
+        // places to go rather than as what they are.
+        RowLayout {
             Layout.fillWidth: true
-            isFirst: true
-            isLast: true
-            expanded: root.expanded
-            symbol: "delete"
-            label: Translation.tr("Trash")
-            count: root.trashCount
-            current: root.scope === "trash"
-            onTriggered: root.scopePicked("trash")
+            Layout.topMargin: 6
+            spacing: 4
+
+            NotesRailItem {
+                id: trashRow
+                Layout.fillWidth: true
+                isFirst: true
+                isLast: true
+                expanded: root.expanded
+                symbol: "delete"
+                label: Translation.tr("Trash")
+                count: root.trashCount
+                current: root.scope === "trash"
+                onTriggered: root.scopePicked("trash")
+            }
+
+            NotesIconButton {
+                symbol: "tune"
+                size: NotesMetrics.rowHeight
+                tooltipText: Translation.tr("Notes settings")
+                visible: root.expanded
+                onTriggered: root.settingsRequested()
+            }
         }
     }
 }

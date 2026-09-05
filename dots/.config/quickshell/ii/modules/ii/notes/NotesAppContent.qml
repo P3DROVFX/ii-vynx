@@ -22,7 +22,6 @@ Item {
     id: root
 
     signal closeRequested()
-    signal maximizeToggled()
 
     readonly property var state: Persistent.states.notes
 
@@ -35,7 +34,7 @@ Item {
 
     // ── Selection ─────────────────────────────────────────────────────────
 
-    readonly property string query: topBar.query
+    readonly property string query: rail.query
 
     readonly property bool trashScope: root.state.scope === "trash"
 
@@ -171,8 +170,8 @@ Item {
         if (event.key === Qt.Key_Escape) {
             if (root.compact && root.showingDetail) {
                 root.showingDetail = false;
-            } else if (topBar.query.length > 0) {
-                topBar.clearSearch();
+            } else if (rail.query.length > 0) {
+                rail.clearSearch();
             } else {
                 root.closeRequested();
             }
@@ -181,7 +180,7 @@ Item {
             root.createNote();
             event.accepted = true;
         } else if (event.key === Qt.Key_F && (event.modifiers & Qt.ControlModifier)) {
-            topBar.focusSearch();
+            rail.focusSearch();
             event.accepted = true;
         }
     }
@@ -201,13 +200,11 @@ Item {
                 ? Translation.tr("%1 of %2 notes").arg(root.visibleNotes.length).arg(root.scopedNotes.length)
                 : Translation.tr("%1 notes").arg(root.visibleNotes.length)
             showBack: root.compact && root.showingDetail
-            maximized: root.state.maximized
             showRailToggle: !root.compact && root.width >= 1100
             railExpanded: root.railExpanded
 
             onRailToggled: root.state.railExpanded = !root.state.railExpanded
             onBackRequested: root.showingDetail = false
-            onMaximizeRequested: root.maximizeToggled()
             onCloseRequested: root.closeRequested()
         }
 
@@ -217,6 +214,7 @@ Item {
             spacing: NotesMetrics.paneGap
 
             NotesNavigationRail {
+                id: rail
                 Layout.fillHeight: true
                 Layout.preferredWidth: expanded ? NotesMetrics.railExpandedWidth : NotesMetrics.railCollapsedWidth
                 visible: !root.compact
@@ -228,6 +226,10 @@ Item {
                     root.state.noteId = "";
                 }
                 onCreateRequested: root.createNote()
+                // The app's own settings do not exist yet; until they do this opens the
+                // one switch about Notes that lives outside the app, rather than a button
+                // that does nothing.
+                onSettingsRequested: GlobalStates.openSettingsPage("overlays", "", "")
 
                 Behavior on Layout.preferredWidth {
                     animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)

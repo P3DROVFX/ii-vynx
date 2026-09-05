@@ -19,9 +19,11 @@ RippleButton {
 
     required property var note
     property bool current: false
-    /// Where this card sits in the list, which is what shapes its corners.
+    /// Where this card sits in the list, and whether its neighbours are the selected one.
     property bool isFirst: false
     property bool isLast: false
+    property bool prevIsCurrent: false
+    property bool nextIsCurrent: false
 
     signal triggered()
 
@@ -35,15 +37,22 @@ RippleButton {
     bottomPadding: NotesMetrics.rowPaddingVertical
     toggled: root.current
 
-    /// The same grouped shape the rail uses: the list is one block, shaped at its ends,
-    /// and the note you are on rounds fully and steps out of it.
-    topLeftRadius: root.current
-        ? Appearance.rounding.full
-        : (root.isFirst ? Appearance.rounding.large : Appearance.rounding.verysmall)
+    /**
+     * The Settings sidebar's smart radius, and the reason it is not a full pill.
+     *
+     * A card here is around 90px tall. `height / 2` would round it by 45, which swallows
+     * the first line of text and leaves crescent-shaped gaps against the cards above and
+     * below. Capping at the `large` token keeps the corner generous and the row rectangular
+     * enough to read. The neighbours facing the selected card round too, so the selection
+     * presses into the stack instead of floating in a hole cut out of it.
+     */
+    readonly property real pillRadius: NotesMetrics.pillRadius(root.implicitHeight)
+    readonly property bool topIsPill: root.current || root.down || root.prevIsCurrent
+    readonly property bool bottomIsPill: root.current || root.down || root.nextIsCurrent
+
+    topLeftRadius: root.topIsPill ? root.pillRadius : (root.isFirst ? NotesMetrics.groupEndRadius : NotesMetrics.groupJoinRadius)
     topRightRadius: root.topLeftRadius
-    bottomLeftRadius: root.current
-        ? Appearance.rounding.full
-        : (root.isLast ? Appearance.rounding.large : Appearance.rounding.verysmall)
+    bottomLeftRadius: root.bottomIsPill ? root.pillRadius : (root.isLast ? NotesMetrics.groupEndRadius : NotesMetrics.groupJoinRadius)
     bottomRightRadius: root.bottomLeftRadius
 
     Behavior on topLeftRadius {

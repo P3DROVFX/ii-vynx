@@ -344,9 +344,8 @@ Singleton {
              * folder and the Google Drive settings already follow.
              */
             property JsonObject notes: JsonObject {
-                property real width: 1180
-                property real height: 720
-                property bool maximized: false
+                property real width: 1500
+                property real height: 940
                 /// Empty means "no note open"; the app falls back to the most recent.
                 property string noteId: ""
                 /// "all" | "recent" | "favorites" | "trash" | a notebook or section id.

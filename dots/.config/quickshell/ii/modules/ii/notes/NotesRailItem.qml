@@ -3,9 +3,17 @@ import QtQuick.Layouts
 
 import qs.modules.common
 import qs.modules.common.widgets
-import qs.modules.ii.notes
 
-/// One place in the rail. A pill when it is where you are, nothing when it is not.
+/**
+ * One place in the rail.
+ *
+ * The shape follows the Settings sidebar's smart-radius scheme, which is the project's
+ * current one: the selected row is a pill, **and so are the edges facing it** on the rows
+ * immediately above and below, so the selection appears to press a notch into the group
+ * rather than to float in a slot cut out of it. Every pill is capped at the `large` token
+ * rather than being fully round — an uncapped `height / 2` on a tall row eats its own
+ * corners and leaves crescent gaps against its neighbours.
+ */
 RippleButton {
     id: root
 
@@ -14,37 +22,38 @@ RippleButton {
     property string label: ""
     property int count: 0
     property bool current: false
-    /// Where this row sits in its group, which is what shapes its corners.
+
+    /// Where this row sits in its group, and whether its neighbours are the selected one.
     property bool isFirst: false
     property bool isLast: false
+    property bool prevIsCurrent: false
+    property bool nextIsCurrent: false
 
     signal triggered()
 
     implicitHeight: NotesMetrics.rowHeight
     padding: 0
     toggled: root.current
-    colBackground: Appearance.m3colors.m3surfaceContainerHighest
-    colBackgroundHover: Appearance.colors.colSecondaryContainerHover
+    colBackground: Appearance.colors.colLayer2
+    colBackgroundHover: Appearance.colors.colLayer2Hover
+    colBackgroundActive: Appearance.colors.colLayer2Active
+    // Selection is secondary, the action above it is primary. The Settings sidebar uses
+    // primary for its active row, but nothing sits above that one: here it would have put
+    // two large blocks of the same colour against each other, and "where I am" would have
+    // shouted as loudly as "make a note".
     colBackgroundToggled: Appearance.colors.colSecondaryContainer
     colBackgroundToggledHover: Appearance.colors.colSecondaryContainerHover
+    colBackgroundToggledActive: Appearance.colors.colSecondaryContainerActive
 
     onClicked: root.triggered()
 
-    /**
-     * A stack of rows reads as one group, and the selected one steps out of it.
-     *
-     * The group is shaped at its ends only — a large corner at the top of the first row
-     * and the bottom of the last, tiny ones everywhere the rows meet — and whichever row
-     * you are on rounds fully. It is the Cheatsheet's mail sidebar, and it is what lets a
-     * list be divided into groups without drawing a single line.
-     */
-    readonly property real groupEndRadius: Appearance.rounding.large
-    readonly property real groupJoinRadius: Appearance.rounding.verysmall
-    readonly property real activeRadius: Appearance.rounding.full
+    readonly property real pillRadius: NotesMetrics.pillRadius(root.implicitHeight)
+    readonly property bool topIsPill: root.current || root.down || root.prevIsCurrent
+    readonly property bool bottomIsPill: root.current || root.down || root.nextIsCurrent
 
-    topLeftRadius: root.current ? root.activeRadius : (root.isFirst ? root.groupEndRadius : root.groupJoinRadius)
+    topLeftRadius: root.topIsPill ? root.pillRadius : (root.isFirst ? NotesMetrics.groupEndRadius : NotesMetrics.groupJoinRadius)
     topRightRadius: root.topLeftRadius
-    bottomLeftRadius: root.current ? root.activeRadius : (root.isLast ? root.groupEndRadius : root.groupJoinRadius)
+    bottomLeftRadius: root.bottomIsPill ? root.pillRadius : (root.isLast ? NotesMetrics.groupEndRadius : NotesMetrics.groupJoinRadius)
     bottomRightRadius: root.bottomLeftRadius
 
     Behavior on topLeftRadius {
@@ -53,6 +62,10 @@ RippleButton {
     Behavior on bottomLeftRadius {
         animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
     }
+
+    readonly property color colText: root.current
+        ? Appearance.m3colors.m3onSecondaryContainer
+        : Appearance.colors.colOnLayer2
 
     contentItem: RowLayout {
         spacing: 0
@@ -70,9 +83,7 @@ RippleButton {
                 text: root.symbol
                 iconSize: 22
                 fill: root.current ? 1 : 0
-                color: root.current
-                    ? Appearance.m3colors.m3onSecondaryContainer
-                    : Appearance.colors.colOnSurfaceVariant
+                color: root.colText
 
                 Behavior on fill {
                     animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
@@ -87,9 +98,7 @@ RippleButton {
             elide: Text.ElideRight
             font.pixelSize: Appearance.font.pixelSize.small
             font.weight: root.current ? Font.DemiBold : Font.Normal
-            color: root.current
-                ? Appearance.m3colors.m3onSecondaryContainer
-                : Appearance.colors.colOnSurfaceVariant
+            color: root.colText
         }
 
         StyledText {
@@ -97,9 +106,8 @@ RippleButton {
             text: root.count
             visible: root.expanded && root.count > 0
             font.pixelSize: Appearance.font.pixelSize.smaller
-            color: root.current
-                ? Appearance.m3colors.m3onSecondaryContainer
-                : Appearance.colors.colSubtext
+            color: root.current ? Appearance.m3colors.m3onSecondaryContainer : Appearance.colors.colSubtext
+            opacity: root.current ? 0.85 : 1
         }
     }
 

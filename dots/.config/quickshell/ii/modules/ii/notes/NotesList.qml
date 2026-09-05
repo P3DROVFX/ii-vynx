@@ -48,6 +48,8 @@ Item {
             width: list.width
             isFirst: index === 0
             isLast: index === root.notes.length - 1
+            prevIsCurrent: index > 0 && root.notes[index - 1].id === root.selectedId
+            nextIsCurrent: index < root.notes.length - 1 && root.notes[index + 1].id === root.selectedId
             note: modelData
             current: modelData.id === root.selectedId
             onTriggered: root.notePicked(modelData.id)

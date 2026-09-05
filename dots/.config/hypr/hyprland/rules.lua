@@ -17,6 +17,12 @@ hl.window_rule({match = {class = "^(?!(kitty|code|code-url-handler|vscodium|anti
 -- reserved edges, which a maximised floating window would have to be told about.
 
 hl.window_rule({match = {title = "^(Open File)(.*)$" },                      center = true})
+-- The notes app is a real toplevel, not a layer surface: it belongs to a workspace
+-- and a click elsewhere must not dismiss it. Floated and centred so it opens as a
+-- document window rather than taking over the tile layout.
+hl.window_rule({match = {title = "^(ii Notes)$" },                           float = true})
+hl.window_rule({match = {title = "^(ii Notes)$" },                           center = true})
+hl.window_rule({match = {title = "^(ii Notes)$" },                           size = "1500 940"})
 hl.window_rule({match = {title = "^(Open File)(.*)$" },                      float = true})
 hl.window_rule({match = {title = "^(Select a File)(.*)$" },                  center = true})
 hl.window_rule({match = {title = "^(Select a File)(.*)$" },                  float = true})
