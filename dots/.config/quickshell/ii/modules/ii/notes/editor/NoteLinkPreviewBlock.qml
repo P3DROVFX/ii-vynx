@@ -71,8 +71,22 @@ Item {
         }, refresh);
     }
 
-    Component.onCompleted: {
-        if (root.block && (!root.block.title || root.block.title.length === 0 || root.block.fetchedAt === 0))
+    /**
+     * Fetch when the block arrives, not when the item is built.
+     *
+     * `NoteBlockDelegate` assigns `editor` and `block` in its loader's `onLoaded`, which
+     * runs *after* this component completes — so the check that used to live in
+     * `Component.onCompleted` always found `block` null and never asked for anything. The
+     * card sat on "Loading preview…" for as long as the note was open.
+     */
+    onBlockChanged: root.fetchIfNeeded()
+    Component.onCompleted: root.fetchIfNeeded()
+
+    function fetchIfNeeded(): void {
+        if (!root.block || root.url.length === 0)
+            return;
+        const title = String(root.block.title ?? "");
+        if (title.length === 0 || Number(root.block.fetchedAt ?? 0) === 0)
             root.refreshPreview();
     }
 
@@ -228,7 +242,7 @@ Item {
 
                     StyledText {
                         Layout.fillWidth: true
-                        text: root.loading ? Translation.tr("Loading preview…") : (root.block && root.block.title ? root.block.title : root.domain)
+                        text: root.loading ? Translation.tr("Asking the site…") : (root.block && root.block.title ? root.block.title : root.domain)
                         font.pixelSize: Appearance.font.pixelSize.small
                         font.weight: Font.DemiBold
                         color: Appearance.colors.colOnLayer0

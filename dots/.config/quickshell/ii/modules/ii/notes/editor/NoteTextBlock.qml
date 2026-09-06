@@ -39,7 +39,10 @@ Item {
 
     implicitHeight: Math.max(row.implicitHeight, editText.implicitHeight) + verticalPadding * 2
 
-    readonly property int verticalPadding: root.blockType === "heading" ? 10 : 4
+    /// A callout carries a container, and a container needs room to sit in.
+    readonly property int verticalPadding: root.blockType === "heading" ? 10
+        : root.blockType === "callout" ? 12
+        : 4
     readonly property int indentStep: 26
 
     readonly property int textSize: {
@@ -50,14 +53,48 @@ Item {
         return root.block.level === 2 ? Appearance.font.pixelSize.larger : Appearance.font.pixelSize.large;
     }
 
+    /**
+     * Whether this line has markdown in it worth drawing.
+     *
+     * Only these blocks get the rendered twin below; everything else stays on exactly the
+     * path it was on, which keeps the common case — a plain sentence — pixel for pixel
+     * what it was.
+     */
+    readonly property bool hasMarkup: {
+        const text = root.block ? String(root.block.text ?? "") : "";
+        if (text.length === 0)
+            return false;
+        return /(\*\*|__|[*_`~]|\[[^\]]*\]\()/.test(text);
+    }
+
+    /// Source while the caret is in it, drawn when it is not.
+    readonly property bool rendered: root.hasMarkup && !editText.activeFocus
+
+    /**
+     * The four tones, as Material container pairs.
+     *
+     * They used to differ only in the colour of the sentence, which on this palette meant
+     * three barely distinguishable pinks and one red: an "information" callout and a
+     * "warning" callout looked like the same thing said twice. A tinted container is what
+     * the tone is *for*.
+     */
     readonly property color toneColor: {
         if (root.blockType !== "callout")
             return Appearance.colors.colOnLayer0;
         switch (root.block.tone) {
-        case "success": return Appearance.m3colors.m3primary;
-        case "warning": return Appearance.m3colors.m3tertiary;
-        case "error": return Appearance.m3colors.m3error;
-        default: return Appearance.colors.colOnLayer1;
+        case "success": return Appearance.m3colors.m3onPrimaryContainer;
+        case "warning": return Appearance.m3colors.m3onTertiaryContainer;
+        case "error": return Appearance.m3colors.m3onErrorContainer;
+        default: return Appearance.m3colors.m3onSecondaryContainer;
+        }
+    }
+
+    readonly property color toneBackground: {
+        switch (root.block && root.blockType === "callout" ? root.block.tone : "") {
+        case "success": return Appearance.colors.colPrimaryContainer;
+        case "warning": return Appearance.colors.colTertiaryContainer;
+        case "error": return Appearance.colors.colErrorContainer;
+        default: return Appearance.colors.colSecondaryContainer;
         }
     }
 
@@ -119,6 +156,17 @@ Item {
     }
 
     Component.onCompleted: root.checkFocusRequest()
+
+    /// The container behind a callout, and nothing at all behind everything else.
+    Rectangle {
+        anchors.fill: row
+        anchors.margins: -10
+        anchors.leftMargin: -14
+        anchors.rightMargin: -14
+        visible: root.blockType === "callout"
+        radius: Appearance.rounding.normal
+        color: root.toneBackground
+    }
 
     RowLayout {
         id: row
@@ -214,7 +262,7 @@ Item {
         Rectangle {
             Layout.alignment: Qt.AlignTop
             Layout.preferredWidth: root.blockType === "quote" ? 3 : 0
-            Layout.preferredHeight: editText.implicitHeight
+            Layout.preferredHeight: textCell.implicitHeight
             radius: 2
             color: Appearance.colors.colPrimary
             visible: root.blockType === "quote"
@@ -226,9 +274,26 @@ Item {
             Layout.maximumWidth: NotesMetrics.readingWidth
             spacing: 6
 
+            /**
+             * The line, twice: the editor you type in, and the markdown it means.
+             *
+             * Two items rather than flipping `textFormat` on the one. A `TextEdit` told to
+             * change format re-parses its document, and the plain serialisation of a
+             * parsed markdown document has lost its markers — one careless commit after
+             * that and `**bold**` is gone from the file. Nothing here ever re-parses: the
+             * editor keeps the source, the label draws it, and the editor is still the
+             * item under the pointer, so a click lands where it always did.
+             */
+            Item {
+                id: textCell
+                Layout.fillWidth: true
+                implicitHeight: root.rendered
+                    ? Math.max(renderedText.implicitHeight, 1)
+                    : editText.implicitHeight
+
             TextEdit {
                 id: editText
-                Layout.fillWidth: true
+                width: textCell.width
 
                 text: root.block ? root.block.text : ""
                 wrapMode: TextEdit.Wrap
@@ -240,7 +305,11 @@ Item {
                 color: root.blockType === "callout" ? root.toneColor
                     : root.blockType === "quote" ? Appearance.colors.colOnLayer1
                     : Appearance.colors.colOnLayer0
-                opacity: root.isChecked ? 0.55 : 1
+                // Invisible while the twin below is drawing, but still the item under the
+                // pointer: opacity does not take an item out of the input chain, so a
+                // click on rendered markdown still lands in the editor and shows the
+                // source it came from.
+                opacity: root.rendered ? 0 : (root.isChecked ? 0.55 : 1)
                 font {
                     family: Appearance.font.family.main
                     pixelSize: root.textSize
@@ -285,7 +354,10 @@ Item {
                 }
 
                 onTextChanged: {
-                    if (root.applying)
+                    // Only what was typed. A change while the caret is elsewhere is the
+                    // model syncing in, and committing that writes a round-trip back over
+                    // the source.
+                    if (root.applying || !editText.activeFocus)
                         return;
                     root.checkUrlAndWikilink();
                     root.applying = true;
@@ -302,6 +374,24 @@ Item {
                 }
 
                 Keys.onPressed: event => root.handleKey(event)
+            }
+
+                StyledText {
+                    id: renderedText
+                    width: textCell.width
+                    visible: root.rendered
+                    text: root.block ? root.block.text : ""
+                    textFormat: Text.MarkdownText
+                    wrapMode: Text.Wrap
+                    color: editText.color
+                    opacity: root.isChecked ? 0.55 : 1
+                    font: editText.font
+                    // Set, and ignored: `linkColor` applies to the StyledText format and
+                    // markdown becomes rich text, which takes its link colour from Qt.
+                    // Measured — a link here draws in Qt's blue, not the theme's primary.
+                    // Left in place because it costs nothing the day that changes.
+                    linkColor: Appearance.colors.colPrimary
+                }
             }
 
             // ── Discrete URL preview conversion chip ──────────────────────────

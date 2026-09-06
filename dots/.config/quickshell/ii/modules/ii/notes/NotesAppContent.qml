@@ -116,21 +116,25 @@ Item {
     property bool focusMode: false
 
     /**
-     * Which whole-app page is open, if any: "" is the notes themselves, "settings" and
-     * "stats" take the place of the list and the note.
+     * Which whole-app page is open, if any: "" is the note itself, and "settings",
+     * "stats" and "templates" take its place.
      *
-     * Pages, not sheets. A modal over the notes says "answer me and get back to what you
-     * were doing" — right for a confirmation, wrong for settings, which is somewhere you
-     * go, read, change one thing and leave. The rail stays put while a page is open, so
-     * leaving is one click on any place in it.
+     * Pages, not sheets, and pages in the *third column* — where a note's own content
+     * goes. Nothing dims, nothing is hidden: the rail still says where you are and the
+     * list still shows the notes, so leaving is one click on either of them, and a page
+     * never covers what you were reading a moment ago.
      */
     property string page: ""
+
+    readonly property bool pageOpen: root.page.length > 0
 
     readonly property string barTitle: {
         if (root.page === "settings")
             return Translation.tr("Settings");
         if (root.page === "stats")
             return Translation.tr("Statistics");
+        if (root.page === "templates")
+            return Translation.tr("Templates");
         return root.scopeName;
     }
 
@@ -139,6 +143,8 @@ Item {
             return Translation.tr("This app only");
         if (root.page === "stats")
             return Translation.tr("Across every note");
+        if (root.page === "templates")
+            return Translation.tr("Start a note with structure in it");
         if (root.query.trim().length > 0)
             return Translation.tr("%1 of %2 notes").arg(root.visibleNotes.length).arg(root.scopedNotes.length);
         if (root.visibleNotes.length === 1)
@@ -156,6 +162,22 @@ Item {
         // hands active focus to the first text item in it — the note's title — when the
         // toplevel is activated, and that happens after the callLater would have run: the
         // caret ended up in the title and the first thing typed renamed the note.
+        editorFocusTimer.restart();
+    }
+
+    /// A note from a template: made, filled, opened, and the page steps out of the way.
+    function createFromTemplate(title, tags, blocks): void {
+        const noteId = NotesService.createNote({ title: title, tags: tags });
+        if (noteId && blocks && blocks.length > 0) {
+            NotesService.writeDocument(noteId, {
+                id: noteId,
+                title: title,
+                blocks: blocks
+            });
+        }
+        root.page = "";
+        root.state.noteId = noteId;
+        root.showingDetail = true;
         editorFocusTimer.restart();
     }
 
@@ -246,9 +268,7 @@ Item {
         sequences: ["Escape"]
         context: Qt.WindowShortcut
         onActivated: {
-            if (templatesSheet.visible)
-                templatesSheet.visible = false;
-            else if (revisionsSheet.visible)
+            if (revisionsSheet.visible)
                 revisionsSheet.visible = false;
             else if (root.page.length > 0)
                 root.page = "";
@@ -262,27 +282,6 @@ Item {
                 rail.clearSearch();
             else
                 root.closeRequested();
-        }
-    }
-
-    NotesTemplatesSheet {
-        id: templatesSheet
-        anchors.fill: parent
-        z: 44
-        visible: false
-        onClosed: templatesSheet.visible = false
-        onTemplateSelected: (title, tags, blocks) => {
-            const noteId = NotesService.createNote({ title: title, tags: tags });
-            if (noteId && blocks && blocks.length > 0) {
-                NotesService.writeDocument(noteId, {
-                    id: noteId,
-                    title: title,
-                    blocks: blocks
-                });
-            }
-            root.state.noteId = noteId;
-            root.showingDetail = true;
-            templatesSheet.visible = false;
         }
     }
 
@@ -373,10 +372,7 @@ Item {
                     root.page = "";
                     root.createNote();
                 }
-                onTemplatesRequested: {
-                    root.page = "";
-                    templatesSheet.visible = true;
-                }
+                onTemplatesRequested: root.page = root.page === "templates" ? "" : "templates"
                 onSettingsRequested: root.page = root.page === "settings" ? "" : "settings"
 
                 Behavior on Layout.preferredWidth {
@@ -406,20 +402,26 @@ Item {
                     : Math.max(NotesMetrics.listMinimumWidth,
                                Math.min(NotesMetrics.listMaximumWidth, root.state.listWidth))
                 Layout.fillWidth: root.compact
-                visible: (!root.compact || !root.showingDetail) && !root.focusMode && root.page.length === 0
+                // A page takes the note's column, not the list's — the list is how you
+                // leave one. It only steps aside in the one-column layout, where there is
+                // no room for both.
+                visible: !root.focusMode && (!root.compact || (!root.showingDetail && !root.pageOpen))
                 notes: root.visibleNotes
                 selectedId: root.selectedId
                 searching: root.query.trim().length > 0
                 searchTerms: root.searchTerms
                 trash: root.trashScope
 
-                onNotePicked: noteId => root.select(noteId)
-                onTemplatesRequested: templatesSheet.visible = true
+                onNotePicked: noteId => {
+                    root.page = "";
+                    root.select(noteId);
+                }
+                onTemplatesRequested: root.page = "templates"
             }
 
             NotesPaneSplitter {
                 Layout.fillHeight: true
-                visible: !root.compact && root.page.length === 0
+                visible: !root.compact
                 resizable: !root.focusMode
                 Layout.preferredWidth: root.focusMode ? 0 : -1
                 onMoved: delta => root.state.listWidth = Math.max(NotesMetrics.listMinimumWidth,
@@ -456,11 +458,22 @@ Item {
                 sourceComponent: NotesStatsPage {}
             }
 
+            Loader {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                active: root.page === "templates"
+                visible: active
+
+                sourceComponent: NotesTemplatesPage {
+                    onTemplateChosen: (title, tags, blocks) => root.createFromTemplate(title, tags, blocks)
+                }
+            }
+
             NotesDetail {
                 id: detail
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                visible: ((!root.compact || root.showingDetail) || root.focusMode) && root.page.length === 0
+                visible: ((!root.compact || root.showingDetail) || root.focusMode) && !root.pageOpen
                 note: root.selectedNote
                 trash: root.trashScope
 

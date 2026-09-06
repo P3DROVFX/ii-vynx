@@ -35,6 +35,9 @@ Item {
         height: content.implicitHeight + 20
         radius: Appearance.rounding.normal
         color: Appearance.m3colors.m3surfaceContainerLowest
+        // Nothing draws past the slab. Code does not wrap, so a long command has to be
+        // clipped and scrolled rather than painted across the page.
+        clip: true
 
         ColumnLayout {
             id: content
@@ -86,11 +89,37 @@ Item {
                 }
             }
 
+            /**
+             * The code, and room to move along it.
+             *
+             * Lines are not wrapped — a wrapped shell command is a lie about where its
+             * newlines are — so the long ones have to go somewhere. They go sideways,
+             * inside this, and the caret drags the view along with it.
+             */
+            Flickable {
+                id: codeScroll
+                Layout.fillWidth: true
+                Layout.preferredHeight: codeText.implicitHeight
+                contentWidth: Math.max(width, codeText.implicitWidth)
+                contentHeight: codeText.implicitHeight
+                clip: true
+                interactive: contentWidth > width
+                flickableDirection: Flickable.HorizontalFlick
+                boundsBehavior: Flickable.StopAtBounds
+
             TextEdit {
                 id: codeText
-                Layout.fillWidth: true
+                width: Math.max(codeScroll.width, implicitWidth)
                 text: root.block ? root.block.text : ""
                 wrapMode: TextEdit.NoWrap
+
+                onCursorRectangleChanged: {
+                    const caret = codeText.cursorRectangle;
+                    if (caret.x < codeScroll.contentX)
+                        codeScroll.contentX = Math.max(0, caret.x - 12);
+                    else if (caret.x + 24 > codeScroll.contentX + codeScroll.width)
+                        codeScroll.contentX = caret.x + 24 - codeScroll.width;
+                }
                 selectByMouse: true
                 textFormat: TextEdit.PlainText
                 renderType: Text.NativeRendering
@@ -123,6 +152,7 @@ Item {
                         event.accepted = true;
                     }
                 }
+            }
             }
         }
     }

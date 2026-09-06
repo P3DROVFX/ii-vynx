@@ -120,31 +120,33 @@ Item {
                 animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
             }
 
-            contentItem: RowLayout {
-                spacing: 12
-                anchors.centerIn: root.expanded ? undefined : parent
+            // Icon and label centred as one group, which is how the mail sidebar's own
+            // Compose button is built. The previous arrangement pinned the icon to the
+            // left and let the label stretch, so the pair sat against the left edge of a
+            // 186px pill with forty pixels of nothing after it.
+            contentItem: Item {
+                anchors.fill: parent
 
-                Item {
-                    Layout.preferredWidth: root.expanded ? 26 : 0
-                    Layout.fillWidth: !root.expanded
-                    Layout.fillHeight: true
+                RowLayout {
+                    anchors.centerIn: parent
+                    spacing: 12
 
                     MaterialSymbol {
-                        anchors.centerIn: parent
+                        Layout.alignment: Qt.AlignVCenter
                         text: "edit"
                         iconSize: Appearance.font.pixelSize.huge
                         color: Appearance.m3colors.m3onSecondaryContainer
                     }
-                }
 
-                StyledText {
-                    Layout.fillWidth: true
-                    text: Translation.tr("New note")
-                    visible: root.expanded
-                    font.pixelSize: Appearance.font.pixelSize.huge
-                    font.weight: Font.DemiBold
-                    color: Appearance.m3colors.m3onSecondaryContainer
-                    elide: Text.ElideRight
+                    StyledText {
+                        Layout.alignment: Qt.AlignVCenter
+                        text: Translation.tr("New note")
+                        visible: root.expanded
+                        font.pixelSize: Appearance.font.pixelSize.huge
+                        font.weight: Font.DemiBold
+                        color: Appearance.m3colors.m3onSecondaryContainer
+                        elide: Text.ElideRight
+                    }
                 }
             }
 
@@ -171,8 +173,14 @@ Item {
                 animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
             }
 
+            // Aligned, not merely anchored: a `Control` positions its `contentItem` in the
+            // content rect and stretches it to that width, so a `Text` inside draws its
+            // glyph at the left edge unless it is told to centre. Ten pixels off, which is
+            // exactly what it looked like beside the pill.
             contentItem: MaterialSymbol {
                 anchors.centerIn: parent
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
                 text: "dashboard_customize"
                 iconSize: Appearance.font.pixelSize.huge
                 color: Appearance.m3colors.m3onSecondaryContainer
@@ -215,17 +223,12 @@ Item {
                     }
                 }
 
-                StyledText {
-                    // On the same line as the rows' text, not their icons: it is a heading
-                    // for what they say, not for what they show.
-                    Layout.leftMargin: NotesMetrics.rowHeight
-                    Layout.topMargin: 14
-                    Layout.bottomMargin: 2
-                    text: Translation.tr("Notebooks")
-                    font.pixelSize: Appearance.font.pixelSize.smaller
-                    font.weight: Font.DemiBold
-                    color: Appearance.colors.colSubtext
-                    visible: root.expanded && root.notebooks.length > 0
+                // The gap that says "these are a different kind of place", without the
+                // word: the notebooks carry their own icons and names, and a caption over
+                // them was one label more than the rail needed.
+                Item {
+                    Layout.preferredHeight: 16
+                    visible: root.notebooks.length > 0
                 }
 
                 Repeater {

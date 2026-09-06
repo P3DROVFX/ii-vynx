@@ -687,6 +687,11 @@ function plainText(document) {
 /// surface — app, desktop widget, sidebar tab, search result — shows the same words.
 function previewOf(document) {
     var text = plainText(document)
+        // Links become what they say. A preview full of `[label](https://…)` spends its
+        // hundred and sixty characters on addresses nobody reads at that size.
+        .replace(/!\[[^\]]*\]\([^)]*\)/g, " ")
+        .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+        .replace(/\[\[([^\]|]*)(?:\|([^\]]*))?\]\]/g, "$1")
         .replace(/[*_`>#~]/g, "")
         .replace(/\s+/g, " ")
         .trim();

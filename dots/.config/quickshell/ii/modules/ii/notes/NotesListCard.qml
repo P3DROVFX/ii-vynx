@@ -148,9 +148,28 @@ RippleButton {
                 ? Appearance.m3colors.m3onSecondaryContainer
                 : Appearance.colors.colSubtext
             opacity: root.note.preview.length > 0 ? 0.9 : 0.55
+            id: preview
             maximumLineCount: 2
             wrapMode: Text.WordWrap
             elide: Text.ElideRight
+            /**
+             * Two lines, always, measured from the font rather than from the text.
+             *
+             * A `Text` reports the implicit height of one *unwrapped* line, so a layout
+             * asking for its natural size built a card one line too short and the preview
+             * spilled onto the card below. Asking the text how tall it turned out is
+             * circular — with `maximumLineCount` and eliding, its height is whatever it
+             * was given — so the height comes from the font, and the card is the same
+             * height whether the preview needs one line or two.
+             */
+            Layout.preferredHeight: Math.max(previewLine.height, 1) * 2
+
+            /// One line of this very text, unwrapped — a ruler, not a label.
+            TextMetrics {
+                id: previewLine
+                font: preview.font
+                text: preview.text
+            }
         }
 
         RowLayout {

@@ -62,6 +62,18 @@ Scope {
         debounce.restart();
     }
 
+    /**
+     * What is known to be on disk, as text.
+     *
+     * Not `file.text()`. A `FileView` updates its own text the moment `setText` is called,
+     * whether or not that write ever reaches the disk — and a write in flight when the
+     * shell hot-reloads does not. After that the view's text and the file disagree for
+     * good, and since `flush()` used to skip a payload equal to `file.text()`, the edit
+     * was never written again: it survived in the app, looked saved, and was gone at the
+     * next start. This only ever changes when the file itself says so.
+     */
+    property string savedPayload: ""
+
     function flush(): void {
         if (!root.dirty || root.document === null)
             return;
@@ -70,7 +82,7 @@ Scope {
         const payload = JSON.stringify(root.document, null, 2);
         // FileView drops a setText identical to what it already holds and emits no signal
         // for it, so waiting for one would wait forever.
-        if (payload === file.text()) {
+        if (payload === root.savedPayload) {
             root.dirty = false;
             root.writing = false;
             root.documentSaved(root.noteId);
@@ -126,6 +138,8 @@ Scope {
 
         onLoaded: {
             root.loaded = true;
+            // What the file holds is now known, whatever we thought before.
+            root.savedPayload = file.text();
             // A reload triggered by our own write must not clobber newer edits sitting in
             // the debounce.
             if (root.writing || root.dirty)
@@ -143,6 +157,7 @@ Scope {
         onSaved: {
             watchdog.stop();
             root.writing = false;
+            root.savedPayload = file.text();
             root.documentSaved(root.noteId);
             if (root.dirty)
                 debounce.restart();
