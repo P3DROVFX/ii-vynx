@@ -6,6 +6,7 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
 import qs.services
+import qs.services.ai
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.ii.notes
@@ -29,6 +30,112 @@ Item {
     /// Blocks as the list draws them. Structural changes replace this; typing does not.
     property var blocks: []
     property bool ready: false
+
+    property var activeTextEdit: null
+    readonly property bool hasSelection: root.activeTextEdit !== null && root.activeTextEdit.selectedText.length > 0
+    readonly property string selectedText: root.hasSelection ? root.activeTextEdit.selectedText : ""
+
+    readonly property rect selectionGeometry: {
+        if (!root.hasSelection || !root.activeTextEdit)
+            return Qt.rect(0, 0, 0, 0);
+        try {
+            const te = root.activeTextEdit;
+            const sMin = Math.min(te.selectionStart, te.selectionEnd);
+            const sMax = Math.max(te.selectionStart, te.selectionEnd);
+            const r1 = te.positionToRectangle(sMin);
+            const r2 = te.positionToRectangle(sMax);
+            const startPoint = te.mapToItem(root, r1.x, r1.y);
+            const endPoint = te.mapToItem(root, r2.x + r2.width, r2.y + r2.height);
+            return Qt.rect(
+                Math.min(startPoint.x, endPoint.x),
+                startPoint.y,
+                Math.max(24, Math.abs(endPoint.x - startPoint.x)),
+                Math.max(r1.height, (endPoint.y - startPoint.y) + r2.height)
+            );
+        } catch (e) {
+            return Qt.rect(0, 0, 0, 0);
+        }
+    }
+
+    property bool aiMenuOpen: false
+    property bool aiCompareOpen: false
+
+    function openAiMenu(requestedScope = ""): void {
+        let scope = requestedScope;
+        let text = "";
+        let blockId = root.activeBlockId;
+
+        if (!scope) {
+            if (root.hasSelection)
+                scope = "selection";
+            else if (root.activeBlock)
+                scope = "block";
+            else
+                scope = "note";
+        }
+
+        if (scope === "selection" && root.hasSelection) {
+            text = root.selectedText;
+        } else if (scope === "block" && root.activeBlock) {
+            text = root.activeBlock.text ?? "";
+        } else {
+            scope = "note";
+            const doc = NotesService.documentOf(root.noteId);
+            text = doc ? Doc.contentString(doc) : "";
+        }
+
+        aiMenu.targetScope = scope;
+        aiMenu.targetText = text;
+        aiMenu.targetBlockId = blockId;
+        root.aiMenuOpen = true;
+    }
+
+    function replaceActiveSelection(newText): void {
+        if (!root.activeTextEdit)
+            return;
+        const te = root.activeTextEdit;
+        const sMin = Math.min(te.selectionStart, te.selectionEnd);
+        const sMax = Math.max(te.selectionStart, te.selectionEnd);
+        const full = te.text;
+        const replaced = full.slice(0, sMin) + newText + full.slice(sMax);
+        te.text = replaced;
+        te.select(sMin, sMin + newText.length);
+        if (root.activeBlockId)
+            root.commitText(root.activeBlockId, replaced);
+    }
+
+    function onAiReplace(newText): void {
+        const mode = aiCompareSheet.mode;
+        if (mode === "selection" && root.hasSelection) {
+            root.replaceActiveSelection(newText);
+        } else if (mode === "block" && aiCompareSheet.targetBlockId) {
+            root.apply([{ op: "update", id: aiCompareSheet.targetBlockId, patch: { text: newText } }]);
+        } else if (mode === "title") {
+            NotesService.updateMeta(root.noteId, { title: newText.trim() });
+        } else if (mode === "tags") {
+            const rawTags = newText.match(/#[^\s#]+/g) || [];
+            const tags = rawTags.map(t => t.replace(/^#/, ""));
+            if (tags.length > 0)
+                NotesService.updateMeta(root.noteId, { tags: tags });
+        } else {
+            if (aiCompareSheet.taskTitle.indexOf("Resumo") !== -1 || aiCompareSheet.taskTitle.indexOf("Summary") !== -1) {
+                root.apply([{ op: "insert", index: 0, block: { type: "callout", tone: "info", text: newText } }]);
+            } else {
+                if (root.activeBlockId)
+                    root.apply([{ op: "update", id: root.activeBlockId, patch: { text: newText } }]);
+                else if (root.blocks.length > 0)
+                    root.apply([{ op: "update", id: root.blocks[0].id, patch: { text: newText } }]);
+            }
+        }
+    }
+
+    function onAiInsertBelow(newText): void {
+        const targetId = aiCompareSheet.targetBlockId || root.activeBlockId;
+        const at = targetId.length > 0
+            ? root.indexOfBlock(targetId) + 1
+            : root.blocks.length;
+        root.apply([{ op: "insert", index: at, block: { type: "text", text: newText } }]);
+    }
 
     readonly property int count: root.blocks.length
 
@@ -629,6 +736,76 @@ Item {
                         root.apply([{ op: "insert", index: root.blocks.length, block: { type: "text" } }]);
                 }
             }
+        }
+    }
+
+    AiTextTask {
+        id: aiTask
+    }
+
+    NotesSelectionBar {
+        id: selectionBar
+        editor: root
+        onAiRequested: root.openAiMenu("selection")
+    }
+
+    Rectangle {
+        id: aiMenuBackdrop
+        anchors.fill: parent
+        z: 40
+        visible: root.aiMenuOpen
+        color: Qt.rgba(0, 0, 0, 0.45)
+
+        MouseArea {
+            anchors.fill: parent
+            onClicked: root.aiMenuOpen = false
+        }
+
+        NotesAiMenu {
+            id: aiMenu
+            anchors.centerIn: parent
+            width: Math.min(parent.width - 32, 420)
+            height: Math.min(parent.height - 32, 520)
+            editor: root
+
+            onActionRequested: (taskName, systemPrompt, userText, meta) => {
+                root.aiMenuOpen = false;
+                aiTask.start(systemPrompt, userText);
+                aiCompareSheet.taskTitle = taskName;
+                aiCompareSheet.originalText = userText;
+                aiCompareSheet.proposedText = "";
+                aiCompareSheet.task = aiTask;
+                aiCompareSheet.targetBlockId = meta.blockId ?? "";
+                aiCompareSheet.mode = meta.mode ?? "selection";
+                root.aiCompareOpen = true;
+            }
+
+            onChatRequested: (contextText) => {
+                GlobalStates.sidebarLeftOpen = true;
+            }
+
+            onClosed: root.aiMenuOpen = false
+        }
+    }
+
+    NotesAiCompareSheet {
+        id: aiCompareSheet
+        anchors.fill: parent
+        z: 50
+        visible: root.aiCompareOpen
+
+        onReplaceRequested: (newText) => {
+            root.onAiReplace(newText);
+            root.aiCompareOpen = false;
+        }
+
+        onInsertBelowRequested: (newText) => {
+            root.onAiInsertBelow(newText);
+            root.aiCompareOpen = false;
+        }
+
+        onDiscardRequested: {
+            root.aiCompareOpen = false;
         }
     }
 

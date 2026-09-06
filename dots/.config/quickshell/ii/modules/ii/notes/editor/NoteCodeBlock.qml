@@ -103,10 +103,14 @@ Item {
                 selectionColor: Appearance.colors.colSecondaryContainer
 
                 onActiveFocusChanged: {
-                    if (activeFocus)
+                    if (activeFocus) {
                         root.editor.activeBlockId = root.block.id;
-                    else
+                        root.editor.activeTextEdit = codeText;
+                    } else {
+                        if (root.editor && root.editor.activeTextEdit === codeText)
+                            root.editor.activeTextEdit = null;
                         root.commit();
+                    }
                 }
 
                 onTextChanged: saveDebounce.restart()

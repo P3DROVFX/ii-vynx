@@ -1874,6 +1874,7 @@ Singleton {
             "notes_preview_append": call => root.toolNotesPreviewAppend(call),
             "notes_append": call => root.toolNotesAppend(call),
             "notes_create_from_answer": call => root.toolNotesCreate(call),
+            "notes_search": call => root.toolNotesSearch(call),
             "audio_set": call => root.toolSystemControl(call),
             "brightness_set": call => root.toolSystemControl(call),
             "dnd_set": call => root.toolSystemControl(call),
@@ -5595,6 +5596,15 @@ Singleton {
         });
         call.message.functionPending = true;
         return { status: "approval" };
+    }
+
+    function toolNotesSearch(call: var): var {
+        const result = root.notesIntegration.search(call.args);
+        return {
+            status: "success",
+            summary: Translation.tr("Found %1 matching notes").arg(result.count),
+            data: result
+        };
     }
 
     function approveNotes(message: AiMessageData): void {

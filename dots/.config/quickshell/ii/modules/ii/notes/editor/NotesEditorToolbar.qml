@@ -236,5 +236,28 @@ Rectangle {
             enabled: root.editor !== null && root.editor.redoStack.length > 0
             onTriggered: root.editor.redo()
         }
+
+        Rectangle {
+            visible: Number(Config.options?.policies?.ai ?? 1) !== 0
+            Layout.preferredWidth: 1
+            Layout.preferredHeight: 22
+            Layout.leftMargin: 5
+            Layout.rightMargin: 5
+            color: Appearance.colors.colOnLayer1Inactive
+            opacity: 0.4
+        }
+
+        NotesIconButton {
+            visible: Number(Config.options?.policies?.ai ?? 1) !== 0
+            symbol: "auto_awesome"
+            size: 42
+            iconSize: 21
+            tooltipText: Translation.tr("AI Assistant")
+            colIcon: Appearance.colors.colTertiary
+            onTriggered: {
+                if (root.editor)
+                    root.editor.openAiMenu();
+            }
+        }
     }
 }

@@ -357,6 +357,7 @@ Singleton {
                 property real listWidth: 380
                 property bool railExpanded: true
                 property bool linkPreviews: true
+                property list<string> aiCustomStyles: []
             }
 
             property JsonObject cheatsheet: JsonObject {

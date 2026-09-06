@@ -14,7 +14,7 @@ ADAPTER = (ROOT / "services/ai/integrations/AiNotesIntegration.qml").read_text(e
 
 class AiNotesContractTests(unittest.TestCase):
     def test_registry_exposes_preview_and_write_tools(self):
-        for tool_id in ("notes_preview_append", "notes_append", "notes_create_from_answer"):
+        for tool_id in ("notes_preview_append", "notes_append", "notes_create_from_answer", "notes_search"):
             self.assertIn(f'id: "{tool_id}"', REGISTRY)
         self.assertIn('kind: "localWrite"', REGISTRY)
         self.assertIn('defaultApproval: "ask"', REGISTRY)
@@ -23,11 +23,12 @@ class AiNotesContractTests(unittest.TestCase):
         self.assertIn("function previewAppend", ADAPTER)
         self.assertIn("function append", ADAPTER)
         self.assertIn("function create", ADAPTER)
+        self.assertIn("function search", ADAPTER)
         self.assertIn("provenance", ADAPTER)
         self.assertNotIn("prompt", ADAPTER)
 
     def test_ai_has_handlers_and_journalled_starters(self):
-        for name in ("toolNotesPreviewAppend", "toolNotesAppend", "toolNotesCreate"):
+        for name in ("toolNotesPreviewAppend", "toolNotesAppend", "toolNotesCreate", "toolNotesSearch"):
             self.assertIn(name, AI)
         for tool_id in ("notes_append", "notes_create_from_answer"):
             self.assertIn(f'"{tool_id}": pending', AI)

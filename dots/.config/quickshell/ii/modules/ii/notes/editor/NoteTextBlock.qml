@@ -252,8 +252,11 @@ Item {
                 onActiveFocusChanged: {
                     if (activeFocus) {
                         root.editor.activeBlockId = root.block.id;
+                        root.editor.activeTextEdit = editText;
                         root.checkUrlAndWikilink();
                     } else {
+                        if (root.editor && root.editor.activeTextEdit === editText)
+                            root.editor.activeTextEdit = null;
                         // Leaving the block commits whatever the debounce was still holding.
                         saveDebounce.stop();
                         root.commit();
