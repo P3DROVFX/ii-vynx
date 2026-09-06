@@ -180,9 +180,49 @@ class WindowBehaviourTests(unittest.TestCase):
         self.assertIn("GlobalStates.notesAppOpen = false", read(WINDOW))
 
     def test_escape_closes_and_does_the_smaller_thing_first(self):
+        # A window shortcut, not a key handler on an item. `Keys.onPressed` fires only
+        # while something focusable holds focus, so the moment the note title stopped
+        # claiming focus on open, every one of these stopped existing.
         content = read(CONTENT)
-        self.assertIn("Qt.Key_Escape", content)
+        self.assertIn('sequences: ["Escape"]', content)
+        self.assertIn("context: Qt.WindowShortcut", content)
         self.assertIn("closeRequested()", content)
+        # Checked as a binding, not as a substring: the file's own comment explains why
+        # `Keys.onPressed` is not used here, and matching prose is not a contract.
+        # The per-block editing keys in NoteTextBlock are a different thing and correct —
+        # those belong to the text item that has the caret.
+        for line in content.splitlines():
+            self.assertFalse(line.strip().startswith("Keys.onPressed"),
+                             "app-level keys must be window shortcuts")
+
+    def test_the_editor_is_the_one_place_blocks_change(self):
+        # Undo, redo and revision history all read the inverse of an operation. A pane
+        # that mutated a block on its own would produce none.
+        editor = read(APP_DIR / "editor/NotesEditor.qml")
+        self.assertIn("function apply(", editor)
+        self.assertIn("NotesService.applyOps", editor)
+        for name in ("NoteTextBlock.qml", "NoteDividerBlock.qml", "NoteMediaBlock.qml"):
+            self.assertNotIn("applyOps", read(APP_DIR / "editor" / name),
+                             f"{name} applies operations itself")
+
+    def test_typing_never_rebuilds_the_row_the_caret_is_in(self):
+        # The delegate owns its text while it is being typed in. Feeding every keystroke
+        # back through the model rebuilds the row and drops the caret to the start of the
+        # line on every character.
+        editor = read(APP_DIR / "editor/NotesEditor.qml")
+        self.assertIn("function structureOf(", editor)
+        self.assertIn("root.structureOf(next) !== root.structureOf(root.blocks)", editor)
+        self.assertIn("commitText(blockId, text)", editor)
+
+    def test_a_focus_request_is_only_spent_once_it_lands(self):
+        # Clearing it when a delegate merely answered let one that was about to be rebuilt
+        # swallow the request, and the caret never came back after a markdown conversion.
+        editor = read(APP_DIR / "editor/NotesEditor.qml")
+        self.assertIn("function peekFocus(", editor)
+        self.assertIn("function clearFocusRequest(", editor)
+        block = read(APP_DIR / "editor/NoteTextBlock.qml")
+        self.assertIn("if (editText.activeFocus)", block)
+        self.assertIn("clearFocusRequest", block)
 
     def test_no_active_element_is_a_full_pill(self):
         # `height / 2` is the classic pill formula and it breaks on anything tall: the

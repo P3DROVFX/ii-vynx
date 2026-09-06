@@ -7,7 +7,7 @@ import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.ii.notes
-import "../../../services/notes/NotesMarkdown.js" as Markdown
+import qs.modules.ii.notes.editor
 
 /**
  * The note itself.
@@ -29,25 +29,12 @@ Item {
     signal pinToggled()
     signal titleEdited(string title)
 
-    readonly property string noteId: root.note ? root.note.id : ""
-    readonly property var document: root.noteId.length > 0 ? NotesService.documentOf(root.noteId) : null
-
-    /// The body as markdown, which is what a reader can render without a block editor.
-    readonly property string bodyText: {
-        // Touched so the binding re-evaluates when a document finishes loading; the
-        // document itself is reached through a function call, which nothing would notify.
-        NotesService.tabsData;
-        const document = root.noteId.length > 0 ? NotesService.documentOf(root.noteId) : null;
-        if (!document)
-            return "";
-        // Pictures are drawn below, from absolute paths. Left in the markdown they would
-        // be relative links, which `Text.MarkdownText` resolves against this QML file's
-        // own directory and then fails to open — noisily, once per repaint.
-        const prose = Array.from(document.blocks)
-            .filter(item => item.type !== "ink" && item.type !== "image");
-        return Markdown.toMarkdown({ id: root.noteId, blocks: prose });
+    /// Puts the caret in the note. Called when one is created, not when one is selected.
+    function focusEditor(): void {
+        editor.requestAutoFocus();
     }
 
+    readonly property string noteId: root.note ? root.note.id : ""
     Rectangle {
         anchors.fill: parent
         radius: Appearance.rounding.large
@@ -86,6 +73,11 @@ Item {
                 StyledTextInput {
                     id: titleField
                     anchors.fill: parent
+                    // Never claimed by the window's focus chain. The note's body is what
+                    // somebody opening a note wants to type in; the title is renamed
+                    // deliberately, by clicking it.
+                    activeFocusOnTab: false
+                    focus: false
                     // Bound from the note, but only while nobody is typing in it: rebinding
                     // under the cursor is how a rename loses the last character typed.
                     text: root.note && !titleField.activeFocus ? root.note.title : titleField.text
@@ -167,72 +159,29 @@ Item {
             }
         }
 
-        Flickable {
+        Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.topMargin: 18
-            Layout.bottomMargin: NotesMetrics.panePadding
-            contentHeight: bodyColumn.implicitHeight
-            clip: true
+            Layout.topMargin: 12
 
-            ColumnLayout {
-                id: bodyColumn
-                width: parent.width
-                spacing: 16
+            NotesEditor {
+                id: editor
+                anchors.fill: parent
+                noteId: root.noteId
+            }
 
-                StyledText {
-                    Layout.fillWidth: true
-                    Layout.leftMargin: NotesMetrics.readingPadding
-                    Layout.rightMargin: NotesMetrics.readingPadding
-                    Layout.maximumWidth: NotesMetrics.readingWidth
-                    text: root.bodyText
-                    textFormat: Text.MarkdownText
-                    wrapMode: Text.WordWrap
-                    font.pixelSize: Appearance.font.pixelSize.normal
-                    color: Appearance.colors.colOnLayer0
-                    visible: root.bodyText.trim().length > 0
-                }
+            // Floating at the foot of the page rather than pinned above it: it belongs to
+            // the block the caret is in, and following the page keeps it near the hand.
+            NotesEditorToolbar {
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.bottom: parent.bottom
+                anchors.bottomMargin: 16
+                editor: editor
+                opacity: editor.activeBlockId.length > 0 ? 1 : 0
+                visible: opacity > 0
 
-                Repeater {
-                    // The drawings a note carries, under its text. They are files beside
-                    // the note; the reader shows them, and editing them comes with the ink
-                    // surface rather than here.
-                    model: {
-                        NotesService.tabsData;
-                        const document = root.noteId.length > 0 ? NotesService.documentOf(root.noteId) : null;
-                        if (!document)
-                            return [];
-                        return Array.from(document.blocks)
-                            .filter(item => item.type === "ink" || item.type === "image")
-                            .map(item => NotesService.assetPath(root.noteId, item.asset));
-                    }
-
-                    delegate: Image {
-                        required property string modelData
-                        Layout.leftMargin: NotesMetrics.readingPadding
-                        Layout.rightMargin: NotesMetrics.readingPadding
-                        // Bounded by the pane, not only by the reading measure: a drawing
-                        // wider than the window ran off the right edge of its own note.
-                        readonly property real available: Math.max(80,
-                            Math.min(NotesMetrics.readingWidth,
-                                     bodyColumn.width - NotesMetrics.readingPadding * 2))
-                        Layout.maximumWidth: available
-                        Layout.preferredWidth: Math.min(available, implicitWidth)
-                        Layout.preferredHeight: implicitWidth > 0
-                            ? Layout.preferredWidth * (implicitHeight / implicitWidth)
-                            : 0
-                        source: modelData.length > 0 ? `file://${modelData}` : ""
-                        fillMode: Image.PreserveAspectFit
-                        asynchronous: true
-                        smooth: true
-                        // Bounded so a large drawing is decoded at the size it is shown at
-                        // rather than at whatever the pen produced.
-                        sourceSize.width: 1240
-                    }
-                }
-
-                Item {
-                    Layout.preferredHeight: NotesMetrics.readingPadding
+                Behavior on opacity {
+                    animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
                 }
             }
         }

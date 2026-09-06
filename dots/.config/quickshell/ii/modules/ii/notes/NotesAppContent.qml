@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Layouts
 
 import qs
@@ -116,6 +117,11 @@ Item {
         const noteId = NotesService.createNote({ title: "" });
         root.state.noteId = noteId;
         root.showingDetail = true;
+        // On a timer rather than the next turn of the loop. The window's own focus chain
+        // hands active focus to the first text item in it — the note's title — when the
+        // toplevel is activated, and that happens after the callLater would have run: the
+        // caret ended up in the title and the first thing typed renamed the note.
+        editorFocusTimer.restart();
     }
 
     function deleteSelected(): void {
@@ -154,7 +160,16 @@ Item {
         if (NotesService.notes.some(note => note.id === wanted)) {
             root.state.scope = "all";
             root.select(wanted);
+            // Asked for by name, from a widget, the overlay or a script: whoever sent that
+            // wants to work on this note, not to look at a list with it highlighted.
+            editorFocusTimer.restart();
         }
+    }
+
+    Timer {
+        id: editorFocusTimer
+        interval: 120
+        onTriggered: detail.focusEditor()
     }
 
     Component.onCompleted: root.consumePendingNote()
@@ -166,22 +181,38 @@ Item {
         }
     }
 
-    Keys.onPressed: event => {
-        if (event.key === Qt.Key_Escape) {
-            if (root.compact && root.showingDetail) {
+    /**
+     * The app's own shortcuts.
+     *
+     * `Shortcut` rather than `Keys.onPressed`, because these belong to the window and not
+     * to whichever item happens to hold focus. The key handler worked only while something
+     * focusable was focused, and the moment the note title stopped claiming focus on open,
+     * Ctrl+N stopped existing.
+     */
+    Shortcut {
+        sequences: ["Ctrl+N"]
+        context: Qt.WindowShortcut
+        onActivated: root.createNote()
+    }
+
+    Shortcut {
+        sequences: ["Ctrl+F"]
+        context: Qt.WindowShortcut
+        onActivated: rail.focusSearch()
+    }
+
+    Shortcut {
+        sequences: ["Escape"]
+        context: Qt.WindowShortcut
+        onActivated: {
+            // The smallest thing first: back out of the note, then clear the search, and
+            // only close the window when there is nothing left to back out of.
+            if (root.compact && root.showingDetail)
                 root.showingDetail = false;
-            } else if (rail.query.length > 0) {
+            else if (rail.query.length > 0)
                 rail.clearSearch();
-            } else {
+            else
                 root.closeRequested();
-            }
-            event.accepted = true;
-        } else if (event.key === Qt.Key_N && (event.modifiers & Qt.ControlModifier)) {
-            root.createNote();
-            event.accepted = true;
-        } else if (event.key === Qt.Key_F && (event.modifiers & Qt.ControlModifier)) {
-            rail.focusSearch();
-            event.accepted = true;
         }
     }
 
@@ -204,9 +235,6 @@ Item {
             railExpanded: root.railExpanded
 
             onRailToggled: root.state.railExpanded = !root.state.railExpanded
-            // The app's own settings do not exist yet; until they do this opens the one
-            // switch about Notes that lives outside the app, rather than a dead button.
-            onSettingsRequested: GlobalStates.openSettingsPage("overlays", "", "")
             onBackRequested: root.showingDetail = false
             onCloseRequested: root.closeRequested()
         }
@@ -234,9 +262,10 @@ Item {
                     root.state.noteId = "";
                 }
                 onCreateRequested: root.createNote()
-                // The app's own settings do not exist yet; until they do this opens the
-                // one switch about Notes that lives outside the app, rather than a button
-                // that does nothing.
+                // The app's own settings sheet does not exist yet; until it does this
+                // opens the one switch about Notes that lives outside the app, rather
+                // than being a button that does nothing.
+                onSettingsRequested: GlobalStates.openSettingsPage("overlays", "", "")
 
                 Behavior on Layout.preferredWidth {
                     animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
@@ -275,6 +304,7 @@ Item {
             }
 
             NotesDetail {
+                id: detail
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 visible: !root.compact || root.showingDetail

@@ -28,6 +28,7 @@ Item {
 
     signal scopePicked(string scope)
     signal createRequested()
+    signal settingsRequested()
 
     function clearSearch(): void {
         searchBox.text = "";
@@ -197,9 +198,59 @@ Item {
             id: searchBox
             Layout.fillWidth: true
             Layout.topMargin: 20
+            Layout.bottomMargin: 8
             expanded: root.expanded
             placeholder: Translation.tr("Search notes")
             onCleared: root.clearSearch()
+        }
+
+        // Below the search, where the mail sidebar keeps its own Settings.
+        RippleButton {
+            id: settingsButton
+            Layout.fillWidth: true
+            implicitHeight: 56
+            buttonRadius: NotesMetrics.pillRadius(settingsButton.implicitHeight)
+            colBackground: Appearance.colors.colSecondaryContainer
+            colBackgroundHover: Appearance.colors.colSecondaryContainerHover
+            colBackgroundActive: Appearance.colors.colSecondaryContainerActive
+            colRipple: Appearance.colors.colPrimaryActive
+
+            scale: settingsButton.down ? 0.95 : (settingsButton.hovered ? 1.02 : 1.0)
+            Behavior on scale {
+                animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+            }
+
+            onClicked: root.settingsRequested()
+
+            contentItem: Item {
+                anchors.fill: parent
+
+                RowLayout {
+                    anchors.centerIn: parent
+                    spacing: 12
+
+                    MaterialSymbol {
+                        Layout.alignment: Qt.AlignVCenter
+                        text: "settings"
+                        iconSize: Appearance.font.pixelSize.huge
+                        color: Appearance.m3colors.m3onSecondaryContainer
+                    }
+
+                    StyledText {
+                        Layout.alignment: Qt.AlignVCenter
+                        text: Translation.tr("Settings")
+                        visible: root.expanded
+                        font.pixelSize: Appearance.font.pixelSize.huge
+                        font.weight: Font.DemiBold
+                        color: Appearance.m3colors.m3onSecondaryContainer
+                    }
+                }
+            }
+
+            StyledToolTip {
+                text: Translation.tr("Notes settings")
+                extraVisibleCondition: !root.expanded
+            }
         }
     }
 }

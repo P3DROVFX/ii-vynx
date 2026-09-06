@@ -25,7 +25,6 @@ Item {
 
     signal backRequested()
     signal railToggled()
-    signal settingsRequested()
     signal closeRequested()
 
     implicitHeight: NotesMetrics.topBarHeight
@@ -83,12 +82,6 @@ Item {
         Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
-        }
-
-        NotesIconButton {
-            symbol: "tune"
-            tooltipText: Translation.tr("Notes settings")
-            onTriggered: root.settingsRequested()
         }
 
         NotesIconButton {
