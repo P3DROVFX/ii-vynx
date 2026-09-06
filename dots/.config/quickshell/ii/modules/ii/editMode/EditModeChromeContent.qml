@@ -78,8 +78,8 @@ Item {
     readonly property alias drawerItem: drawerReveal
     // Whether the catalogue's search field holds the keyboard: the surface
     // takes focus for it and gives it straight back.
-    readonly property alias drawerSearchFocused: drawerPanel.searchFocused
-    property alias drawerScreenName: drawerPanel.screenName
+    readonly property bool drawerSearchFocused: drawerLoader.item ? drawerLoader.item.searchFocused : false
+    property string drawerScreenName: ""
 
     // Published for the surface's input mask: the only pixels of a
     // screen-sized layer surface that may take a click.
@@ -431,8 +431,8 @@ Item {
         enabled: root.drawerSearchFocused
         acceptedButtons: Qt.AllButtons
         onPressed: mouse => {
-            if (!drawerPanel.pointInSearchField(mouse.x, mouse.y))
-                drawerPanel.releaseSearchFocus();
+            if (drawerLoader.item && !drawerLoader.item.pointInSearchField(mouse.x, mouse.y))
+                drawerLoader.item.releaseSearchFocus();
             mouse.accepted = false;
         }
     }
@@ -449,25 +449,30 @@ Item {
         clip: true
         visible: width > 0
 
-        EditModeDrawer {
-            id: drawerPanel
+        Loader {
+            id: drawerLoader
             anchors.fill: parent
-            ghostParent: root
-            onAddRequested: (widgetId, dropX, dropY) => root.drawerAddRequested(widgetId, dropX, dropY)
-            onLockLayoutResetRequested: root.drawerLockLayoutResetRequested()
-            onResetRequested: what => root.drawerResetRequested(what)
-            onAddInstanceRequested: widgetId => root.drawerAddWidgetRequested(widgetId)
-            onBarPlaceRequested: (componentId, bucket) => root.drawerBarPlaceRequested(componentId, bucket)
-            onBarRemoveRequested: componentId => root.drawerBarRemoveRequested(componentId)
-            onBarDragMoved: (componentId, x, y) => root.drawerBarDragMoved(componentId, x, y)
-            onBarDropRequested: (componentId, x, y) => root.drawerBarDropRequested(componentId, x, y)
-            onBarDragCancelled: root.drawerBarDragCancelled()
-            onDockToggleRequested: appId => root.drawerDockToggleRequested(appId)
-            onAddAppRequested: (appId, dropX, dropY) => root.drawerAddAppRequested(appId, dropX, dropY)
-            onToggleAppOnHomeScreenRequested: appId => root.drawerToggleAppRequested(appId)
-            onAddAppPairRequested: (firstAppId, secondAppId, name) => root.drawerAddAppPairRequested(firstAppId, secondAppId, name)
-            onAddFolderRequested: (folderName, appsList) => root.drawerAddFolderRequested(folderName, appsList)
-            onClearHomeScreenAppsRequested: root.drawerClearHomeScreenAppsRequested()
+            active: GlobalStates.editDrawerOpen || GlobalStates.editDrawerProgress > 0
+            sourceComponent: EditModeDrawer {
+                anchors.fill: parent
+                ghostParent: root
+                screenName: root.drawerScreenName
+                onAddRequested: (widgetId, dropX, dropY) => root.drawerAddRequested(widgetId, dropX, dropY)
+                onLockLayoutResetRequested: root.drawerLockLayoutResetRequested()
+                onResetRequested: what => root.drawerResetRequested(what)
+                onAddInstanceRequested: widgetId => root.drawerAddWidgetRequested(widgetId)
+                onBarPlaceRequested: (componentId, bucket) => root.drawerBarPlaceRequested(componentId, bucket)
+                onBarRemoveRequested: componentId => root.drawerBarRemoveRequested(componentId)
+                onBarDragMoved: (componentId, x, y) => root.drawerBarDragMoved(componentId, x, y)
+                onBarDropRequested: (componentId, x, y) => root.drawerBarDropRequested(componentId, x, y)
+                onBarDragCancelled: root.drawerBarDragCancelled()
+                onDockToggleRequested: appId => root.drawerDockToggleRequested(appId)
+                onAddAppRequested: (appId, dropX, dropY) => root.drawerAddAppRequested(appId, dropX, dropY)
+                onToggleAppOnHomeScreenRequested: appId => root.drawerToggleAppRequested(appId)
+                onAddAppPairRequested: (firstAppId, secondAppId, name) => root.drawerAddAppPairRequested(firstAppId, secondAppId, name)
+                onAddFolderRequested: (folderName, appsList) => root.drawerAddFolderRequested(folderName, appsList)
+                onClearHomeScreenAppsRequested: root.drawerClearHomeScreenAppsRequested()
+            }
         }
     }
 }
