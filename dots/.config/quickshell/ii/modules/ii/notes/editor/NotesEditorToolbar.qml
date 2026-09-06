@@ -259,5 +259,14 @@ Rectangle {
                     root.editor.openAiMenu();
             }
         }
+
+        NotesIconButton {
+            symbol: DictationService.recording ? "mic" : "mic_none"
+            size: 42
+            iconSize: 21
+            tooltipText: DictationService.recording ? Translation.tr("Stop dictation") : Translation.tr("Voice dictation")
+            colIcon: DictationService.recording ? Appearance.m3colors.m3error : Appearance.colors.colPrimary
+            onTriggered: DictationService.toggle()
+        }
     }
 }

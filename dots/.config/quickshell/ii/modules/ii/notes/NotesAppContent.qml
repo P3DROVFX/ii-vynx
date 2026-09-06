@@ -113,6 +113,7 @@ Item {
 
     /// Only meaningful in the one-pane layout, where list and note take turns.
     property bool showingDetail: false
+    property bool focusMode: false
 
     // ── Actions ───────────────────────────────────────────────────────────
 
@@ -205,13 +206,27 @@ Item {
     }
 
     Shortcut {
+        sequences: ["Ctrl+Shift+F"]
+        context: Qt.WindowShortcut
+        onActivated: root.focusMode = !root.focusMode
+    }
+
+    Shortcut {
         sequences: ["Escape"]
         context: Qt.WindowShortcut
         onActivated: {
-            // The smallest thing first: back out of settings, then out of the note, then
-            // clear the search, and only close the window when there is nothing left to back out of.
-            if (settingsSheet.visible)
+            if (templatesSheet.visible)
+                templatesSheet.visible = false;
+            else if (revisionsSheet.visible)
+                revisionsSheet.visible = false;
+            else if (statsSheet.visible)
+                statsSheet.visible = false;
+            else if (settingsSheet.visible)
                 settingsSheet.visible = false;
+            else if (outlineDrawer.visible)
+                outlineDrawer.visible = false;
+            else if (root.focusMode)
+                root.focusMode = false;
             else if (root.compact && root.showingDetail)
                 root.showingDetail = false;
             else if (rail.query.length > 0)
@@ -230,6 +245,62 @@ Item {
         onExportRequested: detail.openExportSheet()
     }
 
+    NotesTemplatesSheet {
+        id: templatesSheet
+        anchors.fill: parent
+        z: 44
+        visible: false
+        onClosed: templatesSheet.visible = false
+        onTemplateSelected: (title, tags, blocks) => {
+            const noteId = NotesService.createNote({ title: title, tags: tags });
+            if (noteId && blocks && blocks.length > 0) {
+                NotesService.writeDocument(noteId, {
+                    id: noteId,
+                    title: title,
+                    blocks: blocks
+                });
+            }
+            root.state.noteId = noteId;
+            root.showingDetail = true;
+            templatesSheet.visible = false;
+        }
+    }
+
+    NotesRevisionsSheet {
+        id: revisionsSheet
+        anchors.fill: parent
+        z: 43
+        visible: false
+        noteId: root.selectedId
+        currentBlocks: detail.editorBlocks
+        onClosed: revisionsSheet.visible = false
+        onRevisionRestored: revisionsSheet.visible = false
+    }
+
+    NotesStatsSheet {
+        id: statsSheet
+        anchors.fill: parent
+        z: 42
+        visible: false
+        onClosed: statsSheet.visible = false
+    }
+
+    NotesOutline {
+        id: outlineDrawer
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        anchors.right: parent.right
+        anchors.margins: 12
+        width: 280
+        z: 38
+        visible: false
+        blocks: detail.editorBlocks
+        onClosed: outlineDrawer.visible = false
+        onHeadingClicked: blockId => {
+            outlineDrawer.visible = false;
+        }
+    }
+
     // ── Layout ────────────────────────────────────────────────────────────
 
     ColumnLayout {
@@ -240,6 +311,7 @@ Item {
         NotesTopBar {
             id: topBar
             Layout.fillWidth: true
+            visible: !root.focusMode
             title: root.scopeName
             subtitle: root.query.trim().length > 0
                 ? Translation.tr("%1 of %2 notes").arg(root.visibleNotes.length).arg(root.scopedNotes.length)
@@ -267,7 +339,7 @@ Item {
                     ? Math.max(NotesMetrics.railMinimumWidth,
                                Math.min(NotesMetrics.railMaximumWidth, root.state.railWidth))
                     : NotesMetrics.railCollapsedWidth
-                visible: !root.compact
+                visible: !root.compact && !root.focusMode
                 expanded: root.railExpanded
                 scope: root.state.scope
 
@@ -277,6 +349,7 @@ Item {
                 }
                 onCreateRequested: root.createNote()
                 onSettingsRequested: settingsSheet.visible = true
+                onStatsRequested: statsSheet.visible = true
 
                 Behavior on Layout.preferredWidth {
                     animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
@@ -291,7 +364,8 @@ Item {
                 visible: !root.compact
                 // A collapsed rail has no width worth dragging; the seam stays, the handle
                 // does not.
-                resizable: root.railExpanded
+                resizable: root.railExpanded && !root.focusMode
+                Layout.preferredWidth: root.focusMode ? 0 : -1
                 onMoved: delta => root.state.railWidth = Math.max(NotesMetrics.railMinimumWidth,
                     Math.min(NotesMetrics.railMaximumWidth, root.state.railWidth + delta))
             }
@@ -304,7 +378,7 @@ Item {
                     : Math.max(NotesMetrics.listMinimumWidth,
                                Math.min(NotesMetrics.listMaximumWidth, root.state.listWidth))
                 Layout.fillWidth: root.compact
-                visible: !root.compact || !root.showingDetail
+                visible: (!root.compact || !root.showingDetail) && !root.focusMode
                 notes: root.visibleNotes
                 selectedId: root.selectedId
                 searching: root.query.trim().length > 0
@@ -312,11 +386,14 @@ Item {
                 trash: root.trashScope
 
                 onNotePicked: noteId => root.select(noteId)
+                onTemplatesRequested: templatesSheet.visible = true
             }
 
             NotesPaneSplitter {
                 Layout.fillHeight: true
                 visible: !root.compact
+                resizable: !root.focusMode
+                Layout.preferredWidth: root.focusMode ? 0 : -1
                 onMoved: delta => root.state.listWidth = Math.max(NotesMetrics.listMinimumWidth,
                     Math.min(NotesMetrics.listMaximumWidth, root.state.listWidth + delta))
             }
@@ -325,7 +402,7 @@ Item {
                 id: detail
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                visible: !root.compact || root.showingDetail
+                visible: (!root.compact || root.showingDetail) || root.focusMode
                 note: root.selectedNote
                 trash: root.trashScope
 
@@ -333,6 +410,9 @@ Item {
                 onRestoreRequested: root.restoreSelected()
                 onFavoriteToggled: root.toggleFavorite()
                 onPinToggled: root.togglePinned()
+                onOutlineRequested: outlineDrawer.visible = !outlineDrawer.visible
+                onRevisionsRequested: revisionsSheet.visible = true
+                onFocusModeToggled: root.focusMode = !root.focusMode
                 onPaperPicked: style => {
                     if (root.selectedId.length > 0)
                         NotesService.updateMeta(root.selectedId, { paper: style });

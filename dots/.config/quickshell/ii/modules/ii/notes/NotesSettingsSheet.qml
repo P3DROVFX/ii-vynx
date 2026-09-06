@@ -106,10 +106,10 @@ Item {
                         buttonRadius: Appearance.rounding.small
                         colBackground: root.currentTab === tabBtn.modelData.id
                             ? Appearance.colors.colSecondaryContainer
-                            : Appearance.colors.colSurfaceContainer
+                            : Appearance.colors.colLayer2
                         colBackgroundHover: root.currentTab === tabBtn.modelData.id
                             ? Appearance.colors.colSecondaryContainerHover
-                            : Appearance.colors.colSurfaceContainerHover
+                            : Appearance.colors.colLayer2Hover
 
                         onClicked: root.currentTab = tabBtn.modelData.id
 

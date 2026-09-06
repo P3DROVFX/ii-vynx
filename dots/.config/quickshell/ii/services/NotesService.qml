@@ -269,6 +269,51 @@ Singleton {
         root.noteChanged(noteId);
     }
 
+    function updateDocument(noteId, document) {
+        root.writeDocument(noteId, document);
+    }
+
+    function restoreRevision(noteId, revisionDoc) {
+        if (!noteId || !revisionDoc)
+            return false;
+        root.writeDocument(noteId, revisionDoc);
+        if (revisionDoc.title)
+            root.updateMeta(noteId, { title: revisionDoc.title });
+        return true;
+    }
+
+    Timer {
+        id: reminderTimer
+        interval: 20000
+        repeat: true
+        running: root.ready
+        onTriggered: {
+            if (!root.ready || !root.notes)
+                return;
+            const now = Date.now();
+            const noteList = Array.from(root.notes);
+            for (let i = 0; i < noteList.length; i++) {
+                const note = noteList[i];
+                if (!note || !note.meta)
+                    continue;
+                const reminder = note.meta.reminder;
+                if (!reminder || note.meta.reminderNotified)
+                    continue;
+                const due = new Date(reminder).getTime();
+                if (due <= now) {
+                    Notifications.publishInternalNotification({
+                        summary: note.title ? note.title : Translation.tr("Note Reminder"),
+                        body: note.preview ? note.preview : Translation.tr("Reminder for this note"),
+                        appName: "Notes",
+                        appIcon: "note_stack"
+                    });
+                    const updatedMeta = Object.assign({}, note.meta, { reminderNotified: true });
+                    root.updateMeta(note.id, { meta: updatedMeta });
+                }
+            }
+        }
+    }
+
     Timer {
         id: pendingWriteTimer
         interval: 50

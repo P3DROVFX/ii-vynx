@@ -39,7 +39,7 @@ QtObject {
                 return null;
             return m;
         }
-        const current = Ai.currentModel;
+        const current = Ai.currentModelEntry;
         if (root.localOnly) {
             if (current && Ai.catalog.isModelLocal(current))
                 return current;

@@ -26,6 +26,7 @@ RippleButton {
     property bool isLast: false
     property bool prevIsCurrent: false
     property bool nextIsCurrent: false
+    property bool compact: Persistent.ready && Persistent.states.notes?.viewMode === "compact"
 
     signal triggered()
 
@@ -35,8 +36,8 @@ RippleButton {
     // default padding to the height on top of that.
     leftPadding: NotesMetrics.cardPadding
     rightPadding: NotesMetrics.cardPadding
-    topPadding: NotesMetrics.rowPaddingVertical
-    bottomPadding: NotesMetrics.rowPaddingVertical
+    topPadding: root.compact ? 8 : NotesMetrics.rowPaddingVertical
+    bottomPadding: root.compact ? 8 : NotesMetrics.rowPaddingVertical
     toggled: root.current
 
     /**
@@ -138,6 +139,7 @@ RippleButton {
 
         StyledText {
             Layout.fillWidth: true
+            visible: !root.compact
             text: root.searchTerms && root.searchTerms.length > 0
                 ? SearchIndex.highlightSnippet(root.note.preview, root.searchTerms, 120)
                 : (root.note.preview.length > 0 ? root.note.preview : Translation.tr("Empty"))

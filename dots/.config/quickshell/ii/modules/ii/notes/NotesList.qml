@@ -20,6 +20,7 @@ Item {
 
     signal notePicked(string noteId)
     signal createRequested()
+    signal templatesRequested()
 
     // Clipped at the pane's own bounds.
     //
@@ -84,6 +85,67 @@ Item {
             : (root.searching
                 ? Translation.tr("Try fewer words, or search in another notebook.")
                 : Translation.tr("Write the first one. It saves itself."))
+    }
+
+    RowLayout {
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.top: parent.verticalCenter
+        anchors.topMargin: 90
+        spacing: 10
+        visible: root.notes.length === 0 && !root.trash && !root.searching
+
+        RippleButton {
+            implicitHeight: 36
+            implicitWidth: 110
+            buttonRadius: Appearance.rounding.small
+            colBackground: Appearance.colors.colPrimary
+            colBackgroundHover: Appearance.colors.colPrimaryHover
+            onClicked: root.createRequested()
+
+            contentItem: RowLayout {
+                anchors.centerIn: parent
+                spacing: 6
+
+                MaterialSymbol {
+                    text: "add"
+                    iconSize: 18
+                    color: Appearance.colors.colOnPrimary
+                }
+
+                StyledText {
+                    text: Translation.tr("New note")
+                    font.pixelSize: Appearance.font.pixelSize.small
+                    font.weight: Font.DemiBold
+                    color: Appearance.colors.colOnPrimary
+                }
+            }
+        }
+
+        RippleButton {
+            implicitHeight: 36
+            implicitWidth: 120
+            buttonRadius: Appearance.rounding.small
+            colBackground: Appearance.colors.colLayer2
+            colBackgroundHover: Appearance.colors.colLayer2Hover
+            onClicked: root.templatesRequested()
+
+            contentItem: RowLayout {
+                anchors.centerIn: parent
+                spacing: 6
+
+                MaterialSymbol {
+                    text: "dashboard_customize"
+                    iconSize: 18
+                    color: Appearance.colors.colOnLayer2
+                }
+
+                StyledText {
+                    text: Translation.tr("Templates")
+                    font.pixelSize: Appearance.font.pixelSize.small
+                    color: Appearance.colors.colOnLayer2
+                }
+            }
+        }
     }
 
 }

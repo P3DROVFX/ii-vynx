@@ -29,6 +29,7 @@ Item {
     signal scopePicked(string scope)
     signal createRequested()
     signal settingsRequested()
+    signal statsRequested()
 
     // Clipped at the pane's own bounds.
     //
@@ -209,6 +210,54 @@ Item {
             expanded: root.expanded
             placeholder: Translation.tr("Search notes")
             onCleared: root.clearSearch()
+        }
+
+        RippleButton {
+            id: statsButton
+            Layout.fillWidth: true
+            implicitHeight: 48
+            buttonRadius: NotesMetrics.pillRadius(statsButton.implicitHeight)
+            colBackground: Appearance.colors.colLayer2
+            colBackgroundHover: Appearance.colors.colLayer2Hover
+            colBackgroundActive: Appearance.colors.colLayer2Active
+            colRipple: Appearance.colors.colPrimaryActive
+
+            scale: statsButton.down ? 0.95 : (statsButton.hovered ? 1.02 : 1.0)
+            Behavior on scale {
+                animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+            }
+
+            onClicked: root.statsRequested()
+
+            contentItem: Item {
+                anchors.fill: parent
+
+                RowLayout {
+                    anchors.centerIn: parent
+                    spacing: 12
+
+                    MaterialSymbol {
+                        Layout.alignment: Qt.AlignVCenter
+                        text: "analytics"
+                        iconSize: Appearance.font.pixelSize.larger
+                        color: Appearance.colors.colOnSurface
+                    }
+
+                    StyledText {
+                        Layout.alignment: Qt.AlignVCenter
+                        text: Translation.tr("Statistics")
+                        visible: root.expanded
+                        font.pixelSize: Appearance.font.pixelSize.base
+                        font.weight: Font.Medium
+                        color: Appearance.colors.colOnSurface
+                    }
+                }
+            }
+
+            StyledToolTip {
+                text: Translation.tr("Statistics & Analytics")
+                extraVisibleCondition: !root.expanded
+            }
         }
 
         // Below the search, where the mail sidebar keeps its own Settings.

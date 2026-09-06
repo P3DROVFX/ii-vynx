@@ -21,6 +21,7 @@ import os
 import shutil
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 SUBDIRECTORIES = ("docs", "assets", "revisions")
@@ -228,6 +229,70 @@ def cmd_read_asset(args) -> int:
     return emit({"ok": True, "contents": json.loads(target.read_text(encoding="utf-8"))})
 
 
+def cmd_save_revision(args) -> int:
+    root = Path(args[0]).expanduser()
+    note_id = str(args[1])
+    if "/" in note_id or note_id in ("", ".", ".."):
+        return emit({"error": "bad note id"})
+    try:
+        payload = json.loads(sys.stdin.read())
+    except Exception as err:
+        return emit({"error": f"invalid json: {err}"})
+    folder = root / "revisions" / note_id
+    folder.mkdir(parents=True, exist_ok=True)
+    stamp = int(payload.get("timestamp") or int(time.time() * 1000))
+    payload["timestamp"] = stamp
+    dest = folder / f"{stamp}.json"
+    write_atomic(dest, json.dumps(payload, separators=(",", ":")))
+    existing = sorted(folder.glob("*.json"), key=lambda p: p.stat().st_mtime)
+    if len(existing) > 50:
+        for old in existing[:-50]:
+            try:
+                old.unlink()
+            except OSError:
+                pass
+    return emit({"ok": True, "timestamp": stamp, "filename": dest.name})
+
+
+def cmd_list_revisions(args) -> int:
+    root = Path(args[0]).expanduser()
+    note_id = str(args[1])
+    if "/" in note_id or note_id in ("", ".", ".."):
+        return emit({"error": "bad note id"})
+    folder = root / "revisions" / note_id
+    if not folder.is_dir():
+        return emit({"ok": True, "revisions": []})
+    results = []
+    for file in sorted(folder.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True):
+        try:
+            data = json.loads(file.read_text(encoding="utf-8"))
+            results.append({
+                "timestamp": data.get("timestamp", int(file.stem) if file.stem.isdigit() else 0),
+                "date": data.get("date", ""),
+                "title": data.get("title", ""),
+                "blockCount": len(data.get("blocks", [])),
+                "author": data.get("author", "local")
+            })
+        except Exception:
+            continue
+    return emit({"ok": True, "revisions": results})
+
+
+def cmd_read_revision(args) -> int:
+    root = Path(args[0]).expanduser()
+    note_id = str(args[1])
+    stamp = str(args[2])
+    if "/" in note_id or note_id in ("", ".", "..") or "/" in stamp or ".." in stamp:
+        return emit({"error": "bad arguments"})
+    target = root / "revisions" / note_id / f"{stamp}.json"
+    if not target.is_file():
+        return emit({"ok": False, "error": "revision not found"})
+    try:
+        return emit({"ok": True, "revision": json.loads(target.read_text(encoding="utf-8"))})
+    except Exception as err:
+        return emit({"ok": False, "error": str(err)})
+
+
 COMMANDS = {
     "prepare-assets": (2, cmd_prepare_assets),
     "read-asset": (3, cmd_read_asset),
@@ -235,6 +300,9 @@ COMMANDS = {
     "commit": (1, cmd_commit),
     "purge": (2, cmd_purge),
     "import-asset": (3, cmd_import_asset),
+    "save-revision": (2, cmd_save_revision),
+    "list-revisions": (2, cmd_list_revisions),
+    "read-revision": (3, cmd_read_revision),
 }
 
 

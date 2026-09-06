@@ -31,6 +31,11 @@ Item {
     readonly property int indent: root.block && root.block.indent !== undefined ? root.block.indent : 0
     readonly property bool isList: root.blockType === "list"
     readonly property bool isChecked: root.isList && root.block.checked === true
+    property bool isPromoted: false
+
+    HoverHandler {
+        id: blockHover
+    }
 
     implicitHeight: Math.max(row.implicitHeight, editText.implicitHeight) + verticalPadding * 2
 
@@ -414,6 +419,20 @@ Item {
                         }
                     }
                 }
+            }
+        }
+
+        NotesIconButton {
+            Layout.alignment: Qt.AlignTop
+            visible: root.isList && root.block.style === "checkbox" && editText.text.trim().length > 0 && (blockHover.hovered || root.isPromoted)
+            symbol: root.isPromoted ? "check_circle" : "assignment_turned_in"
+            size: 26
+            iconSize: 15
+            colIcon: root.isPromoted ? Appearance.colors.colPrimary : Appearance.colors.colSubtext
+            tooltipText: root.isPromoted ? Translation.tr("Added to tasks") : Translation.tr("Promote to Todo task")
+            onTriggered: {
+                Todo.addItem({ content: editText.text.trim(), done: root.isChecked });
+                root.isPromoted = true;
             }
         }
     }

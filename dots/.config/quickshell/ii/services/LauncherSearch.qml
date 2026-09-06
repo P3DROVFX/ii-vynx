@@ -885,7 +885,8 @@ Singleton {
         return tabs.filter(tab => tab.enabled && tab.keywords.some(keyword => keyword.includes(query)));
     }
 
-    function noteMatches(queryText: string, limit: int = 5): var {
+    function noteMatches(queryText, limit) {
+        const max = limit !== undefined ? limit : 5;
         const query = String(queryText ?? "").trim().toLocaleLowerCase();
         if (query.length < 2 || !NotesService.ready || !(Config.options.notes?.enable ?? true))
             return [];
@@ -898,7 +899,7 @@ Singleton {
             const tags = Array.isArray(note.tags) ? note.tags.join(" ").toLocaleLowerCase() : "";
             if (title.includes(query) || tags.includes(query) || preview.includes(query)) {
                 matches.push(note);
-                if (matches.length >= limit)
+                if (matches.length >= max)
                     break;
             }
         }
