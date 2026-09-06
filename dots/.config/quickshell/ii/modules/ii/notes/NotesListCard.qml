@@ -6,6 +6,7 @@ import qs.modules.common
 import qs.modules.common.functions
 import qs.modules.common.widgets
 import qs.modules.ii.notes
+import "../../../services/notes/NotesSearchIndex.js" as SearchIndex
 
 /**
  * One note in the list.
@@ -18,6 +19,7 @@ RippleButton {
     id: root
 
     required property var note
+    property var searchTerms: []
     property bool current: false
     /// Where this card sits in the list, and whether its neighbours are the selected one.
     property bool isFirst: false
@@ -136,7 +138,9 @@ RippleButton {
 
         StyledText {
             Layout.fillWidth: true
-            text: root.note.preview.length > 0 ? root.note.preview : Translation.tr("Empty")
+            text: root.searchTerms && root.searchTerms.length > 0
+                ? SearchIndex.highlightSnippet(root.note.preview, root.searchTerms, 120)
+                : (root.note.preview.length > 0 ? root.note.preview : Translation.tr("Empty"))
             font.pixelSize: Appearance.font.pixelSize.smaller
             color: root.current
                 ? Appearance.m3colors.m3onSecondaryContainer

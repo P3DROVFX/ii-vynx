@@ -20,10 +20,11 @@ ROOT = Path(__file__).resolve().parents[2]
 DOCUMENT = ROOT / "services/notes/NotesDocument.js"
 MARKDOWN = ROOT / "services/notes/NotesMarkdown.js"
 MIGRATION = ROOT / "services/notes/NotesMigration.js"
+SEARCH_INDEX = ROOT / "services/notes/NotesSearchIndex.js"
 DIRECTORIES = ROOT / "modules/common/Directories.qml"
 DRY_RUN = ROOT / "scripts/notes/migrate_dry_run.js"
 
-MODEL_FILES = (DOCUMENT, MARKDOWN, MIGRATION)
+MODEL_FILES = (DOCUMENT, MARKDOWN, MIGRATION, SEARCH_INDEX)
 
 
 def read(path: Path) -> str:
@@ -34,7 +35,7 @@ class NotesModelLayoutTests(unittest.TestCase):
     def test_the_model_files_are_where_the_shell_and_the_tests_look(self):
         for path in MODEL_FILES:
             self.assertTrue(path.exists(), f"missing {path.relative_to(ROOT)}")
-        for name in ("tst_NotesDocument.qml", "tst_NotesMarkdown.qml", "tst_NotesMigration.qml"):
+        for name in ("tst_NotesDocument.qml", "tst_NotesMarkdown.qml", "tst_NotesMigration.qml", "tst_NotesSearchIndex.qml"):
             self.assertTrue((ROOT / "tests/notes" / name).exists(), f"missing tests/notes/{name}")
 
     def test_each_model_file_is_a_qml_javascript_library(self):

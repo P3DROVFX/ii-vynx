@@ -13,6 +13,7 @@ Item {
     id: root
 
     property var notes: []
+    property var searchTerms: []
     property string selectedId: ""
     property bool searching: false
     property bool trash: false
@@ -59,6 +60,7 @@ Item {
             prevIsCurrent: index > 0 && root.notes[index - 1].id === root.selectedId
             nextIsCurrent: index < root.notes.length - 1 && root.notes[index + 1].id === root.selectedId
             note: modelData
+            searchTerms: root.searchTerms
             current: modelData.id === root.selectedId
             onTriggered: root.notePicked(modelData.id)
         }

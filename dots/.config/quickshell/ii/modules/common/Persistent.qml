@@ -356,6 +356,7 @@ Singleton {
                 property real railWidth: 300
                 property real listWidth: 380
                 property bool railExpanded: true
+                property bool linkPreviews: true
             }
 
             property JsonObject cheatsheet: JsonObject {

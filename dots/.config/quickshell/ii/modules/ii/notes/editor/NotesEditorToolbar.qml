@@ -195,6 +195,14 @@ Rectangle {
         }
 
         NotesIconButton {
+            symbol: "attach_file"
+            size: 42
+            iconSize: 21
+            tooltipText: Translation.tr("Attach a file")
+            onTriggered: root.editor.pickFile()
+        }
+
+        NotesIconButton {
             symbol: "draw"
             size: 42
             iconSize: 21

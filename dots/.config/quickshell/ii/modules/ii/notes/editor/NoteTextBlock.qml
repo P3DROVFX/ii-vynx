@@ -205,80 +205,285 @@ Item {
             visible: root.blockType === "quote"
         }
 
-        TextEdit {
-            id: editText
+        ColumnLayout {
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignTop
-            // A comfortable measure. A paragraph running the whole width of a maximised
-            // window is a paragraph nobody finishes.
             Layout.maximumWidth: NotesMetrics.readingWidth
+            spacing: 6
 
-            text: root.block ? root.block.text : ""
-            wrapMode: TextEdit.Wrap
-            selectByMouse: true
-            persistentSelection: true
-            textFormat: TextEdit.PlainText
-            renderType: Text.NativeRendering
+            TextEdit {
+                id: editText
+                Layout.fillWidth: true
 
-            color: root.blockType === "callout" ? root.toneColor
-                : root.blockType === "quote" ? Appearance.colors.colOnLayer1
-                : Appearance.colors.colOnLayer0
-            opacity: root.isChecked ? 0.55 : 1
-            font {
-                family: Appearance.font.family.main
-                pixelSize: root.textSize
-                weight: root.blockType === "heading" ? Font.DemiBold : Font.Normal
-                italic: root.blockType === "quote"
-                strikeout: root.isChecked
+                text: root.block ? root.block.text : ""
+                wrapMode: TextEdit.Wrap
+                selectByMouse: true
+                persistentSelection: true
+                textFormat: TextEdit.PlainText
+                renderType: Text.NativeRendering
+
+                color: root.blockType === "callout" ? root.toneColor
+                    : root.blockType === "quote" ? Appearance.colors.colOnLayer1
+                    : Appearance.colors.colOnLayer0
+                opacity: root.isChecked ? 0.55 : 1
+                font {
+                    family: Appearance.font.family.main
+                    pixelSize: root.textSize
+                    weight: root.blockType === "heading" ? Font.DemiBold : Font.Normal
+                    italic: root.blockType === "quote"
+                    strikeout: root.isChecked
+                }
+                selectedTextColor: Appearance.m3colors.m3onSecondaryContainer
+                selectionColor: Appearance.colors.colSecondaryContainer
+
+                // The placeholder only ever appears on the block the caret is in: a page of
+                // "Write something…" under every empty line would be noise.
+                StyledText {
+                    anchors.left: parent.left
+                    anchors.top: parent.top
+                    text: root.blockType === "heading"
+                        ? Translation.tr("Heading")
+                        : Translation.tr("Write something…")
+                    font: editText.font
+                    color: Appearance.colors.colOnLayer1Inactive
+                    visible: editText.length === 0 && editText.activeFocus
+                }
+
+                onActiveFocusChanged: {
+                    if (activeFocus) {
+                        root.editor.activeBlockId = root.block.id;
+                        root.checkUrlAndWikilink();
+                    } else {
+                        // Leaving the block commits whatever the debounce was still holding.
+                        saveDebounce.stop();
+                        root.commit();
+                        root.wikilinkActive = false;
+                    }
+                }
+
+                onCursorPositionChanged: {
+                    if (activeFocus && !root.applying)
+                        root.checkUrlAndWikilink();
+                }
+
+                onTextChanged: {
+                    if (root.applying)
+                        return;
+                    root.checkUrlAndWikilink();
+                    root.applying = true;
+                    const converted = root.editor.tryShortcut(root.block.id, editText.text);
+                    if (converted !== null && converted !== undefined) {
+                        saveDebounce.stop();
+                        editText.text = converted;
+                        editText.cursorPosition = editText.length;
+                        root.endApplying();
+                        return;
+                    }
+                    root.applying = false;
+                    saveDebounce.restart();
+                }
+
+                Keys.onPressed: event => root.handleKey(event)
             }
-            selectedTextColor: Appearance.m3colors.m3onSecondaryContainer
-            selectionColor: Appearance.colors.colSecondaryContainer
 
-            // The placeholder only ever appears on the block the caret is in: a page of
-            // "Write something…" under every empty line would be noise.
-            StyledText {
-                anchors.left: parent.left
-                anchors.top: parent.top
-                text: root.blockType === "heading"
-                    ? Translation.tr("Heading")
-                    : Translation.tr("Write something…")
-                font: editText.font
-                color: Appearance.colors.colOnLayer1Inactive
-                visible: editText.length === 0 && editText.activeFocus
-            }
+            // ── Discrete URL preview conversion chip ──────────────────────────
+            RowLayout {
+                visible: root.detectedUrl.length > 0 && editText.activeFocus
+                spacing: 8
 
-            onActiveFocusChanged: {
-                if (activeFocus) {
-                    root.editor.activeBlockId = root.block.id;
-                } else {
-                    // Leaving the block commits whatever the debounce was still holding.
-                    saveDebounce.stop();
-                    root.commit();
+                RippleButton {
+                    implicitHeight: 30
+                    buttonRadius: Appearance.rounding.small
+                    colBackground: Appearance.colors.colSecondaryContainer
+                    colBackgroundHover: Appearance.colors.colSecondaryContainerHover
+                    leftPadding: 10
+                    rightPadding: 10
+                    contentItem: RowLayout {
+                        spacing: 4
+                        MaterialSymbol {
+                            text: "web"
+                            iconSize: 15
+                            color: Appearance.m3colors.m3onSecondaryContainer
+                        }
+                        StyledText {
+                            text: Translation.tr("Convert to preview card")
+                            font.pixelSize: Appearance.font.pixelSize.smallest
+                            color: Appearance.m3colors.m3onSecondaryContainer
+                        }
+                    }
+                    onClicked: {
+                        const targetUrl = root.detectedUrl;
+                        root.detectedUrl = "";
+                        root.editor.setType(root.block.id, "linkPreview", { url: targetUrl });
+                    }
+                }
+
+                RippleButton {
+                    implicitHeight: 30
+                    buttonRadius: Appearance.rounding.small
+                    colBackground: "transparent"
+                    leftPadding: 8
+                    rightPadding: 8
+                    contentItem: StyledText {
+                        text: Translation.tr("Keep as link")
+                        font.pixelSize: Appearance.font.pixelSize.smallest
+                        color: Appearance.colors.colSubtext
+                    }
+                    onClicked: root.detectedUrl = ""
                 }
             }
 
-            onTextChanged: {
-                if (root.applying)
-                    return;
-                // Armed *before* the conversion, not after it. Converting the block
-                // rebuilds this delegate, and the rebuild takes the focus away while
-                // `tryShortcut` is still on the stack — so the focus-out handler ran
-                // inside it and committed the text as it was a keystroke ago. That is how
-                // a bullet ended up storing the "- " that had just been taken off it.
-                root.applying = true;
-                const converted = root.editor.tryShortcut(root.block.id, editText.text);
-                if (converted !== null && converted !== undefined) {
-                    saveDebounce.stop();
-                    editText.text = converted;
-                    editText.cursorPosition = editText.length;
-                    root.endApplying();
-                    return;
+            // ── Active Wikilink under cursor affordance ────────────────────────
+            RowLayout {
+                visible: root.activeWikilinkTarget.length > 0 && editText.activeFocus
+                spacing: 6
+
+                RippleButton {
+                    implicitHeight: 28
+                    buttonRadius: Appearance.rounding.small
+                    colBackground: Appearance.m3colors.m3surfaceContainerHigh
+                    colBackgroundHover: Appearance.colors.colSecondaryContainerHover
+                    leftPadding: 8
+                    rightPadding: 8
+                    contentItem: RowLayout {
+                        spacing: 4
+                        MaterialSymbol {
+                            text: "open_in_new"
+                            iconSize: 14
+                            color: Appearance.colors.colPrimary
+                        }
+                        StyledText {
+                            text: Translation.tr("Open: %1").arg(root.activeWikilinkTarget)
+                            font.pixelSize: Appearance.font.pixelSize.smallest
+                            color: Appearance.colors.colPrimary
+                        }
+                    }
+                    onClicked: root.openWikilink(root.activeWikilinkTarget)
                 }
-                root.applying = false;
-                saveDebounce.restart();
             }
 
-            Keys.onPressed: event => root.handleKey(event)
+            // ── Wikilink Autocompletion popup ─────────────────────────────────
+            Rectangle {
+                Layout.preferredWidth: Math.min(320, parent.width)
+                Layout.preferredHeight: wikilinkList.implicitHeight + 8
+                radius: Appearance.rounding.small
+                color: Appearance.m3colors.m3surfaceContainerHigh
+                visible: root.wikilinkActive && root.wikilinkSuggestions.length > 0
+                clip: true
+
+                ColumnLayout {
+                    id: wikilinkList
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    anchors.margins: 4
+                    spacing: 2
+
+                    Repeater {
+                        model: root.wikilinkSuggestions
+
+                        RippleButton {
+                            required property var modelData
+                            Layout.fillWidth: true
+                            implicitHeight: 32
+                            buttonRadius: Appearance.rounding.small
+                            colBackground: "transparent"
+                            colBackgroundHover: Appearance.colors.colSecondaryContainerHover
+                            leftPadding: 8
+                            rightPadding: 8
+
+                            contentItem: RowLayout {
+                                spacing: 6
+                                MaterialSymbol {
+                                    text: "article"
+                                    iconSize: 15
+                                    color: Appearance.colors.colPrimary
+                                }
+                                StyledText {
+                                    Layout.fillWidth: true
+                                    text: modelData.title.length > 0 ? modelData.title : Translation.tr("Untitled note")
+                                    font.pixelSize: Appearance.font.pixelSize.smaller
+                                    color: Appearance.colors.colOnLayer0
+                                    elide: Text.ElideRight
+                                }
+                            }
+                            onClicked: root.insertWikilink(modelData.title)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    property string detectedUrl: ""
+    property string wikilinkQuery: ""
+    property bool wikilinkActive: false
+
+    function checkUrlAndWikilink(): void {
+        const txt = editText.text.trim();
+        // Standalone URL check: only if the block is solely a URL
+        if (/^https?:\/\/[^\s]+$/i.test(txt)) {
+            root.detectedUrl = txt;
+        } else {
+            root.detectedUrl = "";
+        }
+
+        // Wikilink check
+        const before = editText.text.slice(0, editText.cursorPosition);
+        const openIdx = before.lastIndexOf("[[");
+        if (openIdx !== -1) {
+            const afterOpen = before.slice(openIdx + 2);
+            if (afterOpen.indexOf("]") === -1 && afterOpen.indexOf("\n") === -1) {
+                root.wikilinkQuery = afterOpen.toLowerCase();
+                root.wikilinkActive = true;
+                return;
+            }
+        }
+        root.wikilinkActive = false;
+    }
+
+    readonly property var wikilinkSuggestions: {
+        if (!root.wikilinkActive || !root.editor)
+            return [];
+        const currentId = root.editor.noteId;
+        const q = root.wikilinkQuery;
+        return NotesService.notes.filter(n => n.id !== currentId && (q.length === 0 || n.title.toLowerCase().includes(q))).slice(0, 5);
+    }
+
+    readonly property string activeWikilinkTarget: {
+        if (!editText.activeFocus)
+            return "";
+        const txt = editText.text;
+        const pos = editText.cursorPosition;
+        const openIdx = txt.lastIndexOf("[[", Math.max(0, pos - 1));
+        if (openIdx === -1)
+            return "";
+        const closeIdx = txt.indexOf("]]", openIdx);
+        if (closeIdx === -1 || pos > closeIdx + 2)
+            return "";
+        return txt.slice(openIdx + 2, closeIdx).split("|")[0].trim();
+    }
+
+    function insertWikilink(targetTitle): void {
+        const before = editText.text.slice(0, editText.cursorPosition);
+        const openIdx = before.lastIndexOf("[[");
+        if (openIdx === -1)
+            return;
+        const after = editText.text.slice(editText.cursorPosition);
+        const replacement = `[[${targetTitle}]] `;
+        root.applying = true;
+        editText.text = before.slice(0, openIdx) + replacement + after;
+        editText.cursorPosition = openIdx + replacement.length;
+        root.wikilinkActive = false;
+        root.endApplying();
+        saveDebounce.restart();
+    }
+
+    function openWikilink(target): void {
+        const norm = String(target).toLowerCase();
+        const found = NotesService.notes.find(n => n.title.toLowerCase() === norm || n.id === target);
+        if (found) {
+            Persistent.states.notes.noteId = found.id;
         }
     }
 

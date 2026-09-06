@@ -92,6 +92,7 @@ Singleton {
     /// Where `notes.json` is moved once it has been migrated. Renamed rather than deleted:
     /// it is the only copy of everything written before the app existed.
     property string notesLegacyBackupPath: `${Directories.notesPath}.migrated`
+    property string notesLinkPreviewsCacheDir: FileUtils.trimFileProtocol(`${Directories.cache}/media/link_previews`)
     property string conflictCachePath: FileUtils.trimFileProtocol(`${Directories.cache}/conflict-killer`)
     property string notificationsPath: FileUtils.trimFileProtocol(`${Directories.cache}/notifications/notifications.json`)
     property string lyricsPath: FileUtils.trimFileProtocol(`${Directories.cache}/lyrics/lyrics.json`)

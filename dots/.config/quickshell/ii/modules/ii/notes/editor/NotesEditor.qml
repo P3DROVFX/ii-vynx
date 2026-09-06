@@ -407,8 +407,7 @@ Item {
     /**
      * Files dropped on the page.
      *
-     * Only images are taken for now, and a file that is not one is left alone rather than
-     * turned into a link nobody asked for — file blocks arrive with their own preview.
+     * Images become an image block with asset copy; all other files become a fileLink card.
      */
     DropArea {
         anchors.fill: parent
@@ -416,9 +415,12 @@ Item {
 
         onDropped: drop => {
             for (const url of drop.urls) {
-                const path = String(url).replace(/^file:\/\//, "");
+                const rawPath = String(url).replace(/^file:\/\//, "");
+                const path = decodeURIComponent(rawPath);
                 if (/\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(path))
-                    root.insertImageFromFile(decodeURIComponent(path));
+                    root.insertImageFromFile(path);
+                else
+                    root.insertFile(path);
             }
         }
     }
@@ -432,6 +434,32 @@ Item {
         const made = Object.assign({ type: type }, props ?? {});
         if (root.apply([{ op: "insert", index: at, block: made }]))
             root.focusRequest = root.blockIdAt(at);
+    }
+
+    function insertFile(path): void {
+        if (root.noteId.length === 0 || !path)
+            return;
+        const at = root.activeBlockId.length > 0
+            ? root.indexOfBlock(root.activeBlockId) + 1
+            : root.blocks.length;
+        root.apply([{
+            op: "insert",
+            index: at,
+            block: { type: "fileLink", path: String(path) }
+        }]);
+    }
+
+    function insertLinkPreview(url, atIndex = -1): void {
+        if (root.noteId.length === 0 || !url)
+            return;
+        const at = atIndex >= 0 ? atIndex : (root.activeBlockId.length > 0
+            ? root.indexOfBlock(root.activeBlockId) + 1
+            : root.blocks.length);
+        root.apply([{
+            op: "insert",
+            index: at,
+            block: { type: "linkPreview", url: String(url) }
+        }]);
     }
 
     /// The file chooser, through the same helpers the rest of the shell uses.
@@ -456,6 +484,34 @@ Item {
                 const path = pickerOutput.text.trim();
                 if (path.length > 0)
                     root.insertImageFromFile(path);
+            }
+        }
+    }
+
+    function pickFile(): void {
+        if (!filePicker.running)
+            filePicker.running = true;
+    }
+
+    Process {
+        id: filePicker
+        command: ["bash", "-c",
+            `if command -v zenity >/dev/null; then
+                 zenity --file-selection --title="Attach a file" 2>/dev/null
+             elif command -v kdialog >/dev/null; then
+                 kdialog --getopenfilename "$HOME" 2>/dev/null
+             fi`]
+
+        stdout: StdioCollector {
+            id: filePickerOutput
+            onStreamFinished: {
+                const path = filePickerOutput.text.trim();
+                if (path.length > 0) {
+                    if (/\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(path))
+                        root.insertImageFromFile(path);
+                    else
+                        root.insertFile(path);
+                }
             }
         }
     }

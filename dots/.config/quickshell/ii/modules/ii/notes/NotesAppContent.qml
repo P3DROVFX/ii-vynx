@@ -9,6 +9,7 @@ import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.ii.notes
+import "../../../services/notes/NotesSearchIndex.js" as SearchIndex
 
 /**
  * The app inside the window: a rail of places, a list of notes, and the note itself.
@@ -55,18 +56,20 @@ Item {
         return live.filter(note => note.notebookId === scope || note.sectionId === scope);
     }
 
+    readonly property var parsedQuery: SearchIndex.parseQuery(root.query)
+    readonly property var searchTerms: root.parsedQuery.terms
+
     readonly property var visibleNotes: {
-        const term = root.query.trim().toLowerCase();
+        const term = root.query.trim();
         const scoped = root.scopedNotes;
-        const matched = term.length === 0 ? scoped : scoped.filter(note =>
-            note.title.toLowerCase().includes(term) || note.preview.toLowerCase().includes(term));
-        // Pinned first, then most recently touched. Sorted here rather than in the model so
-        // the empty state and the count agree with what is drawn.
-        return matched.slice().sort((a, b) => {
-            if (a.pinned !== b.pinned)
-                return a.pinned ? -1 : 1;
-            return b.modified - a.modified;
-        });
+        if (term.length === 0) {
+            return scoped.slice().sort((a, b) => {
+                if (a.pinned !== b.pinned)
+                    return a.pinned ? -1 : 1;
+                return b.modified - a.modified;
+            });
+        }
+        return SearchIndex.searchNotes(term, scoped, null, NotesService.notebooks);
     }
 
     readonly property string selectedId: {
@@ -297,6 +300,7 @@ Item {
                 notes: root.visibleNotes
                 selectedId: root.selectedId
                 searching: root.query.trim().length > 0
+                searchTerms: root.searchTerms
                 trash: root.trashScope
 
                 onNotePicked: noteId => root.select(noteId)

@@ -53,6 +53,11 @@ Rectangle {
         hoverEnabled: true
         cursorShape: Qt.IBeamCursor
         onClicked: input.forceActiveFocus()
+
+        StyledToolTip {
+            text: Translation.tr("Search by text, or use tag:, caderno:, tem:imagem, tem:tinta, is:favorite")
+            extraVisibleCondition: input.text.length === 0
+        }
     }
 
     RowLayout {

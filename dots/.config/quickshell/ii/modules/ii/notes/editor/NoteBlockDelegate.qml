@@ -28,6 +28,10 @@ Item {
                 return tableComponent;
             if (root.block.type === "ink")
                 return inkComponent;
+            if (root.block.type === "linkPreview")
+                return linkPreviewComponent;
+            if (root.block.type === "fileLink")
+                return fileLinkComponent;
             return textComponent;
         }
 
@@ -68,5 +72,15 @@ Item {
     Component {
         id: tableComponent
         NoteTableBlock {}
+    }
+
+    Component {
+        id: linkPreviewComponent
+        NoteLinkPreviewBlock {}
+    }
+
+    Component {
+        id: fileLinkComponent
+        NoteFileBlock {}
     }
 }

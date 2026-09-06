@@ -9,6 +9,7 @@ import qs.modules.common.widgets
 import qs.modules.ii.notes
 import qs.modules.ii.notes.editor
 import qs.modules.ii.notes.sketch
+import "../../../services/notes/NotesSearchIndex.js" as SearchIndex
 
 /**
  * The note itself.
@@ -45,6 +46,9 @@ Item {
     readonly property string noteId: root.note ? root.note.id : ""
     /// Empty means the note has not chosen one, which is plain.
     readonly property string paperStyle: root.note && root.note.paper.length > 0 ? root.note.paper : "plain"
+    readonly property var backlinks: root.note
+        ? SearchIndex.findBacklinks(root.note.id, root.note.title, NotesService.notes, null)
+        : []
 
     signal paperPicked(string style)
     Rectangle {
@@ -252,6 +256,87 @@ Item {
 
             Item {
                 Layout.fillWidth: true
+            }
+        }
+
+        // ── Collapsible Backlinks ("Mentioned in") bar ────────────────────
+        ColumnLayout {
+            id: backlinksBar
+            Layout.fillWidth: true
+            Layout.leftMargin: NotesMetrics.readingPadding
+            Layout.rightMargin: NotesMetrics.readingPadding
+            Layout.topMargin: 6
+            Layout.bottomMargin: 2
+            visible: root.backlinks.length > 0
+            spacing: 4
+
+            property bool expanded: false
+
+            RippleButton {
+                implicitHeight: 28
+                buttonRadius: Appearance.rounding.small
+                colBackground: Appearance.m3colors.m3surfaceContainerLowest
+                colBackgroundHover: Appearance.colors.colSecondaryContainerHover
+                leftPadding: 8
+                rightPadding: 8
+
+                contentItem: RowLayout {
+                    spacing: 6
+                    MaterialSymbol {
+                        text: "link"
+                        iconSize: 15
+                        color: Appearance.colors.colPrimary
+                    }
+                    StyledText {
+                        text: Translation.tr("Mentioned in (%1)").arg(root.backlinks.length)
+                        font.pixelSize: Appearance.font.pixelSize.smallest
+                        font.weight: Font.DemiBold
+                        color: Appearance.colors.colPrimary
+                    }
+                    MaterialSymbol {
+                        text: backlinksBar.expanded ? "expand_less" : "expand_more"
+                        iconSize: 15
+                        color: Appearance.colors.colPrimary
+                    }
+                }
+
+                onClicked: backlinksBar.expanded = !backlinksBar.expanded
+            }
+
+            Flow {
+                Layout.fillWidth: true
+                visible: backlinksBar.expanded
+                spacing: 6
+
+                Repeater {
+                    model: root.backlinks
+
+                    RippleButton {
+                        required property var modelData
+                        implicitHeight: 28
+                        buttonRadius: Appearance.rounding.small
+                        colBackground: Appearance.m3colors.m3surfaceContainerLowest
+                        colBackgroundHover: Appearance.colors.colSecondaryContainerHover
+                        leftPadding: 8
+                        rightPadding: 8
+
+                        contentItem: RowLayout {
+                            spacing: 4
+                            MaterialSymbol {
+                                text: "article"
+                                iconSize: 14
+                                color: Appearance.colors.colPrimary
+                            }
+                            StyledText {
+                                text: modelData.title.length > 0 ? modelData.title : Translation.tr("Untitled note")
+                                font.pixelSize: Appearance.font.pixelSize.smallest
+                                color: Appearance.colors.colOnLayer0
+                            }
+                        }
+
+                        onClicked: Persistent.states.notes.noteId = modelData.id
+                    }
+                }
             }
         }
 
