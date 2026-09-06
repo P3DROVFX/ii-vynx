@@ -50,7 +50,7 @@ Item {
 
     implicitHeight: card.height + 16
 
-    function refreshPreview(): void {
+    function refreshPreview(refresh = false): void {
         if (!root.url || !root.editor || !root.block)
             return;
         NotesLinkPreview.fetchPreview(root.url, data => {
@@ -68,7 +68,7 @@ Item {
                     fetchedAt: (data && data.fetchedAt) ? data.fetchedAt : Math.floor(Date.now() / 1000)
                 }
             }], false);
-        });
+        }, refresh);
     }
 
     Component.onCompleted: {
@@ -94,11 +94,25 @@ Item {
             anchors.fill: parent
             radius: parent.radius
             color: Appearance.colors.colOnSurface
-            opacity: cardHover.containsMouse ? 0.04 : 0
+            opacity: cardHovered.hovered ? 0.04 : 0
 
             Behavior on opacity {
                 animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
             }
+        }
+
+        /**
+         * Hover for the whole card, buttons included.
+         *
+         * A `MouseArea`'s `containsMouse` goes false the moment a sibling on top of it
+         * takes the pointer, so binding the actions' opacity to it made them vanish
+         * exactly as the hand arrived — and the click then fell through to this area,
+         * which opens the page. The buttons could not be pressed at all.
+         *
+         * A `HoverHandler` on the card stays hovered while anything inside it is.
+         */
+        HoverHandler {
+            id: cardHovered
         }
 
         MouseArea {
@@ -158,7 +172,7 @@ Item {
                 RowLayout {
                     Layout.alignment: Qt.AlignVCenter
                     spacing: 2
-                    opacity: cardHover.containsMouse ? 1 : 0
+                    opacity: cardHovered.hovered ? 1 : 0
                     visible: opacity > 0
 
                     Behavior on opacity {
@@ -173,7 +187,7 @@ Item {
                         onTriggered: {
                             if (root.url.length > 0) {
                                 NotesLinkPreview.invalidate(root.url);
-                                root.refreshPreview();
+                                root.refreshPreview(true);
                             }
                         }
                     }

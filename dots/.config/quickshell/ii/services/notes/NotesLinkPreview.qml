@@ -39,12 +39,12 @@ Singleton {
         }
     }
 
-    function fetchPreview(url: string, callback: var): void {
+    function fetchPreview(url: string, callback: var, refresh = false): void {
         const rawUrl = String(url ?? "").trim();
         if (rawUrl.length === 0)
             return;
 
-        if (root.memoryCache.hasOwnProperty(rawUrl)) {
+        if (!refresh && root.memoryCache.hasOwnProperty(rawUrl)) {
             const cached = root.memoryCache[rawUrl];
             if (callback)
                 Qt.callLater(() => callback(cached));
@@ -70,6 +70,7 @@ Singleton {
 
         root.taskQueue.push({
             url: rawUrl,
+            refresh: refresh === true,
             callbacks: callback ? [callback] : []
         });
 
@@ -87,6 +88,8 @@ Singleton {
         const args = [root.scriptPath, task.url, "--cache-dir", root.cacheDir];
         if (!allowNetwork)
             args.push("--no-network");
+        if (task.refresh)
+            args.push("--refresh");
 
         previewProc.command = ["python3"].concat(args);
         previewProc.running = true;

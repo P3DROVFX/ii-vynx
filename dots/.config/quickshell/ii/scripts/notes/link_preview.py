@@ -199,6 +199,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Link preview generator")
     parser.add_argument("url", help="Target URL to preview")
     parser.add_argument("--cache-dir", default="", help="Cache directory")
+    parser.add_argument("--refresh", action="store_true",
+                        help="Ignore the cached answer and ask the site again")
     parser.add_argument("--no-network", action="store_true", help="Do not make external requests")
     args = parser.parse_args()
 
@@ -220,8 +222,10 @@ def main() -> int:
     url_hash = hashlib.sha256(raw_url.encode("utf-8")).hexdigest()[:24]
     cache_file = cache_dir / f"{url_hash}.json"
 
-    # Check cache first
-    if cache_file.exists():
+    # Check cache first. `--refresh` is the one thing that gets past it: without that,
+    # "ask the site again" reached this line, found an answer from six days ago and
+    # returned it, which looks exactly like the button doing nothing.
+    if cache_file.exists() and not args.refresh:
         try:
             cached_data = json.loads(cache_file.read_text(encoding="utf-8"))
             if cached_data.get("ok"):
