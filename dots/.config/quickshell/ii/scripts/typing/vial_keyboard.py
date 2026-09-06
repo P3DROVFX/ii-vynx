@@ -129,10 +129,10 @@ class Keyboard:
     def macros(self):
         """The macros as text, indexed by number.
 
-        A macro is a run of bytes in one shared buffer, ended by a zero. What it
-        finally produces depends on the layout the desktop runs -- "'a" is
-        a-acute under a dead-key layout and two characters under a plain one --
-        so this is what the key sends, not what appears.
+        A macro is a run of bytes in one shared buffer, ended by a zero. What a
+        macro finally produces depends on the layout the desktop is running --
+        "'a" is a-acute under a dead-key layout and two characters under a plain
+        one -- so what comes back here is what the key sends, not what appears.
         """
         count = self.send([CMD_DYNAMIC_KEYMAP_MACRO_GET_COUNT])[1]
         size = struct.unpack(">H", self.send([CMD_DYNAMIC_KEYMAP_MACRO_GET_BUFFER_SIZE])[1:3])[0]
