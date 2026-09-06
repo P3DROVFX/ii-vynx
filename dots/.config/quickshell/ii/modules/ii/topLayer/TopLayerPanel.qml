@@ -134,6 +134,7 @@ PanelWindow {
         if (GlobalStates.rightSidebarTargetWidth > 0 && topPanel.rightSidebarWarmOnMonitor) {
             topPanel.rightSidebarMaskWidth = GlobalStates.rightSidebarTargetWidth;
         }
+        topPanel.updateFocusGrab();
     }
 
     readonly property bool leftSidebarOpenOnMonitor: GlobalStates.sidebarLeftOpen && screen.name === GlobalStates.effectiveLeftMonitor
@@ -246,23 +247,27 @@ PanelWindow {
         ? (topPanel.barOnRight ? 1 : -1) * topPanel.shellHide * (Appearance.sizes.verticalBarWindowWidth + Appearance.rounding.screenRounding)
         : 0
 
-    WlrLayershell.keyboardFocus: (searchOpenOnMonitor || (topPanel.policiesOpenOnMonitor && !GlobalStates.connectSidebarsSeparate) || (leftSidebarOpenOnMonitor && !GlobalStates.connectSidebarsSeparate) || (rightSidebarOpenOnMonitor && !GlobalStates.connectSidebarsSeparate)) ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+    readonly property bool leftSidebarNeedsKeyboard: leftSidebarOpenOnMonitor && !GlobalStates.connectSidebarsSeparate && !(GlobalStates.policiesDetached && topPanel.policiesRenderedOnLeft)
+    readonly property bool rightSidebarNeedsKeyboard: rightSidebarOpenOnMonitor && !GlobalStates.connectSidebarsSeparate && !(GlobalStates.policiesDetached && topPanel.policiesRenderedOnRight)
+    readonly property bool policiesNeedsKeyboard: topPanel.policiesOpenOnMonitor && !GlobalStates.connectSidebarsSeparate && !GlobalStates.policiesDetached
+
+    WlrLayershell.keyboardFocus: (searchOpenOnMonitor || policiesNeedsKeyboard || leftSidebarNeedsKeyboard || rightSidebarNeedsKeyboard) ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
     // Resolve policy commands at window level so focused/selected TextEdits cannot
     // consume Ctrl+D before the sidebar controller sees it.
     Shortcut {
         sequence: "Ctrl+D"
-        enabled: GlobalStates.connectModeActive && !GlobalStates.connectSidebarsSeparate && topPanel.policiesOpenOnMonitor
+        enabled: GlobalStates.connectModeActive && !GlobalStates.connectSidebarsSeparate && topPanel.policiesOpenOnMonitor && !GlobalStates.policiesDetached
         onActivated: topPanel.togglePoliciesDetach()
     }
     Shortcut {
         sequence: "Ctrl+O"
-        enabled: GlobalStates.connectModeActive && !GlobalStates.connectSidebarsSeparate && topPanel.policiesOpenOnMonitor
+        enabled: GlobalStates.connectModeActive && !GlobalStates.connectSidebarsSeparate && topPanel.policiesOpenOnMonitor && !GlobalStates.policiesDetached
         onActivated: topPanel.togglePoliciesExtended()
     }
     Shortcut {
         sequence: "Ctrl+P"
-        enabled: GlobalStates.connectModeActive && !GlobalStates.connectSidebarsSeparate && topPanel.policiesOpenOnMonitor
+        enabled: GlobalStates.connectModeActive && !GlobalStates.connectSidebarsSeparate && topPanel.policiesOpenOnMonitor && !GlobalStates.policiesDetached
         onActivated: topPanel.togglePoliciesPin()
     }
 
@@ -838,6 +843,11 @@ PanelWindow {
                 onActivated: topPanel.togglePoliciesPin()
             }
 
+            onVisibleChanged: {
+                if (!visible && GlobalStates.sidebarLeftOpen)
+                    GlobalStates.sidebarLeftOpen = false;
+            }
+
             Rectangle {
                 anchors.fill: parent
                 focus: true
@@ -849,9 +859,7 @@ PanelWindow {
                 Loader {
                     anchors.fill: parent
                     active: true
-                    sourceComponent: Policies.SidebarPoliciesContent {
-                        scopeRoot: topPanel
-                    }
+                    sourceComponent: policiesContentComponent
                 }
 
                 Keys.onPressed: event => {
@@ -1391,39 +1399,61 @@ PanelWindow {
         }
     }
 
+    function updateFocusGrab() {
+        if (GlobalStates.connectSidebarsSeparate) {
+            GlobalFocusGrab.removeDismissable(topPanel);
+            return;
+        }
+
+        var shouldGrab = false;
+
+        // Left sidebar on this monitor
+        if (GlobalStates.sidebarLeftOpen && screen.name === GlobalStates.effectiveLeftMonitor) {
+            if (topPanel.policiesOnLeft) {
+                if (!GlobalStates.policiesDetached && !GlobalStates.policiesPinned) {
+                    shouldGrab = true;
+                }
+            } else {
+                shouldGrab = true;
+            }
+        }
+
+        // Right sidebar on this monitor
+        if (GlobalStates.sidebarRightOpen && screen.name === GlobalStates.effectiveRightMonitor) {
+            if (!topPanel.policiesOnLeft) {
+                if (!GlobalStates.policiesDetached && !GlobalStates.policiesPinned) {
+                    shouldGrab = true;
+                }
+            } else {
+                shouldGrab = true;
+            }
+        }
+
+        if (shouldGrab) {
+            GlobalFocusGrab.addDismissable(topPanel);
+        } else {
+            GlobalFocusGrab.removeDismissable(topPanel);
+        }
+    }
+
+    Component.onDestruction: GlobalFocusGrab.removeDismissable(topPanel)
+
     Connections {
         target: GlobalStates
         function onPoliciesPinnedChanged() {
-            if (topPanel.policiesOpenOnMonitor) {
-                if (GlobalStates.policiesPinned) {
-                    GlobalFocusGrab.removeDismissable(topPanel);
-                } else {
-                    GlobalFocusGrab.addDismissable(topPanel);
-                }
-            }
+            topPanel.updateFocusGrab();
+        }
+        function onPoliciesDetachedChanged() {
+            topPanel.updateFocusGrab();
         }
         function onSidebarRightOpenChanged() {
-            // In Float+Connect mode, sidebars handle their own dismissal
-            if (GlobalStates.connectSidebarsSeparate)
-                return;
-            if (GlobalStates.sidebarRightOpen && topPanel.screen.name === GlobalStates.effectiveRightMonitor) {
-                if (topPanel.policiesOnLeft || !GlobalStates.policiesPinned)
-                    GlobalFocusGrab.addDismissable(topPanel);
-            } else {
-                GlobalFocusGrab.removeDismissable(topPanel);
-            }
+            topPanel.updateFocusGrab();
         }
         function onSidebarLeftOpenChanged() {
-            // In Float+Connect mode, sidebars handle their own dismissal
-            if (GlobalStates.connectSidebarsSeparate)
-                return;
-            if (GlobalStates.sidebarLeftOpen && topPanel.screen.name === GlobalStates.effectiveLeftMonitor) {
-                if (!topPanel.policiesOnLeft || !GlobalStates.policiesPinned) {
-                    GlobalFocusGrab.addDismissable(topPanel);
-                }
-            } else {
-                GlobalFocusGrab.removeDismissable(topPanel);
-            }
+            topPanel.updateFocusGrab();
+        }
+        function onConnectSidebarsSeparateChanged() {
+            topPanel.updateFocusGrab();
         }
     }
 
@@ -1434,13 +1464,17 @@ PanelWindow {
             if (GlobalStates.connectSidebarsSeparate)
                 return;
             if (GlobalStates.sidebarRightOpen && topPanel.screen.name === GlobalStates.effectiveRightMonitor) {
-                if (topPanel.policiesOnLeft || !GlobalStates.policiesPinned)
+                if (topPanel.policiesOnLeft)
+                    GlobalStates.sidebarRightOpen = false;
+                else if (!GlobalStates.policiesDetached && !GlobalStates.policiesPinned)
                     GlobalStates.sidebarRightOpen = false;
             }
             if (GlobalStates.sidebarLeftOpen && topPanel.screen.name === GlobalStates.effectiveLeftMonitor) {
                 // A file dialog or the region snip the sidebar itself opened
                 // holds it there until it is done.
-                if (!topPanel.policiesOnLeft || (!GlobalStates.policiesPinned && GlobalStates.policiesHoldOpen === 0)) {
+                if (!topPanel.policiesOnLeft) {
+                    GlobalStates.sidebarLeftOpen = false;
+                } else if (!GlobalStates.policiesDetached && (!GlobalStates.policiesPinned && GlobalStates.policiesHoldOpen === 0)) {
                     GlobalStates.sidebarLeftOpen = false;
                 }
             }
@@ -1449,18 +1483,20 @@ PanelWindow {
 
     Item {
         id: keyFocusHandler
-        focus: topPanel.policiesOpenOnMonitor || rightSidebarOpenOnMonitor || searchOpenOnMonitor
+        focus: (topPanel.policiesOpenOnMonitor && !GlobalStates.policiesDetached) || (rightSidebarOpenOnMonitor && !(GlobalStates.policiesDetached && topPanel.policiesRenderedOnRight)) || searchOpenOnMonitor
         Keys.onPressed: event => {
             if (event.key === Qt.Key_Escape) {
                 GlobalStates.sidebarRightOpen = false;
-                GlobalStates.sidebarLeftOpen = false;
+                if (!GlobalStates.policiesDetached) {
+                    GlobalStates.sidebarLeftOpen = false;
+                }
                 if (searchOpenOnMonitor) {
                     GlobalStates.overviewOpen = false;
                 }
                 event.accepted = true;
             }
 
-            if ((event.modifiers & Qt.ControlModifier) !== 0 && topPanel.policiesOpenOnMonitor) {
+            if ((event.modifiers & Qt.ControlModifier) !== 0 && topPanel.policiesOpenOnMonitor && !GlobalStates.policiesDetached) {
                 if (event.key === Qt.Key_O) {
                     topPanel.togglePoliciesExtended();
                 } else if (event.key === Qt.Key_D) {
