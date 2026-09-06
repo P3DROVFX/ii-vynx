@@ -93,6 +93,23 @@ class ThemeTests(unittest.TestCase):
                 if hairline.match(line):
                     self.fail(f"{path.name}:{number} looks like a divider rule")
 
+    def test_each_pane_contains_its_own_content(self):
+        # The slab is a sibling of the content, so its own `clip` contains nothing. Without
+        # a clip on the pane itself, a list long enough to scroll draws cards outside the
+        # rounded rectangle they are supposed to live in.
+        for name in ("NotesNavigationRail.qml", "NotesList.qml", "NotesDetail.qml"):
+            body = read(APP_DIR / name)
+            head = body[:body.index("Rectangle {")]
+            self.assertIn("clip: true", head, f"{name} does not clip its own bounds")
+
+    def test_the_gap_between_panes_survives_a_collapsed_rail(self):
+        # The splitter *is* the gap — the row carries no spacing of its own — so hiding it
+        # with the rail collapsed left the two slabs touching.
+        content = read(CONTENT)
+        self.assertIn("visible: !root.compact\n", content)
+        self.assertIn("resizable: root.railExpanded", content)
+        self.assertIn("spacing: 0", content)
+
     def test_panes_are_opaque_slabs(self):
         # The theme's layered colours are transparency-adjusted and collapse into each
         # other over a wallpaper: measured on a real screenshot, two adjacent panes came

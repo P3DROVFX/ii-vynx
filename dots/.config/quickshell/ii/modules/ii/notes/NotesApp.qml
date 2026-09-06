@@ -99,6 +99,14 @@ Scope {
             return result.ok ? "ok" : String(result.error ?? "failed");
         }
 
+        /// Files a note away, by id. The counterpart of `capture`: a script that can make
+        /// a note should be able to put one in the trash without a window open, and going
+        /// through the service is the only way anything but the service should ever change
+        /// the store.
+        function trash(noteId: string): string {
+            return NotesService.deleteNote(String(noteId ?? "")) ? "ok" : "unknownNote";
+        }
+
         function list(): string {
             return NotesService.notes
                 .map(note => `${note.id}\t${note.title}`)

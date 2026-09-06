@@ -20,6 +20,13 @@ Item {
     signal notePicked(string noteId)
     signal createRequested()
 
+    // Clipped at the pane's own bounds.
+    //
+    // The slab below is a *sibling* of the content, so its own `clip` contains nothing —
+    // a list long enough to scroll had cards drawn outside the rounded rectangle they are
+    // supposed to live in. Clipping belongs to whatever owns the bounds, which is this.
+    clip: true
+
     Rectangle {
         anchors.fill: parent
         radius: Appearance.rounding.large
@@ -30,9 +37,10 @@ Item {
     StyledListView {
         id: list
         anchors.fill: parent
+        // Symmetric. Zero at the bottom let the last card run to the slab's edge, where a
+        // rectangular clip cuts straight across a corner that curves — which is what a
+        // card poking out of the pane actually was.
         anchors.margins: NotesMetrics.panePadding
-        // Zero here ran the last card into the window's rounded corner, which clipped it.
-        anchors.bottomMargin: 0
         topMargin: 0
         bottomMargin: NotesMetrics.panePadding
         spacing: NotesMetrics.cardSpacing

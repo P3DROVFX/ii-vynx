@@ -29,6 +29,13 @@ Item {
     signal pinToggled()
     signal titleEdited(string title)
 
+    // Clipped at the pane's own bounds.
+    //
+    // The slab below is a *sibling* of the content, so its own `clip` contains nothing —
+    // a list long enough to scroll had cards drawn outside the rounded rectangle they are
+    // supposed to live in. Clipping belongs to whatever owns the bounds, which is this.
+    clip: true
+
     /// Puts the caret in the note. Called when one is created, not when one is selected.
     function focusEditor(): void {
         editor.requestAutoFocus();

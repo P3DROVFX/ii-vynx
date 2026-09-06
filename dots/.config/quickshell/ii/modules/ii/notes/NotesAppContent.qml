@@ -274,7 +274,13 @@ Item {
 
             NotesPaneSplitter {
                 Layout.fillHeight: true
-                visible: !root.compact && root.railExpanded
+                // Present whenever both panes are, because this item *is* the gap between
+                // them: hiding it with the rail collapsed left the two slabs touching,
+                // since the row itself carries no spacing of its own.
+                visible: !root.compact
+                // A collapsed rail has no width worth dragging; the seam stays, the handle
+                // does not.
+                resizable: root.railExpanded
                 onMoved: delta => root.state.railWidth = Math.max(NotesMetrics.railMinimumWidth,
                     Math.min(NotesMetrics.railMaximumWidth, root.state.railWidth + delta))
             }

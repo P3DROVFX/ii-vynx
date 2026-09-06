@@ -19,6 +19,10 @@ Item {
     /// Pixels added to the pane on the left as the handle is dragged right.
     signal moved(real delta)
 
+    /// Whether the seam can be dragged. A collapsed rail keeps the gap but not the handle:
+    /// there is no width there to negotiate.
+    property bool resizable: true
+
     implicitWidth: NotesMetrics.paneGap
 
     MouseArea {
@@ -26,6 +30,8 @@ Item {
         anchors.fill: parent
         anchors.leftMargin: -5
         anchors.rightMargin: -5
+        enabled: root.resizable
+        visible: root.resizable
         hoverEnabled: true
         cursorShape: Qt.SizeHorCursor
 
