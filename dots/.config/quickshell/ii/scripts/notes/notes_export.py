@@ -340,14 +340,14 @@ def export_notes(store_dir: Path, export_format: str, output_path: Path, note_id
     if note_id:
         target_notes = [n for n in notes if n.get("id") == note_id]
         if not target_notes:
-            return {"ok": False, "error": "note_not_found", "message": f"Nota com id '{note_id}' não encontrada."}
+            return {"ok": False, "error": "note_not_found", "message": f"No note with the id '{note_id}'."}
     elif export_all:
         target_notes = notes
     else:
         target_notes = notes[:1] if notes else []
 
     if not target_notes:
-        return {"ok": False, "error": "empty_store", "message": "Nenhuma nota encontrada para exportação."}
+        return {"ok": False, "error": "empty_store", "message": "There is nothing to export."}
 
     # ── 1. Markdown Export ────────────────────────────────────────────────
     if export_format == "markdown":
@@ -379,7 +379,7 @@ def export_notes(store_dir: Path, export_format: str, output_path: Path, note_id
             "format": "markdown",
             "count": count,
             "output": str(output_dir),
-            "message": f"{count} notas exportadas em Markdown para '{output_dir}'."
+            "message": f"{count} notes written as Markdown to '{output_dir}'."
         }
 
     # ── 2. HTML Export ────────────────────────────────────────────────────
@@ -395,7 +395,7 @@ def export_notes(store_dir: Path, export_format: str, output_path: Path, note_id
                 "format": "html",
                 "count": 1,
                 "output": str(output_path),
-                "message": f"Nota exportada em HTML para '{output_path}'."
+                "message": f"Note written as a web page to '{output_path}'."
             }
         else:
             output_dir = output_path if output_path.suffix == "" else output_path.parent / output_path.stem
@@ -415,7 +415,7 @@ def export_notes(store_dir: Path, export_format: str, output_path: Path, note_id
                 "format": "html",
                 "count": count,
                 "output": str(output_dir),
-                "message": f"{count} notas exportadas em HTML para '{output_dir}'."
+                "message": f"{count} notes written as web pages to '{output_dir}'."
             }
 
     # ── 3. ZIP Archive Export ─────────────────────────────────────────────
@@ -444,7 +444,7 @@ def export_notes(store_dir: Path, export_format: str, output_path: Path, note_id
             "format": "zip",
             "count": len(target_notes),
             "output": str(zip_path),
-            "message": f"Backup ZIP gerado com sucesso em '{zip_path}'."
+            "message": f"Everything archived to '{zip_path}'."
         }
 
     # ── 4. PDF Export ─────────────────────────────────────────────────────
@@ -462,11 +462,11 @@ def export_notes(store_dir: Path, export_format: str, output_path: Path, note_id
                 "ok": False,
                 "error": "pdf_compiler_missing",
                 "message": (
-                    "Compilador PDF não encontrado no sistema.\n"
-                    "Para exportar em PDF, instale uma das seguintes ferramentas:\n"
+                    "Nothing on this machine can make a PDF.\n"
+                    "Install one of these first:\n"
                     "  - Arch Linux: sudo pacman -S weasyprint\n"
-                    "  - Ubuntu/Debian: sudo apt install weasyprint ou wkhtmltopdf\n"
-                    "  - Python pip: pip install weasyprint"
+                    "  - Ubuntu/Debian: sudo apt install weasyprint (or wkhtmltopdf)\n"
+                    "  - pip: pip install weasyprint"
                 )
             }
 
@@ -494,7 +494,7 @@ def export_notes(store_dir: Path, export_format: str, output_path: Path, note_id
                 return {
                     "ok": False,
                     "error": "pdf_compilation_failed",
-                    "message": f"Falha na compilação do PDF: {proc.stderr.strip()}"
+                    "message": f"The PDF could not be made: {proc.stderr.strip()}"
                 }
 
             return {
@@ -502,14 +502,14 @@ def export_notes(store_dir: Path, export_format: str, output_path: Path, note_id
                 "format": "pdf",
                 "count": 1,
                 "output": str(pdf_path),
-                "message": f"Documento PDF exportado com sucesso em '{pdf_path}'."
+                "message": f"PDF written to '{pdf_path}'."
             }
 
         finally:
             if os.path.exists(temp_html.name):
                 os.unlink(temp_html.name)
 
-    return {"ok": False, "error": "unsupported_format", "message": f"Formato '{export_format}' não suportado."}
+    return {"ok": False, "error": "unsupported_format", "message": f"'{export_format}' is not a format this can write."}
 
 
 def main() -> int:

@@ -323,7 +323,7 @@ def import_from_directory_or_zip(takeout_path: Path, store_dir: Path, dry_run: b
             return {
                 "ok": False,
                 "error": "no_notes_found",
-                "message": f"Nenhuma nota em formato JSON encontrada em '{takeout_path}'."
+                "message": f"No Keep notes found in '{takeout_path}'."
             }
 
         index_data = load_or_init_store(store_dir)
@@ -547,13 +547,13 @@ def main() -> int:
         return emit(res)
 
     if not args.takeout:
-        return emit({"ok": False, "error": "missing_argument", "message": "Argumento --takeout <caminho> obrigatório."})
+        return emit({"ok": False, "error": "missing_argument", "message": "--takeout <path> is required."})
 
     takeout_path = Path(args.takeout).resolve()
     store_path = Path(args.store).resolve()
 
     if not takeout_path.exists():
-        return emit({"ok": False, "error": "path_not_found", "message": f"Caminho '{takeout_path}' não encontrado."})
+        return emit({"ok": False, "error": "path_not_found", "message": f"There is nothing at '{takeout_path}'."})
 
     result = import_from_directory_or_zip(takeout_path, store_path, dry_run=args.dry_run, target_notebook_id=args.notebook)
     return emit(result)

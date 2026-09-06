@@ -46,9 +46,17 @@ Item {
         editor.requestAutoFocus();
     }
 
+    /// Asked for by the table of contents, which knows a block id and nothing else.
+    function goToBlock(blockId) {
+        editor.goToBlock(blockId);
+    }
+
     readonly property string noteId: root.note ? root.note.id : ""
     /// Empty means the note has not chosen one, which is plain.
-    readonly property string paperStyle: root.note && root.note.paper.length > 0 ? root.note.paper : "plain"
+    /// A note that has not chosen a page falls back to the preference, not to a constant.
+    readonly property string paperStyle: root.note && root.note.paper.length > 0
+        ? root.note.paper
+        : (Config.options.notes.defaultPaper ?? "plain")
     readonly property var backlinks: root.note
         ? SearchIndex.findBacklinks(root.note.id, root.note.title, NotesService.notes, null)
         : []
@@ -78,61 +86,65 @@ Item {
         return count;
     }
     readonly property int readingMinutes: Math.max(1, Math.ceil(root.wordCount / 200))
-    readonly property var reminderTimestamp: root.note && root.note.meta && root.note.meta.reminder ? root.note.meta.reminder : 0
 
+    // ── Reminders and the lock ────────────────────────────────────────────
+    //
+    // Both of these read fields on the note record. They used to read `note.meta`, a bag
+    // the index has never had and `normalizeNote` has always dropped, so every reminder
+    // was accepted and forgotten and every lock lasted until the next reload.
+
+    readonly property real reminderAt: root.note ? root.note.reminder : 0
+    readonly property bool reminderDone: root.note ? root.note.reminderDone : false
+    /**
+     * Locked *and* openable.
+     *
+     * With no PIN there is nothing to hide behind: a note still carrying the flag after
+     * the PIN was forgotten would show a cover that no answer opens, which is not a lock,
+     * it is a lost note.
+     */
+    readonly property bool isLocked: root.note ? (root.note.locked && root.hasPin) : false
+
+    /// A PIN exists for the app. There is no default one: a lock everybody's shell opens
+    /// with 1234 is worse than no lock, because it looks like protection.
+    readonly property bool hasPin: Persistent.states.notes.lockDigest.length > 0
+
+    /// Typing the PIN opens this note until the shell restarts, not for ever.
     property bool unlockedThisSession: false
     onNoteIdChanged: root.unlockedThisSession = false
 
-    readonly property bool isLocked: {
-        if (!root.note) return false;
-        if (root.note.meta && root.note.meta.locked) return true;
-        if (Persistent.ready && Persistent.states.notes?.lockedNotes && Persistent.states.notes.lockedNotes[root.noteId]) return true;
-        return false;
+    readonly property string reminderLabel: root.reminderAt > 0
+        ? Qt.formatDateTime(new Date(root.reminderAt), "d MMM, HH:mm")
+        : ""
+
+    function setReminder(timestamp): void {
+        if (root.noteId.length > 0)
+            NotesService.updateMeta(root.noteId, { reminder: Math.round(timestamp), reminderDone: false });
     }
 
-    readonly property string storedPin: {
-        if (!root.note) return "1234";
-        if (root.note.meta && root.note.meta.pin) return String(root.note.meta.pin);
-        if (Persistent.ready && Persistent.states.notes?.lockedNotes && Persistent.states.notes.lockedNotes[root.noteId]?.pin)
-            return String(Persistent.states.notes.lockedNotes[root.noteId].pin);
-        return "1234";
+    function clearReminder(): void {
+        if (root.noteId.length > 0)
+            NotesService.updateMeta(root.noteId, { reminder: 0, reminderDone: false });
     }
 
-    function setReminder(timestamp) {
-        if (!root.noteId) return;
-        const meta = Object.assign({}, root.note ? root.note.meta : {}, { reminder: timestamp, reminderNotified: false });
-        NotesService.updateMeta(root.noteId, { meta: meta });
+    /// The digest, never the PIN. A salt so two shells with the same PIN do not share a
+    /// digest, minted the first time one is chosen.
+    function choosePin(pin): void {
+        if (Persistent.states.notes.lockSalt.length === 0)
+            Persistent.states.notes.lockSalt = Qt.md5(String(Math.random()) + String(Date.now()));
+        Persistent.states.notes.lockDigest = Qt.md5(Persistent.states.notes.lockSalt + pin);
+        root.lockNote();
     }
 
-    function clearReminder() {
-        if (!root.noteId) return;
-        const meta = Object.assign({}, root.note ? root.note.meta : {});
-        delete meta.reminder;
-        delete meta.reminderNotified;
-        NotesService.updateMeta(root.noteId, { meta: meta });
-    }
-
-    function setLock(pin) {
-        if (!root.noteId) return;
-        if (!Persistent.ready || !Persistent.states.notes) return;
-        const locked = Object.assign({}, Persistent.states.notes.lockedNotes || {});
-        locked[root.noteId] = { pin: pin || "1234" };
-        Persistent.states.notes.lockedNotes = locked;
-        const meta = Object.assign({}, root.note ? root.note.meta : {}, { locked: true, pin: pin || "1234" });
-        NotesService.updateMeta(root.noteId, { meta: meta });
+    function lockNote(): void {
+        if (root.noteId.length === 0)
+            return;
+        NotesService.updateMeta(root.noteId, { locked: true });
         root.unlockedThisSession = true;
     }
 
-    function removeLock() {
-        if (!root.noteId) return;
-        if (Persistent.ready && Persistent.states.notes?.lockedNotes) {
-            const locked = Object.assign({}, Persistent.states.notes.lockedNotes);
-            delete locked[root.noteId];
-            Persistent.states.notes.lockedNotes = locked;
-        }
-        const meta = Object.assign({}, root.note ? root.note.meta : {}, { locked: false });
-        delete meta.pin;
-        NotesService.updateMeta(root.noteId, { meta: meta });
+    function unlockNote(): void {
+        if (root.noteId.length > 0)
+            NotesService.updateMeta(root.noteId, { locked: false });
         root.unlockedThisSession = false;
     }
 
@@ -243,296 +255,174 @@ Item {
         exportSheet.visible = true;
     }
 
-    Rectangle {
-        id: reminderPopup
+    /**
+     * One click anywhere else puts these away.
+     *
+     * The page picker had no such thing and neither did the popups that came after it: the
+     * only way to close one was to find the button that opened it again, which is not
+     * where a hand goes.
+     */
+    MouseArea {
+        // Everything below the header. Covering the header too meant the button that
+        // opened a popup could not close it again, and switching from the page picker to
+        // the menu took two clicks with nothing to show for the first.
+        anchors.fill: parent
+        // Below the header, whose buttons keep working: the one that opened a popup has to
+        // be able to close it, and switching from the page picker to the menu should not
+        // cost a click that does nothing. A number rather than an anchor to the header —
+        // it lives inside a layout, and anchoring across that is not allowed. It is the
+        // same inset the popups themselves hang from.
+        anchors.topMargin: 68
+        z: 9
+        visible: paperPicker.visible || noteMenu.visible || reminderMenu.visible || lockSheet.visible
+        onClicked: {
+            paperPicker.visible = false;
+            noteMenu.visible = false;
+            reminderMenu.visible = false;
+            lockSheet.visible = false;
+        }
+    }
+
+    NotesNoteMenu {
+        id: noteMenu
         anchors.right: parent.right
         anchors.top: parent.top
         anchors.rightMargin: NotesMetrics.panePadding
         anchors.topMargin: 68
-        width: 220
-        height: reminderLayout.implicitHeight + 24
+        z: 14
+        visible: false
+
+        items: [
+            { id: "outline", symbol: "format_list_bulleted", label: Translation.tr("Table of contents") },
+            { id: "history", symbol: "history", label: Translation.tr("Version history") },
+            { id: "focus", symbol: "fullscreen", label: Translation.tr("Focus mode") },
+            { id: "" },
+            {
+                id: "reminder",
+                symbol: root.reminderAt > 0 ? "notifications_active" : "notifications",
+                label: Translation.tr("Remind me…"),
+                hint: root.reminderLabel
+            },
+            {
+                id: "lock",
+                symbol: root.isLocked ? "lock" : "lock_open",
+                label: root.isLocked ? Translation.tr("Locked") : Translation.tr("Lock…")
+            },
+            { id: "export", symbol: "file_export", label: Translation.tr("Export…") },
+            { id: "" },
+            { id: "delete", symbol: "delete", label: Translation.tr("Move to the trash"), tone: "error" }
+        ]
+
+        onPicked: id => {
+            noteMenu.visible = false;
+            if (id === "outline")
+                root.outlineRequested();
+            else if (id === "history")
+                root.revisionsRequested();
+            else if (id === "focus")
+                root.focusModeToggled();
+            else if (id === "reminder")
+                reminderMenu.visible = true;
+            else if (id === "lock")
+                lockSheet.visible = true;
+            else if (id === "export")
+                exportSheet.visible = true;
+            else if (id === "delete")
+                root.deleteRequested();
+        }
+    }
+
+    NotesNoteMenu {
+        id: reminderMenu
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.rightMargin: NotesMetrics.panePadding
+        anchors.topMargin: 68
         z: 15
         visible: false
-        radius: Appearance.rounding.medium
-        color: Appearance.colors.colLayer2
-        border.color: Appearance.colors.colLayer3
-        border.width: 1
+        title: Translation.tr("Remind me")
 
-        ColumnLayout {
-            id: reminderLayout
-            anchors.fill: parent
-            anchors.margins: 12
-            spacing: 8
+        readonly property var evening: {
+            const when = new Date();
+            when.setHours(18, 0, 0, 0);
+            return when;
+        }
 
-            StyledText {
-                text: Translation.tr("Set Reminder")
-                font.pixelSize: Appearance.font.pixelSize.base
-                font.weight: Font.DemiBold
-                color: Appearance.colors.colOnLayer0
+        items: {
+            const list = [
+                { id: "hour", symbol: "schedule", label: Translation.tr("In an hour") }
+            ];
+            if (reminderMenu.evening.getTime() > Date.now() + 3600000)
+                list.push({ id: "evening", symbol: "bedtime", label: Translation.tr("This evening, 18:00") });
+            list.push({ id: "tomorrow", symbol: "wb_twilight", label: Translation.tr("Tomorrow, 09:00") });
+            list.push({ id: "week", symbol: "date_range", label: Translation.tr("In a week") });
+            if (root.reminderAt > 0) {
+                list.push({ id: "" });
+                list.push({
+                    id: "clear",
+                    symbol: "notifications_off",
+                    label: Translation.tr("Forget it"),
+                    hint: root.reminderLabel,
+                    tone: "error"
+                });
             }
+            return list;
+        }
 
-            RippleButton {
-                Layout.fillWidth: true
-                implicitHeight: 32
-                buttonRadius: Appearance.rounding.small
-                colBackground: Appearance.colors.colLayer3
-                colBackgroundHover: Appearance.colors.colLayer3Hover
-                contentItem: StyledText {
-                    anchors.centerIn: parent
-                    text: Translation.tr("In 1 hour")
-                    font.pixelSize: Appearance.font.pixelSize.smaller
-                    color: Appearance.colors.colOnLayer0
-                }
-                onClicked: {
-                    root.setReminder(Date.now() + 3600 * 1000);
-                    reminderPopup.visible = false;
-                }
-            }
-
-            RippleButton {
-                Layout.fillWidth: true
-                implicitHeight: 32
-                buttonRadius: Appearance.rounding.small
-                colBackground: Appearance.colors.colLayer3
-                colBackgroundHover: Appearance.colors.colLayer3Hover
-                contentItem: StyledText {
-                    anchors.centerIn: parent
-                    text: Translation.tr("Tomorrow 09:00")
-                    font.pixelSize: Appearance.font.pixelSize.smaller
-                    color: Appearance.colors.colOnLayer0
-                }
-                onClicked: {
-                    const d = new Date();
-                    d.setDate(d.getDate() + 1);
-                    d.setHours(9, 0, 0, 0);
-                    root.setReminder(d.getTime());
-                    reminderPopup.visible = false;
-                }
-            }
-
-            RippleButton {
-                Layout.fillWidth: true
-                implicitHeight: 32
-                buttonRadius: Appearance.rounding.small
-                colBackground: Appearance.colors.colLayer3
-                colBackgroundHover: Appearance.colors.colLayer3Hover
-                contentItem: StyledText {
-                    anchors.centerIn: parent
-                    text: Translation.tr("In 2 days")
-                    font.pixelSize: Appearance.font.pixelSize.smaller
-                    color: Appearance.colors.colOnLayer0
-                }
-                onClicked: {
-                    root.setReminder(Date.now() + 2 * 86400 * 1000);
-                    reminderPopup.visible = false;
-                }
-            }
-
-            RippleButton {
-                Layout.fillWidth: true
-                implicitHeight: 32
-                visible: root.reminderTimestamp > 0
-                buttonRadius: Appearance.rounding.small
-                colBackground: Appearance.m3colors.m3errorContainer
-                colBackgroundHover: Appearance.m3colors.m3errorContainer
-                contentItem: StyledText {
-                    anchors.centerIn: parent
-                    text: Translation.tr("Clear reminder")
-                    font.pixelSize: Appearance.font.pixelSize.smaller
-                    color: Appearance.m3colors.m3onErrorContainer
-                }
-                onClicked: {
-                    root.clearReminder();
-                    reminderPopup.visible = false;
-                }
+        onPicked: id => {
+            reminderMenu.visible = false;
+            if (id === "hour") {
+                root.setReminder(Date.now() + 3600000);
+            } else if (id === "evening") {
+                root.setReminder(reminderMenu.evening.getTime());
+            } else if (id === "tomorrow") {
+                const when = new Date();
+                when.setDate(when.getDate() + 1);
+                when.setHours(9, 0, 0, 0);
+                root.setReminder(when.getTime());
+            } else if (id === "week") {
+                const when = new Date();
+                when.setDate(when.getDate() + 7);
+                when.setHours(9, 0, 0, 0);
+                root.setReminder(when.getTime());
+            } else if (id === "clear") {
+                root.clearReminder();
             }
         }
     }
 
-    Rectangle {
-        id: lockModal
+    NotesLockSheet {
+        id: lockSheet
         anchors.right: parent.right
         anchors.top: parent.top
         anchors.rightMargin: NotesMetrics.panePadding
         anchors.topMargin: 68
-        width: 240
-        height: lockModalLayout.implicitHeight + 24
         z: 16
         visible: false
-        radius: Appearance.rounding.medium
-        color: Appearance.colors.colLayer2
-        border.color: Appearance.colors.colLayer3
-        border.width: 1
+        hasPin: root.hasPin
+        noteLocked: root.isLocked
 
-        ColumnLayout {
-            id: lockModalLayout
-            anchors.fill: parent
-            anchors.margins: 12
-            spacing: 8
-
-            StyledText {
-                text: root.isLocked ? Translation.tr("Manage Lock") : Translation.tr("Lock Note")
-                font.pixelSize: Appearance.font.pixelSize.base
-                font.weight: Font.DemiBold
-                color: Appearance.colors.colOnLayer0
-            }
-
-            StyledText {
-                text: root.isLocked ? Translation.tr("PIN is currently active.") : Translation.tr("Set a 4-digit PIN:")
-                font.pixelSize: Appearance.font.pixelSize.smaller
-                color: Appearance.colors.colSubtext
-            }
-
-            Item {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 36
-                visible: !root.isLocked
-
-                StyledTextInput {
-                    id: newPinInput
-                    anchors.fill: parent
-                    echoMode: TextInput.Password
-                    font.pixelSize: Appearance.font.pixelSize.base
-                    color: Appearance.colors.colOnLayer0
-                }
-
-                StyledText {
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: "1234"
-                    font.pixelSize: Appearance.font.pixelSize.base
-                    color: Appearance.colors.colSubtext
-                    visible: newPinInput.text.length === 0
-                }
-            }
-
-            RippleButton {
-                Layout.fillWidth: true
-                implicitHeight: 32
-                buttonRadius: Appearance.rounding.small
-                colBackground: Appearance.colors.colPrimary
-                colBackgroundHover: Appearance.colors.colPrimaryHover
-                contentItem: StyledText {
-                    anchors.centerIn: parent
-                    text: root.isLocked ? Translation.tr("Remove Lock") : Translation.tr("Lock Note")
-                    font.pixelSize: Appearance.font.pixelSize.smaller
-                    color: Appearance.colors.colOnPrimary
-                }
-                onClicked: {
-                    if (root.isLocked) {
-                        root.removeLock();
-                    } else {
-                        root.setLock(newPinInput.text || "1234");
-                        newPinInput.text = "";
-                    }
-                    lockModal.visible = false;
-                }
-            }
+        onPinChosen: pin => {
+            root.choosePin(pin);
+            lockSheet.visible = false;
+        }
+        onLockRequested: {
+            root.lockNote();
+            lockSheet.visible = false;
+        }
+        onUnlockRequested: {
+            root.unlockNote();
+            lockSheet.visible = false;
         }
     }
 
-    Rectangle {
-        id: lockGuard
+    NotesLockGuard {
         anchors.fill: parent
         z: 25
         visible: root.note !== null && root.isLocked && !root.unlockedThisSession
-        color: Appearance.m3colors.m3surfaceContainerHigh
-        radius: Appearance.rounding.large
-
-        ColumnLayout {
-            anchors.centerIn: parent
-            width: Math.min(parent.width - 64, 380)
-            spacing: 16
-
-            MaterialSymbol {
-                Layout.alignment: Qt.AlignHCenter
-                text: "lock"
-                iconSize: 56
-                color: Appearance.colors.colPrimary
-            }
-
-            StyledText {
-                Layout.alignment: Qt.AlignHCenter
-                text: Translation.tr("This note is locked")
-                font.pixelSize: Appearance.font.pixelSize.huge
-                font.weight: Font.DemiBold
-                color: Appearance.colors.colOnLayer0
-            }
-
-            StyledText {
-                Layout.alignment: Qt.AlignHCenter
-                text: Translation.tr("Enter your PIN to unlock this note.")
-                font.pixelSize: Appearance.font.pixelSize.base
-                color: Appearance.colors.colSubtext
-            }
-
-            StyledTextInput {
-                id: pinEntryField
-                Layout.alignment: Qt.AlignHCenter
-                Layout.preferredWidth: 160
-                Layout.preferredHeight: 44
-                echoMode: TextInput.Password
-                horizontalAlignment: TextInput.AlignHCenter
-                font.pixelSize: Appearance.font.pixelSize.larger
-                font.weight: Font.Bold
-                color: Appearance.colors.colOnLayer0
-                activeFocusOnTab: true
-                onAccepted: {
-                    if (pinEntryField.text === root.storedPin) {
-                        root.unlockedThisSession = true;
-                        pinEntryField.text = "";
-                        pinErrorText.visible = false;
-                    } else {
-                        pinErrorText.visible = true;
-                    }
-                }
-            }
-
-            StyledText {
-                id: pinErrorText
-                Layout.alignment: Qt.AlignHCenter
-                visible: false
-                text: Translation.tr("Incorrect PIN")
-                font.pixelSize: Appearance.font.pixelSize.smaller
-                color: Appearance.m3colors.m3error
-            }
-
-            RippleButton {
-                Layout.alignment: Qt.AlignHCenter
-                implicitHeight: 40
-                implicitWidth: 120
-                buttonRadius: Appearance.rounding.small
-                colBackground: Appearance.colors.colPrimary
-                colBackgroundHover: Appearance.colors.colPrimaryHover
-                colBackgroundActive: Appearance.colors.colPrimaryActive
-
-                contentItem: StyledText {
-                    anchors.centerIn: parent
-                    text: Translation.tr("Unlock")
-                    font.weight: Font.DemiBold
-                    color: Appearance.colors.colOnPrimary
-                }
-
-                onClicked: {
-                    if (pinEntryField.text === root.storedPin) {
-                        root.unlockedThisSession = true;
-                        pinEntryField.text = "";
-                        pinErrorText.visible = false;
-                    } else {
-                        pinErrorText.visible = true;
-                    }
-                }
-            }
-
-            StyledText {
-                Layout.fillWidth: true
-                Layout.topMargin: 12
-                wrapMode: Text.WordWrap
-                horizontalAlignment: Text.AlignHCenter
-                text: Translation.tr("Note: Locked notes are protected within Quickshell UI. Files are stored unencrypted on disk.")
-                font.pixelSize: Appearance.font.pixelSize.smallest
-                color: Appearance.colors.colSubtext
-            }
-        }
+        digest: Persistent.states.notes.lockDigest
+        salt: Persistent.states.notes.lockSalt
+        onUnlocked: root.unlockedThisSession = true
     }
 
     ColumnLayout {
@@ -583,44 +473,33 @@ Item {
                 }
             }
 
+            /**
+             * Four, and then a menu.
+             *
+             * These are the four a hand reaches for while reading a note — mark it, keep
+             * it at the top, change the paper, get out of the way — and the eleven that
+             * were here made all four harder to find than any of them is alone. The rest
+             * are in the menu, which is also where the one that destroys something lives:
+             * a note should not be one stray click from the trash.
+             */
             NotesIconButton {
-                symbol: "format_list_bulleted"
-                tooltipText: Translation.tr("Table of contents")
-                colIcon: Appearance.colors.colOnLayer1
+                symbol: "star"
+                tooltipText: root.note && root.note.favorite
+                    ? Translation.tr("Remove from favourites")
+                    : Translation.tr("Add to favourites")
+                colIcon: root.note && root.note.favorite ? Appearance.colors.colPrimary : Appearance.colors.colOnLayer1
                 visible: !root.trash
-                onTriggered: root.outlineRequested()
+                onTriggered: root.favoriteToggled()
             }
 
             NotesIconButton {
-                symbol: "history"
-                tooltipText: Translation.tr("Version history")
-                colIcon: Appearance.colors.colOnLayer1
+                symbol: "keep"
+                tooltipText: root.note && root.note.pinned
+                    ? Translation.tr("Unpin")
+                    : Translation.tr("Pin to the top of the list")
+                colIcon: root.note && root.note.pinned ? Appearance.colors.colPrimary : Appearance.colors.colOnLayer1
                 visible: !root.trash
-                onTriggered: root.revisionsRequested()
-            }
-
-            NotesIconButton {
-                symbol: root.reminderTimestamp > 0 ? "notifications_active" : "notifications"
-                tooltipText: Translation.tr("Reminder")
-                colIcon: root.reminderTimestamp > 0 ? Appearance.colors.colPrimary : Appearance.colors.colOnLayer1
-                visible: !root.trash
-                onTriggered: reminderPopup.visible = !reminderPopup.visible
-            }
-
-            NotesIconButton {
-                symbol: root.isLocked ? "lock" : "lock_open"
-                tooltipText: root.isLocked ? Translation.tr("Note locked") : Translation.tr("Lock note")
-                colIcon: root.isLocked ? Appearance.colors.colPrimary : Appearance.colors.colOnLayer1
-                visible: !root.trash
-                onTriggered: lockModal.visible = !lockModal.visible
-            }
-
-            NotesIconButton {
-                symbol: "fullscreen"
-                tooltipText: Translation.tr("Focus mode")
-                colIcon: Appearance.colors.colOnLayer1
-                visible: !root.trash
-                onTriggered: root.focusModeToggled()
+                onTriggered: root.pinToggled()
             }
 
             NotesIconButton {
@@ -628,31 +507,27 @@ Item {
                 tooltipText: Translation.tr("Page style")
                 colIcon: root.paperStyle !== "plain" ? Appearance.colors.colPrimary : Appearance.colors.colOnLayer1
                 visible: !root.trash
-                onTriggered: paperPicker.visible = !paperPicker.visible
+                toggled: paperPicker.visible
+                colBackgroundToggled: Appearance.colors.colSecondaryContainer
+                onTriggered: {
+                    noteMenu.visible = false;
+                    paperPicker.visible = !paperPicker.visible;
+                }
             }
 
             NotesIconButton {
-                symbol: "keep"
-                tooltipText: Translation.tr("Pin to the top of the list")
-                colIcon: root.note && root.note.pinned ? Appearance.colors.colPrimary : Appearance.colors.colOnLayer1
-                visible: !root.trash
-                onTriggered: root.pinToggled()
-            }
-
-            NotesIconButton {
-                symbol: "star"
-                tooltipText: Translation.tr("Add to favourites")
-                colIcon: root.note && root.note.favorite ? Appearance.colors.colPrimary : Appearance.colors.colOnLayer1
-                visible: !root.trash
-                onTriggered: root.favoriteToggled()
-            }
-
-            NotesIconButton {
-                symbol: "file_export"
-                tooltipText: Translation.tr("Export note")
+                symbol: "more_vert"
+                tooltipText: Translation.tr("Everything else")
                 colIcon: Appearance.colors.colOnLayer1
                 visible: !root.trash
-                onTriggered: exportSheet.visible = true
+                toggled: noteMenu.visible
+                colBackgroundToggled: Appearance.colors.colSecondaryContainer
+                onTriggered: {
+                    paperPicker.visible = false;
+                    reminderMenu.visible = false;
+                    lockSheet.visible = false;
+                    noteMenu.visible = !noteMenu.visible;
+                }
             }
 
             NotesIconButton {
@@ -662,12 +537,14 @@ Item {
                 onTriggered: root.restoreRequested()
             }
 
+            /// In the trash only. Everywhere else the trash is a menu item, because the
+            /// button that destroys a note should not be the one nearest the pointer when
+            /// somebody is reaching for the star.
             NotesIconButton {
-                symbol: root.trash ? "delete_forever" : "delete"
-                tooltipText: root.trash
-                    ? Translation.tr("Delete permanently")
-                    : Translation.tr("Move to the trash")
-                colIcon: root.trash ? Appearance.m3colors.m3error : Appearance.colors.colOnLayer1
+                symbol: "delete_forever"
+                tooltipText: Translation.tr("Delete permanently")
+                colIcon: Appearance.m3colors.m3error
+                visible: root.trash
                 onTriggered: root.deleteRequested()
             }
         }
@@ -712,24 +589,49 @@ Item {
                 Layout.fillWidth: true
             }
 
-            RowLayout {
-                visible: root.reminderTimestamp > 0
-                spacing: 4
-                MaterialSymbol {
-                    text: "notifications"
-                    iconSize: 14
-                    color: Appearance.colors.colPrimary
+            /// A chip the size of the line it sits on. The 44px icon button that used to
+            /// end this row was three times the height of the text beside it, and it put
+            /// "forget this reminder" one twitch away from "read this reminder".
+            RippleButton {
+                id: reminderChip
+                Layout.alignment: Qt.AlignVCenter
+                visible: root.reminderAt > 0
+                implicitHeight: 26
+                implicitWidth: reminderChipRow.implicitWidth + 20
+                buttonRadius: NotesMetrics.pillRadius(26)
+                colBackground: Appearance.colors.colSecondaryContainer
+                colBackgroundHover: Appearance.colors.colSecondaryContainerHover
+                opacity: root.reminderDone ? 0.6 : 1
+
+                onClicked: {
+                    noteMenu.visible = false;
+                    reminderMenu.visible = !reminderMenu.visible;
                 }
-                StyledText {
-                    text: Translation.tr("Reminder: %1").arg(Qt.formatDateTime(new Date(root.reminderTimestamp), "d MMM, HH:mm"))
-                    font.pixelSize: Appearance.font.pixelSize.smallest
-                    color: Appearance.colors.colPrimary
+
+                StyledToolTip {
+                    text: root.reminderDone
+                        ? Translation.tr("Already mentioned. Click to change it.")
+                        : Translation.tr("Click to change or forget it")
                 }
-                NotesIconButton {
-                    symbol: "close"
-                    tooltipText: Translation.tr("Clear reminder")
-                    colIcon: Appearance.colors.colSubtext
-                    onTriggered: root.clearReminder()
+
+                contentItem: RowLayout {
+                    id: reminderChipRow
+                    anchors.centerIn: parent
+                    spacing: 5
+
+                    MaterialSymbol {
+                        Layout.alignment: Qt.AlignVCenter
+                        text: root.reminderDone ? "notifications" : "notifications_active"
+                        iconSize: 14
+                        color: Appearance.m3colors.m3onSecondaryContainer
+                    }
+
+                    StyledText {
+                        Layout.alignment: Qt.AlignVCenter
+                        text: root.reminderLabel
+                        font.pixelSize: Appearance.font.pixelSize.smaller
+                        color: Appearance.m3colors.m3onSecondaryContainer
+                    }
                 }
             }
         }
@@ -826,6 +728,7 @@ Item {
             NotesPaper {
                 anchors.fill: parent
                 paperStyle: root.paperStyle
+                paperStrength: Math.max(0, Math.min(100, Config.options.notes.paperStrength ?? 50)) / 100
                 scrollOffset: editor.scrollOffset
             }
 

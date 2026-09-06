@@ -82,6 +82,8 @@ Item {
     // ── Focus ─────────────────────────────────────────────────────────────
 
     function takeFocus(caret): void {
+        if (!root.editor || !root.block)
+            return;
         editText.forceActiveFocus();
         editText.cursorPosition = caret < 0 ? editText.length : Math.min(caret, editText.length);
         // Only now is the request spent. Clearing it before the caret was actually here
@@ -94,8 +96,16 @@ Item {
         if (!root.editor || !root.block)
             return;
         const caret = root.editor.peekFocus(root.block.id);
-        if (caret !== -2)
-            Qt.callLater(() => root.takeFocus(caret));
+        if (caret === -2)
+            return;
+        // Deferred, and this delegate may not live long enough to answer: a list that
+        // rebuilds while a focus request is in flight destroys the row it was meant for,
+        // and a destroyed QML object reads as `null` from the closure that captured it —
+        // which is what "cannot read property 'takeFocus' of null" was, once per rebuild.
+        Qt.callLater(() => {
+            if (root)
+                root.takeFocus(caret);
+        });
     }
 
     Connections {
@@ -537,7 +547,12 @@ Item {
     }
 
     function endApplying(): void {
-        Qt.callLater(() => root.applying = false);
+        // Same guard as the focus request above: the delegate can be gone by the time this
+        // runs, and writing a property on a destroyed object throws.
+        Qt.callLater(() => {
+            if (root)
+                root.applying = false;
+        });
     }
 
     function commit(): void {

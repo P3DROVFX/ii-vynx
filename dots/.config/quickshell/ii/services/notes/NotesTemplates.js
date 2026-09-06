@@ -3,128 +3,143 @@
 .import "NotesDocument.js" as Doc
 
 /**
- * Built-in and user note templates.
+ * The notes you start from instead of from nothing.
  *
- * A template produces a complete document structure with headings, checklists,
- * lists and code blocks pre-formatted, giving immediate structure to notes.
+ * Three things went wrong in the first version of this file and all three were invisible
+ * from the outside:
+ *
+ *  - Every template was written in Portuguese, in an app whose every other string is
+ *    English and translated from it. A shell in Japanese offered "Receita Culinária".
+ *  - The block fields were guesses. `style: "numbered"` is not a list style the model has
+ *    (it is `number`), and `calloutType` is not a field at all (it is `tone`), so
+ *    `normalizeBlock` quietly dropped both: every numbered list came out as bullets and
+ *    every callout as the default tone.
+ *  - `new Date()` was evaluated once, when this library was first loaded. A shell left
+ *    running for a week stamped last week's date on today's journal.
+ *
+ * So: English, only fields the schema in `NotesDocument.js` declares, and `%date%` filled
+ * in when the template is used rather than when the file is read.
  */
+
+var DATE_TOKEN = "%date%";
 
 var BUILTIN_TEMPLATES = [
     {
         id: "meeting",
-        name: "Reunião",
-        description: "Pauta, participantes, discussão, decisões e ações combinadas.",
+        name: "Meeting",
+        description: "Who came, what was said, what was decided, and who does what next.",
         icon: "groups",
-        tags: ["reuniao", "meeting"],
+        tags: ["meeting"],
         blocks: [
-            { type: "heading", level: 1, text: "Reunião: " },
-            { type: "callout", calloutType: "info", text: "Data: " + new Date().toLocaleDateString() + " | Facilitador: " },
-            { type: "heading", level: 2, text: "Participantes" },
+            { type: "heading", level: 1, text: "Meeting: " },
+            { type: "callout", tone: "info", text: DATE_TOKEN + " · chaired by " },
+            { type: "heading", level: 2, text: "Who is here" },
             { type: "list", style: "bullet", text: "" },
-            { type: "heading", level: 2, text: "Pauta e Objetivos" },
-            { type: "list", style: "numbered", text: "Tópico 1" },
-            { type: "list", style: "numbered", text: "Tópico 2" },
-            { type: "heading", level: 2, text: "Notas de Discussão" },
+            { type: "heading", level: 2, text: "What we are here for" },
+            { type: "list", style: "number", text: "" },
+            { type: "list", style: "number", text: "" },
+            { type: "heading", level: 2, text: "Notes" },
             { type: "text", text: "" },
-            { type: "heading", level: 2, text: "Decisões Tomadas" },
-            { type: "list", style: "checkbox", checked: false, text: "Decisão 1" },
-            { type: "heading", level: 2, text: "Ações e Próximos Passos" },
-            { type: "list", style: "checkbox", checked: false, text: "Responsável — Ação — Prazo" }
+            { type: "heading", level: 2, text: "Decided" },
+            { type: "list", style: "checkbox", checked: false, text: "" },
+            { type: "heading", level: 2, text: "Next" },
+            { type: "list", style: "checkbox", checked: false, text: "Who · what · by when" }
         ]
     },
     {
         id: "journal",
-        name: "Diário Pessoal",
-        description: "Reflexão diária com gratidão, prioridades e pensamentos.",
+        name: "Journal",
+        description: "One day: what matters, what you are grateful for, and how it went.",
         icon: "auto_stories",
-        tags: ["diario", "journal"],
+        tags: ["journal"],
         blocks: [
-            { type: "heading", level: 1, text: "Diário — " + new Date().toLocaleDateString() },
-            { type: "heading", level: 2, text: "Foco Principal do Dia" },
-            { type: "list", style: "checkbox", checked: false, text: "A coisa mais importante hoje" },
-            { type: "heading", level: 2, text: "Gratidão" },
-            { type: "list", style: "bullet", text: "Sou grato por..." },
-            { type: "list", style: "bullet", text: "Sou grato por..." },
-            { type: "list", style: "bullet", text: "Sou grato por..." },
-            { type: "heading", level: 2, text: "Pensamentos e Acontecimentos" },
+            { type: "heading", level: 1, text: DATE_TOKEN },
+            { type: "heading", level: 2, text: "The one thing today" },
+            { type: "list", style: "checkbox", checked: false, text: "" },
+            { type: "heading", level: 2, text: "Grateful for" },
+            { type: "list", style: "bullet", text: "" },
+            { type: "list", style: "bullet", text: "" },
+            { type: "list", style: "bullet", text: "" },
+            { type: "heading", level: 2, text: "What happened" },
             { type: "text", text: "" },
-            { type: "heading", level: 2, text: "Reflexão da Noite" },
-            { type: "quote", text: "O que correu bem hoje? O que pode melhorar amanhã?" }
+            { type: "heading", level: 2, text: "Tonight" },
+            { type: "quote", text: "What went well? What would you do differently tomorrow?" }
         ]
     },
     {
         id: "tasks",
-        name: "Lista de Tarefas",
-        description: "Matriz de prioridades com tarefas urgentes, em progresso e futuras.",
+        name: "Tasks",
+        description: "Four boxes: now, in progress, next, and someday.",
         icon: "checklist",
-        tags: ["tarefas", "todo"],
+        tags: ["tasks"],
         blocks: [
-            { type: "heading", level: 1, text: "Tarefas e Prioridades" },
-            { type: "heading", level: 2, text: "🔥 Urgente & Importante" },
-            { type: "list", style: "checkbox", checked: false, text: "Prioridade máxima" },
-            { type: "heading", level: 2, text: "⚡ Em Progresso" },
-            { type: "list", style: "checkbox", checked: false, text: "Em andamento" },
-            { type: "heading", level: 2, text: "📋 A Fazer" },
-            { type: "list", style: "checkbox", checked: false, text: "Próxima tarefa" },
-            { type: "heading", level: 2, text: "💡 Ideias Futuras" },
-            { type: "list", style: "bullet", text: "Ideia para avaliar depois" }
+            { type: "heading", level: 1, text: "Tasks" },
+            { type: "heading", level: 2, text: "Now" },
+            { type: "list", style: "checkbox", checked: false, text: "" },
+            { type: "heading", level: 2, text: "In progress" },
+            { type: "list", style: "checkbox", checked: false, text: "" },
+            { type: "heading", level: 2, text: "Next" },
+            { type: "list", style: "checkbox", checked: false, text: "" },
+            { type: "heading", level: 2, text: "Someday" },
+            { type: "list", style: "bullet", text: "" }
         ]
     },
     {
         id: "code",
-        name: "Snippet de Código",
-        description: "Exemplo de código, contexto, dependências e notas técnicas.",
+        name: "Code",
+        description: "A snippet, what it is for, and how to run it.",
         icon: "code",
-        tags: ["codigo", "code", "dev"],
+        tags: ["code"],
         blocks: [
             { type: "heading", level: 1, text: "Snippet: " },
-            { type: "callout", calloutType: "note", text: "Linguagem / Stack / Arquivo:" },
-            { type: "heading", level: 2, text: "Código" },
-            { type: "code", language: "python", text: "# Implementação aqui\n" },
-            { type: "heading", level: 2, text: "Notas de Implementação" },
-            { type: "text", text: "Explicação do funcionamento, parâmetros e retorno:" },
-            { type: "heading", level: 2, text: "Exemplo de Uso" },
-            { type: "code", language: "bash", text: "# Comando para executar ou testar\n" }
+            { type: "callout", tone: "info", text: "Language · project · file" },
+            { type: "heading", level: 2, text: "The code" },
+            { type: "code", language: "python", text: "" },
+            { type: "heading", level: 2, text: "How it works" },
+            { type: "text", text: "" },
+            { type: "heading", level: 2, text: "Running it" },
+            { type: "code", language: "bash", text: "" }
         ]
     },
     {
         id: "recipe",
-        name: "Receita Culinária",
-        description: "Ingredientes com caixas de seleção, tempo de preparo e passos.",
+        name: "Recipe",
+        description: "Ingredients you can tick off, and the steps in order.",
         icon: "restaurant",
-        tags: ["receita", "culinaria"],
+        tags: ["recipe"],
         blocks: [
-            { type: "heading", level: 1, text: "Receita: " },
-            { type: "callout", calloutType: "tip", text: "Tempo de preparo: 30 min | Rendimento: 4 porções | Dificuldade: Fácil" },
-            { type: "heading", level: 2, text: "Ingredientes" },
-            { type: "list", style: "checkbox", checked: false, text: "Ingrediente 1" },
-            { type: "list", style: "checkbox", checked: false, text: "Ingrediente 2" },
-            { type: "list", style: "checkbox", checked: false, text: "Ingrediente 3" },
-            { type: "heading", level: 2, text: "Modo de Preparo" },
-            { type: "list", style: "numbered", text: "Primeiro passo..." },
-            { type: "list", style: "numbered", text: "Segundo passo..." },
-            { type: "list", style: "numbered", text: "Terceiro passo..." },
-            { type: "heading", level: 2, text: "Dicas do Chef" },
-            { type: "quote", text: "Dica especial de preparo ou substituição de ingrediente." }
+            { type: "heading", level: 1, text: "Recipe: " },
+            { type: "callout", tone: "success", text: "Takes · serves · difficulty" },
+            { type: "heading", level: 2, text: "Ingredients" },
+            { type: "list", style: "checkbox", checked: false, text: "" },
+            { type: "list", style: "checkbox", checked: false, text: "" },
+            { type: "list", style: "checkbox", checked: false, text: "" },
+            { type: "heading", level: 2, text: "Method" },
+            { type: "list", style: "number", text: "" },
+            { type: "list", style: "number", text: "" },
+            { type: "list", style: "number", text: "" },
+            { type: "heading", level: 2, text: "Notes for next time" },
+            { type: "quote", text: "" }
         ]
     },
     {
         id: "review",
-        name: "Revisão e Retrospectiva",
-        description: "Análise de projeto, marcos alcançados e lições aprendidas.",
+        name: "Review",
+        description: "What happened, what worked, what did not, and what changes.",
         icon: "rate_review",
-        tags: ["revisao", "retrospectiva"],
+        tags: ["review"],
         blocks: [
-            { type: "heading", level: 1, text: "Revisão: " },
-            { type: "heading", level: 2, text: "Resumo Executivo" },
-            { type: "text", text: "Breve síntese do que foi avaliado e do resultado geral." },
-            { type: "heading", level: 2, text: "✅ O que funcionou bem" },
-            { type: "list", style: "bullet", text: "Ponto positivo 1" },
-            { type: "list", style: "bullet", text: "Ponto positivo 2" },
-            { type: "heading", level: 2, text: "⚠️ O que pode ser melhorado" },
-            { type: "list", style: "bullet", text: "Ponto de atenção 1" },
-            { type: "heading", level: 2, text: "🎯 Plano de Ação" },
-            { type: "list", style: "checkbox", checked: false, text: "Ação corretiva ou melhoria contínua" }
+            { type: "heading", level: 1, text: "Review: " },
+            { type: "callout", tone: "info", text: DATE_TOKEN },
+            { type: "heading", level: 2, text: "In short" },
+            { type: "text", text: "" },
+            { type: "heading", level: 2, text: "What worked" },
+            { type: "list", style: "bullet", text: "" },
+            { type: "list", style: "bullet", text: "" },
+            { type: "heading", level: 2, text: "What did not" },
+            { type: "list", style: "bullet", text: "" },
+            { type: "heading", level: 2, text: "What changes" },
+            { type: "list", style: "checkbox", checked: false, text: "" }
         ]
     }
 ];
@@ -133,23 +148,33 @@ function getBuiltinTemplates() {
     return BUILTIN_TEMPLATES.slice();
 }
 
+/// Today, written the way this machine writes dates.
+function todayLabel() {
+    return new Date().toLocaleDateString();
+}
+
 /**
- * Instantiates a template into a raw blocks array with fresh IDs.
+ * A template into blocks, with fresh ids and today's date.
  */
 function instantiateBlocks(templateDef) {
     if (!templateDef || !Array.isArray(templateDef.blocks))
-        return [{ id: Doc.newBlockId(), type: "text", text: "" }];
+        return [Doc.normalizeBlock({ type: "text", text: "" })];
 
+    var today = todayLabel();
     var blocks = [];
     for (var i = 0; i < templateDef.blocks.length; i++) {
         var raw = templateDef.blocks[i];
         var copy = {};
         for (var key in raw) {
-            if (raw.hasOwnProperty(key))
-                copy[key] = raw[key];
+            if (!raw.hasOwnProperty(key))
+                continue;
+            var value = raw[key];
+            if (key === "text" && typeof value === "string")
+                value = value.split(DATE_TOKEN).join(today);
+            copy[key] = value;
         }
         copy.id = Doc.newBlockId();
         blocks.push(Doc.normalizeBlock(copy));
     }
-    return blocks.length > 0 ? blocks : [{ id: Doc.newBlockId(), type: "text", text: "" }];
+    return blocks.length > 0 ? blocks : [Doc.normalizeBlock({ type: "text", text: "" })];
 }

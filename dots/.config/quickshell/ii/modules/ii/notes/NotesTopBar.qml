@@ -9,10 +9,11 @@ import qs.modules.common.widgets
 import qs.modules.ii.notes
 
 /**
- * The bar across the top: where you are, what you are looking for, and the way out.
+ * The bar across the top: where you are, and the way out.
  *
- * Search sits in the middle rather than in the list pane because it searches everything,
- * not the pane beside it. Putting it over the list would say the opposite.
+ * It also holds the one action that is about the whole store rather than about any note —
+ * the statistics — because the rail's bottom is full at two, and a third full-width button
+ * there would read as a third place to go rather than as a thing to look at.
  */
 Item {
     id: root
@@ -22,9 +23,12 @@ Item {
     property bool showBack: false
     property bool showRailToggle: false
     property bool railExpanded: true
+    /// Drawn as held down while the statistics page is the one open.
+    property bool statsActive: false
 
     signal backRequested()
     signal railToggled()
+    signal statsRequested()
     signal closeRequested()
 
     implicitHeight: NotesMetrics.topBarHeight
@@ -82,6 +86,17 @@ Item {
         Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
+        }
+
+        NotesIconButton {
+            symbol: "analytics"
+            tooltipText: Translation.tr("Statistics")
+            toggled: root.statsActive
+            colBackgroundToggled: Appearance.colors.colSecondaryContainer
+            colIcon: root.statsActive
+                ? Appearance.m3colors.m3onSecondaryContainer
+                : Appearance.colors.colOnLayer1
+            onTriggered: root.statsRequested()
         }
 
         NotesIconButton {

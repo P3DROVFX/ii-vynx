@@ -282,34 +282,30 @@ Singleton {
         return true;
     }
 
+    /// Whether any note is waiting to be mentioned, so the timer below can stay stopped
+    /// the rest of the time instead of waking every twenty seconds to find nothing.
+    readonly property bool remindersPending: root.notes.some(note => note.reminder > 0 && !note.reminderDone)
+
     Timer {
         id: reminderTimer
         interval: 20000
         repeat: true
-        running: root.ready
+        running: root.ready && root.remindersPending
+        // Once on arming, too: a reminder that came due while the shell was not running
+        // should be said when it starts, not twenty seconds later.
+        triggeredOnStart: true
         onTriggered: {
-            if (!root.ready || !root.notes)
-                return;
             const now = Date.now();
-            const noteList = Array.from(root.notes);
-            for (let i = 0; i < noteList.length; i++) {
-                const note = noteList[i];
-                if (!note || !note.meta)
+            for (const note of Array.from(root.notes)) {
+                if (note.reminder <= 0 || note.reminderDone || note.reminder > now)
                     continue;
-                const reminder = note.meta.reminder;
-                if (!reminder || note.meta.reminderNotified)
-                    continue;
-                const due = new Date(reminder).getTime();
-                if (due <= now) {
-                    Notifications.publishInternalNotification({
-                        summary: note.title ? note.title : Translation.tr("Note Reminder"),
-                        body: note.preview ? note.preview : Translation.tr("Reminder for this note"),
-                        appName: "Notes",
-                        appIcon: "note_stack"
-                    });
-                    const updatedMeta = Object.assign({}, note.meta, { reminderNotified: true });
-                    root.updateMeta(note.id, { meta: updatedMeta });
-                }
+                Notifications.publishInternalNotification({
+                    summary: note.title.length > 0 ? note.title : Translation.tr("A note"),
+                    body: note.preview.length > 0 ? note.preview : Translation.tr("You asked to be reminded about this note."),
+                    appName: "Notes",
+                    appIcon: "note_stack"
+                });
+                root.updateMeta(note.id, { reminderDone: true });
             }
         }
     }

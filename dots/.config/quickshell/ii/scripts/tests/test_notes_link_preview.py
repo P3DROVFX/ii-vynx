@@ -4,10 +4,20 @@
 import json
 import os
 import subprocess
-import sys
 import tempfile
 import unittest
 from pathlib import Path
+
+import sys
+
+# `scripts/notes` on the path, then a plain module import — the convention the other
+# script tests here follow (see test_preset_store.py). `from scripts.notes...` only works
+# if the repository root happens to be the working directory, which is why these three
+# tests failed the moment they were run from anywhere else.
+NOTES_DIR = str(Path(__file__).resolve().parents[1] / "notes")
+if NOTES_DIR not in sys.path:
+    sys.path.insert(0, NOTES_DIR)
+
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts/notes/link_preview.py"
@@ -70,7 +80,7 @@ class LinkPreviewTests(unittest.TestCase):
             self.assertTrue(data.get("offline"))
 
     def test_metadata_parsing(self):
-        from scripts.notes.link_preview import parse_metadata
+        from link_preview import parse_metadata
 
         meta = parse_metadata(HTML_FIXTURE, "https://example.com/article/1")
         self.assertEqual(meta["title"], "OpenGraph Title")
@@ -78,7 +88,7 @@ class LinkPreviewTests(unittest.TestCase):
         self.assertEqual(meta["site_name"], "MySite")
         self.assertEqual(meta["image"], "https://example.com/assets/cover.jpg")
     def test_youtube_oembed_parser(self):
-        from scripts.notes.link_preview import fetch_youtube_oembed
+        from link_preview import fetch_youtube_oembed
 
         # Test with a real or mock-safe URL
         res = fetch_youtube_oembed("https://www.youtube.com/watch?v=dQw4w9WgXcQ")

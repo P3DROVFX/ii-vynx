@@ -51,13 +51,17 @@ Item {
     readonly property bool localOnly: root.policy === 2
 
     // Current active model name
+    /// `Ai.currentModel` is the model's *value* — a string — so `.title` on it was
+    /// always undefined and this badge always read "AI". The entry is the object.
     readonly property string currentModelName: {
-        const m = Ai.currentModel;
-        if (!m)
+        const entry = Ai.currentModelEntry;
+        if (!entry)
             return Translation.tr("No model");
-        return m.title || m.name || Translation.tr("AI");
+        return entry.title.length > 0 ? entry.title : (entry.name.length > 0 ? entry.name : Ai.currentModel);
     }
-    readonly property bool isLocalModel: Ai.currentModel ? Ai.catalog.isModelLocal(Ai.currentModel) : false
+    readonly property bool isLocalModel: Ai.currentModelEntry
+        ? Ai.catalog.isModelLocal(Ai.currentModelEntry)
+        : false
 
     // Custom styles management
     property var customStylesList: []
@@ -130,7 +134,7 @@ Item {
                     spacing: 2
 
                     StyledText {
-                        text: Translation.tr("AI Assistant")
+                        text: Translation.tr("Ask the AI")
                         font.pixelSize: Appearance.font.pixelSize.normal
                         font.weight: Font.DemiBold
                         color: Appearance.colors.colOnLayer0
@@ -219,7 +223,9 @@ Item {
                     implicitHeight: 30
                     buttonRadius: Appearance.rounding.small
                     toggled: root.activeCategory === "tones"
-                    colBackground: toggled ? Appearance.colors.colSecondaryContainer : Appearance.colors.colLayer1
+                    colBackground: Appearance.colors.colLayer1
+                    colBackgroundToggled: Appearance.colors.colSecondaryContainer
+                    colBackgroundToggledHover: Appearance.colors.colSecondaryContainerHover
                     colBackgroundHover: Appearance.colors.colSecondaryContainerHover
                     onClicked: root.activeCategory = "tones"
 
@@ -237,7 +243,9 @@ Item {
                     implicitHeight: 30
                     buttonRadius: Appearance.rounding.small
                     toggled: root.activeCategory === "improve"
-                    colBackground: toggled ? Appearance.colors.colSecondaryContainer : Appearance.colors.colLayer1
+                    colBackground: Appearance.colors.colLayer1
+                    colBackgroundToggled: Appearance.colors.colSecondaryContainer
+                    colBackgroundToggledHover: Appearance.colors.colSecondaryContainerHover
                     colBackgroundHover: Appearance.colors.colSecondaryContainerHover
                     onClicked: root.activeCategory = "improve"
 
@@ -255,7 +263,9 @@ Item {
                     implicitHeight: 30
                     buttonRadius: Appearance.rounding.small
                     toggled: root.activeCategory === "transform"
-                    colBackground: toggled ? Appearance.colors.colSecondaryContainer : Appearance.colors.colLayer1
+                    colBackground: Appearance.colors.colLayer1
+                    colBackgroundToggled: Appearance.colors.colSecondaryContainer
+                    colBackgroundToggledHover: Appearance.colors.colSecondaryContainerHover
                     colBackgroundHover: Appearance.colors.colSecondaryContainerHover
                     onClicked: root.activeCategory = "transform"
 
@@ -273,7 +283,9 @@ Item {
                     implicitHeight: 30
                     buttonRadius: Appearance.rounding.small
                     toggled: root.activeCategory === "note"
-                    colBackground: toggled ? Appearance.colors.colSecondaryContainer : Appearance.colors.colLayer1
+                    colBackground: Appearance.colors.colLayer1
+                    colBackgroundToggled: Appearance.colors.colSecondaryContainer
+                    colBackgroundToggledHover: Appearance.colors.colSecondaryContainerHover
                     colBackgroundHover: Appearance.colors.colSecondaryContainerHover
                     onClicked: root.activeCategory = "note"
 
@@ -292,7 +304,9 @@ Item {
                     implicitHeight: 30
                     buttonRadius: Appearance.rounding.small
                     toggled: root.activeCategory === "code"
-                    colBackground: toggled ? Appearance.colors.colSecondaryContainer : Appearance.colors.colLayer1
+                    colBackground: Appearance.colors.colLayer1
+                    colBackgroundToggled: Appearance.colors.colSecondaryContainer
+                    colBackgroundToggledHover: Appearance.colors.colSecondaryContainerHover
                     colBackgroundHover: Appearance.colors.colSecondaryContainerHover
                     onClicked: root.activeCategory = "code"
 
@@ -310,7 +324,9 @@ Item {
                     implicitHeight: 30
                     buttonRadius: Appearance.rounding.small
                     toggled: root.activeCategory === "custom"
-                    colBackground: toggled ? Appearance.colors.colSecondaryContainer : Appearance.colors.colLayer1
+                    colBackground: Appearance.colors.colLayer1
+                    colBackgroundToggled: Appearance.colors.colSecondaryContainer
+                    colBackgroundToggledHover: Appearance.colors.colSecondaryContainerHover
                     colBackgroundHover: Appearance.colors.colSecondaryContainerHover
                     onClicked: root.activeCategory = "custom"
 
@@ -350,7 +366,7 @@ Item {
                                   prompt: "Reescreva o texto a seguir em tom profissional, refinado e corporativo. Retorne apenas o texto reescrito, sem saudações ou explicações adicionais." },
                                 { id: "casual", name: Translation.tr("Casual"), icon: "chat",
                                   prompt: "Reescreva o texto a seguir em tom casual, descontraído e amigável, mantendo a clareza. Retorne apenas o texto reescrito." },
-                                { id: "direct", name: Translation.tr("Direct & Concise"), icon: "bolt",
+                                { id: "direct", name: Translation.tr("Direct and short"), icon: "bolt",
                                   prompt: "Reescreva o texto a seguir de forma direta, concisa e objetiva, eliminando palavras vazias e prolixidade. Retorne apenas o texto direto." },
                                 { id: "academic", name: Translation.tr("Academic"), icon: "school",
                                   prompt: "Reescreva o texto a seguir em tom acadêmico formal, utilizando vocabulário rigoroso e estrutura precisa. Retorne apenas o texto reescrito." },
@@ -419,7 +435,7 @@ Item {
 
                         Repeater {
                             model: [
-                                { id: "grammar", name: Translation.tr("Fix Grammar & Style"), icon: "spellcheck",
+                                { id: "grammar", name: Translation.tr("Fix the grammar"), icon: "spellcheck",
                                   desc: Translation.tr("Corrects typos, punctuation and grammar while preserving original tone."),
                                   prompt: "Corrija rigorosamente todos os erros de ortografia, acentuação, gramática e concordância do texto a seguir. Mantenha integralmente o sentido, vocabulário e estilo original. Retorne unicamente o texto corrigido, sem preâmbulos." },
                                 { id: "sum_para", name: Translation.tr("Summarize in 1 Paragraph"), icon: "short_text",
@@ -434,7 +450,7 @@ Item {
                                 { id: "expand", name: Translation.tr("Expand & Develop"), icon: "unfold_more",
                                   desc: Translation.tr("Deepens ideas with more depth, clarity and context."),
                                   prompt: "Desenvolva e aprofunde as ideias e argumentos do texto a seguir, agregando contexto explicativo, clareza e riqueza de detalhes, sem fugir do tema nem mudar o tom. Retorne apenas o texto expandido." },
-                                { id: "continue", name: Translation.tr("Continue Writing"), icon: "edit_note",
+                                { id: "continue", name: Translation.tr("Keep writing it"), icon: "edit_note",
                                   desc: Translation.tr("Completes the thought from the end of the text."),
                                   prompt: "Continue a escrita do texto a seguir a partir de onde ele parou, dando sequência lógica, coerente e natural ao pensamento e completando o raciocínio. Retorne apenas o trecho continuado." }
                             ]
@@ -511,7 +527,7 @@ Item {
                                   prompt: "Transforme o texto a seguir em uma checklist de tarefas em formato Markdown (- [ ] item). Seja claro e conciso. Retorne apenas a lista de itens." },
                                 { id: "table", name: Translation.tr("Convert to Markdown Table"), icon: "table_chart",
                                   prompt: "Transforme os dados, comparações ou informações do texto a seguir em uma tabela Markdown limpa e bem formatada, com cabeçalho. Retorne apenas a tabela em Markdown." },
-                                { id: "actions", name: Translation.tr("Extract Action Items"), icon: "task_alt",
+                                { id: "actions", name: Translation.tr("Pull out the actions"), icon: "task_alt",
                                   prompt: "Identifique e extraia todas as tarefas, pendências e ações práticas mencionadas no texto a seguir, formulando uma lista organizada de afazeres em Markdown (- [ ] ação). Retorne apenas os itens de ação." },
                                 { id: "tr_en", name: Translation.tr("Translate to English"), icon: "translate",
                                   prompt: "Translate the following text into fluent, natural English. Keep markdown formatting and structure. Return only the translated text." },
@@ -576,13 +592,13 @@ Item {
 
                         Repeater {
                             model: [
-                                { id: "title", name: Translation.tr("Generate Smart Title"), icon: "title",
+                                { id: "title", name: Translation.tr("Suggest a title"), icon: "title",
                                   desc: Translation.tr("Creates a short, expressive title (max 6 words) based on content."),
                                   prompt: "Com base no conteúdo desta nota, crie um título conciso, memorável e altamente relevante de no máximo 6 palavras. Retorne APENAS o título puro, sem aspas, ponto final ou explicações." },
-                                { id: "tags", name: Translation.tr("Generate Automatic Tags"), icon: "label",
+                                { id: "tags", name: Translation.tr("Suggest tags"), icon: "label",
                                   desc: Translation.tr("Extracts 3 to 5 relevant tags formatted as #tag."),
                                   prompt: "Analise o conteúdo completo desta nota e identifique os 3 a 5 principais temas ou entidades. Retorne apenas as tags no formato '#tag1 #tag2 #tag3', separadas por espaço." },
-                                { id: "callout_summary", name: Translation.tr("Executive Summary Callout"), icon: "article",
+                                { id: "callout_summary", name: Translation.tr("Summarise it at the top"), icon: "article",
                                   desc: Translation.tr("Drafts a high-level summary to place at the top of the note."),
                                   prompt: "Gere um resumo executivo claro, estruturado e conciso (em 2 a 3 frases) do conteúdo desta nota, adequado para ser destacado como resumo de cabeçalho. Retorne apenas o texto do resumo." },
                                 { id: "structure", name: Translation.tr("Structure in Topics"), icon: "format_align_left",
@@ -658,11 +674,11 @@ Item {
 
                         Repeater {
                             model: [
-                                { id: "code_explain", name: Translation.tr("Explain Code"), icon: "code",
+                                { id: "code_explain", name: Translation.tr("Explain this code"), icon: "code",
                                   prompt: "Explique a lógica, o fluxo de execução e o propósito deste bloco de código de forma clara, didática e estruturada." },
-                                { id: "code_bugs", name: Translation.tr("Find Potential Bugs"), icon: "bug_report",
+                                { id: "code_bugs", name: Translation.tr("Look for bugs"), icon: "bug_report",
                                   prompt: "Analise detalhadamente o código a seguir procurando por possíveis bugs, vulnerabilidades de segurança, casos de borda não tratados, condições de corrida ou vazamentos de recursos. Liste os problemas encontrados e proponha correções." },
-                                { id: "code_opt", name: Translation.tr("Suggest Optimization"), icon: "speed",
+                                { id: "code_opt", name: Translation.tr("Suggest a faster way"), icon: "speed",
                                   prompt: "Proponha uma versão otimizada e mais performática para o código a seguir. Explique brevemente as melhorias implementadas e retorne o código aprimorado." }
                             ]
 
@@ -796,7 +812,7 @@ Item {
                                 }
 
                                 StyledText {
-                                    text: Translation.tr("Add new custom style...")
+                                    text: Translation.tr("Add a style of your own…")
                                     font.pixelSize: Appearance.font.pixelSize.small
                                     font.weight: Font.DemiBold
                                     color: Appearance.colors.colOnSecondaryContainer
@@ -872,7 +888,7 @@ Item {
 
                                         contentItem: StyledText {
                                             anchors.centerIn: parent
-                                            text: Translation.tr("Save Style")
+                                            text: Translation.tr("Save this style")
                                             font.pixelSize: Appearance.font.pixelSize.smallest
                                             font.weight: Font.DemiBold
                                             color: Appearance.colors.colOnPrimary
@@ -931,8 +947,12 @@ Item {
                         color: Appearance.colors.colTertiary
                     }
 
+                    /// It says copy, because copy is what it does. The row used to
+                    /// promise the chat would know about this note, and then opened the
+                    /// sidebar with the text dropped on the floor — nothing carries it
+                    /// across, so the clipboard does, and one paste finishes the job.
                     StyledText {
-                        text: Translation.tr("Ask AI about this note in sidebar...")
+                        text: Translation.tr("Copy this and open the chat")
                         font.pixelSize: Appearance.font.pixelSize.small
                         color: Appearance.colors.colOnLayer0
                     }

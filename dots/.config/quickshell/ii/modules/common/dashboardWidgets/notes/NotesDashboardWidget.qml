@@ -49,9 +49,9 @@ Item {
                 implicitWidth: 32
                 implicitHeight: 32
                 buttonRadius: Appearance.rounding.full
-                colBackground: Appearance.colors.colSurfaceContainer
-                colBackgroundHover: Appearance.colors.colSurfaceContainerHover
-                colBackgroundActive: Appearance.colors.colSurfaceContainerActive
+                colBackground: Appearance.colors.colLayer2
+                colBackgroundHover: Appearance.colors.colLayer2Hover
+                colBackgroundActive: Appearance.colors.colLayer2Active
 
                 MaterialSymbol {
                     anchors.centerIn: parent
@@ -75,9 +75,9 @@ Item {
                 implicitWidth: 32
                 implicitHeight: 32
                 buttonRadius: Appearance.rounding.full
-                colBackground: Appearance.colors.colSurfaceContainer
-                colBackgroundHover: Appearance.colors.colSurfaceContainerHover
-                colBackgroundActive: Appearance.colors.colSurfaceContainerActive
+                colBackground: Appearance.colors.colLayer2
+                colBackgroundHover: Appearance.colors.colLayer2Hover
+                colBackgroundActive: Appearance.colors.colLayer2Active
 
                 MaterialSymbol {
                     anchors.centerIn: parent
@@ -91,7 +91,7 @@ Item {
                 }
 
                 StyledToolTip {
-                    text: Translation.tr("Open Notes app")
+                    text: Translation.tr("Open the notes app")
                 }
             }
         }
@@ -125,7 +125,7 @@ Item {
 
                     Text {
                         anchors.fill: parent
-                        text: Translation.tr("Quick capture...")
+                        text: Translation.tr("Jot something down…")
                         color: Appearance.colors.colSubtext
                         font.pixelSize: Appearance.font.pixelSize.small
                         visible: quickInput.text.length === 0

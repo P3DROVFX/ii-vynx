@@ -750,6 +750,8 @@ function newNote(props) {
         hasInk: source.hasInk,
         hasImages: source.hasImages,
         locked: source.locked,
+        reminder: source.reminder,
+        reminderDone: source.reminderDone,
         trashedAt: source.trashedAt,
         cloud: source.cloud
     });
@@ -778,6 +780,15 @@ function normalizeNote(value) {
         hasInk: asBool(source.hasInk),
         hasImages: asBool(source.hasImages),
         locked: asBool(source.locked),
+        /// When to say something about this note, or zero for never.
+        ///
+        /// A field on the record rather than a bag called `meta`. The first version of
+        /// the reminder wrote `{ meta: { reminder: ... } }`, which this function has
+        /// always dropped on the floor: every reminder was accepted, saved nowhere, and
+        /// never delivered.
+        reminder: Math.max(0, asInt(source.reminder, 0)),
+        /// Set once it has been said, so it is said once.
+        reminderDone: asBool(source.reminderDone),
         // Zero means "not in the trash". A separate boolean plus a date is two facts that
         // can disagree, and the one that disagrees is always the one being read.
         trashedAt: Math.max(0, asInt(source.trashedAt, 0)),

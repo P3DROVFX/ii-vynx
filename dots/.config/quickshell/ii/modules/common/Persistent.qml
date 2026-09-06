@@ -359,6 +359,20 @@ Singleton {
                 property bool linkPreviews: true
                 property list<string> aiCustomStyles: []
                 property bool driveBackup: false
+                /**
+                 * The PIN that hides locked notes, as `md5(salt + pin)`.
+                 *
+                 * A digest rather than the PIN itself, and empty until one is set — there
+                 * is no default, because a lock everybody's shell opens with 1234 is worse
+                 * than no lock: it looks like protection.
+                 *
+                 * It is not protection either way, and the app says so where it is set:
+                 * the notes on disk are plain files, so this hides a note from somebody
+                 * looking over a shoulder and from nobody else. Real encryption is future
+                 * work.
+                 */
+                property string lockDigest: ""
+                property string lockSalt: ""
             }
 
             property JsonObject cheatsheet: JsonObject {

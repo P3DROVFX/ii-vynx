@@ -11,25 +11,29 @@ import qs.modules.common.widgets
  * Where you are, and everything that is about the whole app rather than one note.
  *
  * New note at the top, where the mail sidebar puts Compose. The places and the notebooks
- * in the middle, each a group shaped at its ends. And at the bottom the three things that
- * are not places at all — search, the trash, and the app's own settings — because a rail
- * that mixes "which notes am I looking at" with "find something" and "change something"
- * in one column makes all three harder to find.
+ * in the middle, each a group shaped at its ends. And at the bottom the two things that
+ * are not places at all — finding a note, and changing how the app behaves — because a
+ * rail that mixes "which notes am I looking at" with "find something" and "change
+ * something" in one column makes all three harder to find.
  *
- * The bottom is a field and then a row, not three stacked buttons: three full-width
- * buttons in a column read as three more places.
+ * Two, and no more. A third full-width button here reads as a third place, which is
+ * exactly the confusion the split was meant to end: anything else that is about the whole
+ * app — the statistics, for one — belongs in the bar across the top instead.
  */
 Item {
     id: root
 
     property bool expanded: true
     property string scope: "all"
+    /// Held down while the settings page is the one open, the way a place is while you are
+    /// in it: the button opens somewhere, so it has to be able to say you are there.
+    property bool settingsOpen: false
     readonly property string query: searchBox.text
 
     signal scopePicked(string scope)
     signal createRequested()
+    signal templatesRequested()
     signal settingsRequested()
-    signal statsRequested()
 
     // Clipped at the pane's own bounds.
     //
@@ -83,10 +87,22 @@ Item {
         anchors.margins: NotesMetrics.panePadding
         spacing: 0
 
+        /**
+         * Compose, and the one other way to start a note.
+         *
+         * The templates were reachable from exactly one place: the button in the middle of
+         * the empty-notes placeholder, which anybody with a single note in the store never
+         * sees again. They belong beside the button that makes notes, on the same row, so
+         * the rail's bottom stays at two things.
+         */
+        RowLayout {
+            Layout.fillWidth: true
+            Layout.bottomMargin: 24
+            spacing: 8
+
         RippleButton {
             id: composeButton
             Layout.fillWidth: true
-            Layout.bottomMargin: 24
             implicitHeight: 64
             buttonRadius: NotesMetrics.pillRadius(composeButton.implicitHeight)
             colBackgroundToggled: Appearance.colors.colPrimary
@@ -136,6 +152,37 @@ Item {
                 text: Translation.tr("New note")
                 extraVisibleCondition: !root.expanded
             }
+        }
+
+        RippleButton {
+            id: templatesButton
+            Layout.preferredWidth: 64
+            implicitHeight: 64
+            visible: root.expanded
+            buttonRadius: NotesMetrics.pillRadius(templatesButton.implicitHeight)
+            colBackground: Appearance.colors.colSecondaryContainer
+            colBackgroundHover: Appearance.colors.colSecondaryContainerHover
+            colBackgroundActive: Appearance.colors.colSecondaryContainerActive
+
+            onClicked: root.templatesRequested()
+
+            scale: templatesButton.down ? 0.95 : (templatesButton.hovered ? 1.02 : 1.0)
+            Behavior on scale {
+                animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+            }
+
+            contentItem: MaterialSymbol {
+                anchors.centerIn: parent
+                text: "dashboard_customize"
+                iconSize: Appearance.font.pixelSize.huge
+                color: Appearance.m3colors.m3onSecondaryContainer
+            }
+
+            StyledToolTip {
+                text: Translation.tr("Start from a template")
+            }
+        }
+
         }
 
         Flickable {
@@ -212,63 +259,18 @@ Item {
             onCleared: root.clearSearch()
         }
 
-        RippleButton {
-            id: statsButton
-            Layout.fillWidth: true
-            implicitHeight: 48
-            buttonRadius: NotesMetrics.pillRadius(statsButton.implicitHeight)
-            colBackground: Appearance.colors.colLayer2
-            colBackgroundHover: Appearance.colors.colLayer2Hover
-            colBackgroundActive: Appearance.colors.colLayer2Active
-            colRipple: Appearance.colors.colPrimaryActive
-
-            scale: statsButton.down ? 0.95 : (statsButton.hovered ? 1.02 : 1.0)
-            Behavior on scale {
-                animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
-            }
-
-            onClicked: root.statsRequested()
-
-            contentItem: Item {
-                anchors.fill: parent
-
-                RowLayout {
-                    anchors.centerIn: parent
-                    spacing: 12
-
-                    MaterialSymbol {
-                        Layout.alignment: Qt.AlignVCenter
-                        text: "analytics"
-                        iconSize: Appearance.font.pixelSize.larger
-                        color: Appearance.colors.colOnSurface
-                    }
-
-                    StyledText {
-                        Layout.alignment: Qt.AlignVCenter
-                        text: Translation.tr("Statistics")
-                        visible: root.expanded
-                        font.pixelSize: Appearance.font.pixelSize.base
-                        font.weight: Font.Medium
-                        color: Appearance.colors.colOnSurface
-                    }
-                }
-            }
-
-            StyledToolTip {
-                text: Translation.tr("Statistics & Analytics")
-                extraVisibleCondition: !root.expanded
-            }
-        }
-
         // Below the search, where the mail sidebar keeps its own Settings.
         RippleButton {
             id: settingsButton
             Layout.fillWidth: true
             implicitHeight: 56
             buttonRadius: NotesMetrics.pillRadius(settingsButton.implicitHeight)
+            toggled: root.settingsOpen
             colBackground: Appearance.colors.colSecondaryContainer
             colBackgroundHover: Appearance.colors.colSecondaryContainerHover
             colBackgroundActive: Appearance.colors.colSecondaryContainerActive
+            colBackgroundToggled: Appearance.colors.colPrimary
+            colBackgroundToggledHover: Appearance.colors.colPrimaryHover
             colRipple: Appearance.colors.colPrimaryActive
 
             scale: settingsButton.down ? 0.95 : (settingsButton.hovered ? 1.02 : 1.0)
@@ -289,7 +291,9 @@ Item {
                         Layout.alignment: Qt.AlignVCenter
                         text: "settings"
                         iconSize: Appearance.font.pixelSize.huge
-                        color: Appearance.m3colors.m3onSecondaryContainer
+                        color: root.settingsOpen
+                            ? Appearance.colors.colOnPrimary
+                            : Appearance.m3colors.m3onSecondaryContainer
                     }
 
                     StyledText {
@@ -298,7 +302,9 @@ Item {
                         visible: root.expanded
                         font.pixelSize: Appearance.font.pixelSize.huge
                         font.weight: Font.DemiBold
-                        color: Appearance.m3colors.m3onSecondaryContainer
+                        color: root.settingsOpen
+                            ? Appearance.colors.colOnPrimary
+                            : Appearance.m3colors.m3onSecondaryContainer
                     }
                 }
             }

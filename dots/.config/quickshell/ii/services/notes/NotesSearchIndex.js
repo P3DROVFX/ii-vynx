@@ -198,7 +198,7 @@ function parseQuery(queryString) {
             }
             if (prefix === "is" || prefix === "e" || prefix === "é") {
                 var isVal = normalizeText(val);
-                if (isVal === "favorite" || isVal === "fav" || isVal === "favorita")
+                if (isVal === "favorite" || isVal === "favourite" || isVal === "fav" || isVal === "favorita")
                     filters.is.push("favorite");
                 else if (isVal === "pinned" || isVal === "fixada" || isVal === "fixado")
                     filters.is.push("pinned");

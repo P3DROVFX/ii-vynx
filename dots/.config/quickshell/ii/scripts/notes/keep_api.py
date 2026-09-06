@@ -60,7 +60,7 @@ def detect_account_type(token: str) -> dict:
         return {
             "ok": False,
             "error": "no_token",
-            "message": "Nenhum token de acesso do Google encontrado. Conecte sua conta em Configurações > Contas Google."
+            "message": "No Google access token. Connect the account in Settings, under Google accounts."
         }
 
     try:
@@ -81,7 +81,7 @@ def detect_account_type(token: str) -> dict:
                     "isWorkspace": False,
                     "email": email,
                     "error": "consumer_account_unsupported",
-                    "message": "A API oficial do Google Keep requer uma conta corporativa Google Workspace. Contas pessoais (@gmail.com) não são suportadas pela API oficial do Google Keep. Utilize a importação por Google Takeout (Trilha A) disponível no app."
+                    "message": "The official Google Keep API only works for Google Workspace accounts. A personal @gmail.com account cannot use it at all; import a Google Takeout archive instead, which the app can do."
                 }
 
             return {
@@ -89,20 +89,20 @@ def detect_account_type(token: str) -> dict:
                 "isWorkspace": True,
                 "email": email,
                 "domain": hd,
-                "message": f"Conta Google Workspace detectada ({hd}). API oficial do Keep disponível."
+                "message": f"A Google Workspace account ({hd}). The official Keep API can be used."
             }
 
     except urllib.error.HTTPError as e:
         return {
             "ok": False,
             "error": f"http_{e.code}",
-            "message": f"Erro na requisição à API do Google: {e.reason} (HTTP {e.code})."
+            "message": f"Google refused the request: {e.reason} (HTTP {e.code})."
         }
     except Exception as e:
         return {
             "ok": False,
             "error": "connection_error",
-            "message": f"Não foi possível conectar ao endpoint do Google: {str(e)}"
+            "message": f"Could not reach Google: {str(e)}"
         }
 
 
@@ -126,7 +126,7 @@ def list_notes(token: str) -> dict:
         return {
             "ok": False,
             "error": "keep_api_error",
-            "message": f"Erro na chamada à API do Keep: {str(e)}"
+            "message": f"The Keep API call failed: {str(e)}"
         }
 
 
@@ -163,13 +163,13 @@ def create_note(token: str, title: str, text: str) -> dict:
         return {
             "ok": False,
             "error": "keep_api_error",
-            "message": f"Erro ao criar nota no Google Keep: {str(e)}"
+            "message": f"The note could not be created in Google Keep: {str(e)}"
         }
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Google Keep Workspace API")
-    parser.add_argument("action", choices=["detect-account", "list", "create"], help="Ação a executar")
+    parser.add_argument("action", choices=["detect-account", "list", "create"], help="What to do")
     parser.add_argument("--token", type=str, default="", help="OAuth access token")
     parser.add_argument("--title", type=str, default="", help="Note title")
     parser.add_argument("--text", type=str, default="", help="Note body text")

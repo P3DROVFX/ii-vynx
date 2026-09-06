@@ -11,10 +11,11 @@ import qs.modules.ii.notes
 import "../../../services/notes/NotesTemplates.js" as Templates
 
 /**
- * Template selection sheet for the Notes app.
+ * Starting from something rather than from an empty page.
  *
- * Lets users pick from rich, structured templates for meetings, daily journaling,
- * tasks, code snippets, recipes, and reviews, or from user-saved templates.
+ * A sheet and not a page, unlike the settings: this is one decision, taken on the way to
+ * writing, and it ends with a note open. The list on the left, what you would get on the
+ * right, because a template's name never says how much structure it brings.
  */
 Item {
     id: root
@@ -22,21 +23,27 @@ Item {
     signal closed()
     signal templateSelected(string title, var tags, var blocks)
 
-    readonly property var builtinTemplates: Templates.getBuiltinTemplates()
-    readonly property var customTemplates: (Persistent.ready && Persistent.states.notes?.customTemplates)
-        ? Persistent.states.notes.customTemplates
-        : []
-    readonly property var allTemplates: [].concat(root.builtinTemplates, root.customTemplates)
+    /// Only the built-in ones. The first version also concatenated
+    /// `Persistent.states.notes.customTemplates`, a property that does not exist and that
+    /// nothing in the app could have written: there is no way to save a note as a
+    /// template yet, so there was nothing to read.
+    readonly property var allTemplates: Templates.getBuiltinTemplates()
 
     property int selectedIndex: 0
-    readonly property var selectedTemplate: root.allTemplates[root.selectedIndex] ?? root.builtinTemplates[0]
+
+    readonly property var previewBlocks: root.selectedTemplate
+        ? Templates.instantiateBlocks(root.selectedTemplate)
+        : []
+    readonly property var selectedTemplate: root.allTemplates[root.selectedIndex] ?? root.allTemplates[0]
 
     function applyTemplate(tmpl) {
         const item = tmpl || root.selectedTemplate;
         if (!item)
             return;
         const blocks = Templates.instantiateBlocks(item);
-        const title = item.name ? Translation.tr(item.name) : Translation.tr("New Note");
+        // The catalogue's own words. `Translation.tr` on a variable cannot be extracted
+        // and translates nothing; a template's name is data, like a note's title.
+        const title = item.name.length > 0 ? item.name : Translation.tr("Untitled note");
         const tags = Array.isArray(item.tags) ? item.tags.slice() : [];
 
         root.templateSelected(title, tags, blocks);
@@ -86,19 +93,12 @@ Item {
 
                 StyledText {
                     Layout.fillWidth: true
-                    text: Translation.tr("Note Templates")
+                    text: Translation.tr("Start from a template")
                     font.pixelSize: Appearance.font.pixelSize.larger
                     font.weight: Font.DemiBold
                     color: Appearance.colors.colOnLayer0
                 }
 
-                NotesIconButton {
-                    symbol: "close"
-                    size: 34
-                    iconSize: 20
-                    tooltipText: Translation.tr("Close")
-                    onTriggered: root.closed()
-                }
             }
 
             // ── Body: Two Panes (Template List & Preview) ───────────────────
@@ -111,7 +111,7 @@ Item {
                 Rectangle {
                     Layout.fillHeight: true
                     Layout.preferredWidth: 320
-                    radius: Appearance.rounding.medium
+                    radius: Appearance.rounding.normal
                     color: Appearance.colors.colLayer1
                     clip: true
 
@@ -132,12 +132,10 @@ Item {
                             implicitHeight: 64
                             buttonRadius: Appearance.rounding.small
                             toggled: root.selectedIndex === tmplBtn.index
-                            colBackground: toggled
-                                ? Appearance.colors.colSecondaryContainer
-                                : Appearance.colors.colLayer2
-                            colBackgroundHover: toggled
-                                ? Appearance.colors.colSecondaryContainerHover
-                                : Appearance.colors.colLayer2Hover
+                            colBackground: Appearance.colors.colLayer2
+                            colBackgroundHover: Appearance.colors.colLayer2Hover
+                            colBackgroundToggled: Appearance.colors.colSecondaryContainer
+                            colBackgroundToggledHover: Appearance.colors.colSecondaryContainerHover
 
                             onClicked: root.selectedIndex = tmplBtn.index
                             onDoubleClicked: root.applyTemplate(tmplBtn.modelData)
@@ -171,7 +169,7 @@ Item {
 
                                     StyledText {
                                         Layout.fillWidth: true
-                                        text: Translation.tr(tmplBtn.modelData.name || "Template")
+                                        text: tmplBtn.modelData.name
                                         font.pixelSize: Appearance.font.pixelSize.normal
                                         font.weight: tmplBtn.toggled ? Font.DemiBold : Font.Normal
                                         color: tmplBtn.toggled
@@ -182,7 +180,7 @@ Item {
 
                                     StyledText {
                                         Layout.fillWidth: true
-                                        text: Translation.tr(tmplBtn.modelData.description || "")
+                                        text: tmplBtn.modelData.description
                                         font.pixelSize: Appearance.font.pixelSize.smaller
                                         color: Appearance.colors.colSubtext
                                         elide: Text.ElideRight
@@ -198,7 +196,7 @@ Item {
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    radius: Appearance.rounding.medium
+                    radius: Appearance.rounding.normal
                     color: Appearance.colors.colLayer1
                     clip: true
 
@@ -219,7 +217,7 @@ Item {
 
                             StyledText {
                                 Layout.fillWidth: true
-                                text: root.selectedTemplate ? Translation.tr(root.selectedTemplate.name || "") : ""
+                                text: root.selectedTemplate ? root.selectedTemplate.name : ""
                                 font.pixelSize: Appearance.font.pixelSize.large
                                 font.weight: Font.DemiBold
                                 color: Appearance.colors.colOnLayer1
@@ -228,7 +226,7 @@ Item {
 
                         StyledText {
                             Layout.fillWidth: true
-                            text: root.selectedTemplate ? Translation.tr(root.selectedTemplate.description || "") : ""
+                            text: root.selectedTemplate ? root.selectedTemplate.description : ""
                             font.pixelSize: Appearance.font.pixelSize.small
                             color: Appearance.colors.colSubtext
                             wrapMode: Text.WordWrap
@@ -246,7 +244,10 @@ Item {
                                 anchors.fill: parent
                                 anchors.margins: 12
                                 spacing: 6
-                                model: root.selectedTemplate ? (root.selectedTemplate.blocks || []) : []
+                                // The instantiated blocks, not the raw definition: the
+                                // definition carries a `%date%` token, and a preview that
+                                // shows the token is a preview of the source code.
+                                model: root.previewBlocks
 
                                 delegate: RowLayout {
                                     required property var modelData
@@ -270,10 +271,13 @@ Item {
 
                                     StyledText {
                                         Layout.fillWidth: true
-                                        text: {
-                                            const txt = modelData.text || modelData.type || "";
-                                            return txt.length > 0 ? txt : Translation.tr("(empty line)");
-                                        }
+                                        // A line the template leaves for you to fill in
+                                        // says so. It used to print the block's type name
+                                        // — "list", "text" — which reads as content.
+                                        text: String(modelData.text ?? "").length > 0
+                                            ? modelData.text
+                                            : Translation.tr("for you to fill in")
+                                        opacity: String(modelData.text ?? "").length > 0 ? 1 : 0.55
                                         font.pixelSize: Appearance.font.pixelSize.smaller
                                         font.weight: modelData.type === "heading" ? Font.DemiBold : Font.Normal
                                         color: Appearance.colors.colOnLayer2
@@ -294,9 +298,10 @@ Item {
                 Item { Layout.fillWidth: true }
 
                 RippleButton {
-                    implicitHeight: 38
-                    implicitWidth: 100
-                    buttonRadius: Appearance.rounding.small
+                    id: cancelButton
+                    implicitHeight: 44
+                    implicitWidth: 110
+                    buttonRadius: NotesMetrics.pillRadius(cancelButton.implicitHeight)
                     colBackground: Appearance.colors.colLayer2
                     colBackgroundHover: Appearance.colors.colLayer2Hover
                     onClicked: root.closed()
@@ -310,29 +315,21 @@ Item {
                 }
 
                 RippleButton {
-                    implicitHeight: 38
-                    implicitWidth: 180
-                    buttonRadius: Appearance.rounding.small
+                    id: useButton
+                    implicitHeight: 44
+                    implicitWidth: 160
+                    buttonRadius: NotesMetrics.pillRadius(useButton.implicitHeight)
                     colBackground: Appearance.colors.colPrimary
                     colBackgroundHover: Appearance.colors.colPrimaryHover
+                    colBackgroundActive: Appearance.colors.colPrimaryActive
                     onClicked: root.applyTemplate()
 
-                    contentItem: RowLayout {
+                    contentItem: StyledText {
                         anchors.centerIn: parent
-                        spacing: 6
-
-                        MaterialSymbol {
-                            text: "add"
-                            iconSize: 18
-                            color: Appearance.colors.colOnPrimary
-                        }
-
-                        StyledText {
-                            text: Translation.tr("Use Template")
-                            font.pixelSize: Appearance.font.pixelSize.small
-                            font.weight: Font.DemiBold
-                            color: Appearance.colors.colOnPrimary
-                        }
+                        text: Translation.tr("Use this one")
+                        font.pixelSize: Appearance.font.pixelSize.small
+                        font.weight: Font.DemiBold
+                        color: Appearance.colors.colOnPrimary
                     }
                 }
             }

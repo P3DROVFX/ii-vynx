@@ -175,14 +175,20 @@ def fetch_youtube_oembed(url: str) -> dict:
             author = data.get("author_name", "").strip()
             thumb = data.get("thumbnail_url", "").strip()
             provider = data.get("provider_name", "YouTube").strip()
-            desc = f"Vídeo por {author}" if author else ""
+            # English, like every other string the shell shows. This one was "Vídeo por
+            # %s", which is the only Portuguese sentence in the app and it reached the
+            # screen.
+            desc = f"Video by {author}" if author else ""
             if title:
                 return {
                     "title": title,
                     "description": desc,
                     "site_name": provider,
                     "image": thumb,
-                    "favicon": "https://www.youtube.com/s/desktop/9ca677c7/img/favicon.ico",
+                    # The stable path, not the build-hashed one: the versioned URL
+                    # (/s/desktop/<hash>/img/favicon.ico) 404s the moment YouTube ships a
+                    # new build, and the shell then retried it on every repaint.
+                    "favicon": "https://www.youtube.com/favicon.ico",
                 }
     except Exception:
         pass
@@ -321,8 +327,11 @@ def main() -> int:
         "title": meta.get("title") or domain,
         "description": meta.get("description") or "",
         "site_name": meta.get("site_name") or domain,
-        "image": local_img or meta.get("image") or "",
-        "favicon": local_fav or meta.get("favicon") or "",
+        # Local paths only. Handing back the remote URL when the download failed made the
+        # shell itself fetch it — on every repaint, past the preference that is supposed
+        # to decide whether anything leaves this machine, and loudly when it 404s.
+        "image": local_img,
+        "favicon": local_fav,
         "fetchedAt": int(time.time()),
         "cached": False,
     }

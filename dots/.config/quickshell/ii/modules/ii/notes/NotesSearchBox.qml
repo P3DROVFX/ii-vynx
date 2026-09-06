@@ -54,9 +54,12 @@ Rectangle {
         cursorShape: Qt.IBeamCursor
         onClicked: input.forceActiveFocus()
 
+        // On hover, and only on hover. `StyledToolTip` reads `parent.hovered`, which a
+        // `MouseArea` does not have, and an undefined read counts as hovered — so this
+        // help line sat permanently on screen beside the rail, unhovered and unasked for.
         StyledToolTip {
-            text: Translation.tr("Search by text, or use tag:, caderno:, tem:imagem, tem:tinta, is:favorite")
-            extraVisibleCondition: input.text.length === 0
+            text: Translation.tr("Words search everything. Narrow it with tag:, notebook:, has:image, has:ink, is:favourite")
+            extraVisibleCondition: hoverArea.containsMouse && input.text.length === 0
         }
     }
 

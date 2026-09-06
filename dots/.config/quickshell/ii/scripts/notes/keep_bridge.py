@@ -65,8 +65,8 @@ def resolve_conflict(local_modified: int, remote_updated: int, local_doc: dict, 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Experimental Google Keep Bridge")
-    parser.add_argument("action", choices=["status", "info"], help="Ação a executar")
-    parser.add_argument("--confirm-experimental", action="store_true", help="Confirmação de risco experimental")
+    parser.add_argument("action", choices=["status", "info"], help="What to do")
+    parser.add_argument("--confirm-experimental", action="store_true", help="Acknowledge that this is experimental")
 
     args = parser.parse_args()
 

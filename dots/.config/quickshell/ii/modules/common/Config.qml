@@ -4549,6 +4549,18 @@ Singleton {
              */
             property JsonObject notes: JsonObject {
                 property bool enable: true
+                /**
+                 * The defaults a new note starts from, and the one timing the editor has.
+                 *
+                 * These live here rather than inside the app's own sheet only because they
+                 * are preferences that make sense in a preset. Every one of them replaces
+                 * a number that used to be written into the code — a settings page whose
+                 * switches configure nothing is worse than no settings page, which is what
+                 * the first version of that sheet was.
+                 */
+                property string defaultPaper: "plain"
+                property int paperStrength: 50
+                property int autosaveDelay: 400
             }
 
             property JsonObject overlay: JsonObject {

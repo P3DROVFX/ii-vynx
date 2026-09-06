@@ -9,8 +9,19 @@ import unittest
 import zipfile
 from pathlib import Path
 
+import sys
+
+# `scripts/notes` on the path, then a plain module import — the convention the other
+# script tests here follow (see test_preset_store.py). `from scripts.notes...` only works
+# if the repository root happens to be the working directory, which is why these three
+# tests failed the moment they were run from anywhere else.
+NOTES_DIR = str(Path(__file__).resolve().parents[1] / "notes")
+if NOTES_DIR not in sys.path:
+    sys.path.insert(0, NOTES_DIR)
+
+
 # Import target
-from scripts.notes.notes_export import (
+from notes_export import (
     document_to_markdown,
     document_to_html,
     export_notes

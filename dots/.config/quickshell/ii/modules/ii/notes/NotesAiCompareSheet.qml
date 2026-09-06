@@ -190,7 +190,9 @@ Item {
                         implicitWidth: 84
                         buttonRadius: Appearance.rounding.verysmall
                         toggled: root.viewMode === "sideBySide"
-                        colBackground: toggled ? Appearance.colors.colSecondaryContainer : Appearance.colors.colLayer1
+                        colBackground: Appearance.colors.colLayer1
+                        colBackgroundToggled: Appearance.colors.colSecondaryContainer
+                        colBackgroundToggledHover: Appearance.colors.colSecondaryContainerHover
                         colBackgroundHover: Appearance.colors.colSecondaryContainerHover
                         onClicked: root.viewMode = "sideBySide"
 
@@ -207,7 +209,9 @@ Item {
                         implicitWidth: 70
                         buttonRadius: Appearance.rounding.verysmall
                         toggled: root.viewMode === "diff"
-                        colBackground: toggled ? Appearance.colors.colSecondaryContainer : Appearance.colors.colLayer1
+                        colBackground: Appearance.colors.colLayer1
+                        colBackgroundToggled: Appearance.colors.colSecondaryContainer
+                        colBackgroundToggledHover: Appearance.colors.colSecondaryContainerHover
                         colBackgroundHover: Appearance.colors.colSecondaryContainerHover
                         onClicked: root.viewMode = "diff"
 
@@ -254,7 +258,7 @@ Item {
                         }
 
                         StyledText {
-                            text: Translation.tr("Original Text")
+                            text: Translation.tr("What you wrote")
                             font.pixelSize: Appearance.font.pixelSize.small
                             font.weight: Font.DemiBold
                             color: Appearance.colors.colOnLayer1
@@ -342,7 +346,7 @@ Item {
                             StyledText {
                                 text: {
                                     if (root.isStreaming)
-                                        return Translation.tr("Generating...");
+                                        return Translation.tr("Writing…");
                                     if (root.hasError)
                                         return Translation.tr("Failed");
                                     return Translation.tr("%1 chars").arg(root.proposedText.length);
@@ -396,7 +400,7 @@ Item {
 
                                 contentItem: StyledText {
                                     anchors.centerIn: parent
-                                    text: Translation.tr("Try Again")
+                                    text: Translation.tr("Try again")
                                     font.pixelSize: Appearance.font.pixelSize.small
                                     color: Appearance.colors.colOnLayer0
                                 }
@@ -415,7 +419,7 @@ Item {
                             StyledText {
                                 id: propTextItem
                                 width: parent.width
-                                text: root.proposedText.length > 0 ? root.proposedText : (root.isStreaming ? Translation.tr("Synthesizing response...") : Translation.tr("(No output generated)"))
+                                text: root.proposedText.length > 0 ? root.proposedText : (root.isStreaming ? Translation.tr("Writing…") : Translation.tr("Nothing came back."))
                                 font.pixelSize: Appearance.font.pixelSize.normal
                                 color: root.proposedText.length > 0 ? Appearance.colors.colOnLayer0 : Appearance.colors.colOnLayer1Inactive
                                 wrapMode: Text.Wrap
@@ -613,7 +617,7 @@ Item {
                         }
 
                         StyledText {
-                            text: Translation.tr("Insert Below")
+                            text: Translation.tr("Add it below")
                             font.pixelSize: Appearance.font.pixelSize.small
                             font.weight: Font.DemiBold
                             color: Appearance.colors.colOnSecondaryContainer

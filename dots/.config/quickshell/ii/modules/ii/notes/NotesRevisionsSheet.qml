@@ -135,19 +135,12 @@ Item {
 
                 StyledText {
                     Layout.fillWidth: true
-                    text: Translation.tr("Version History")
+                    text: Translation.tr("Version history")
                     font.pixelSize: Appearance.font.pixelSize.larger
                     font.weight: Font.DemiBold
                     color: Appearance.colors.colOnLayer0
                 }
 
-                NotesIconButton {
-                    symbol: "close"
-                    size: 34
-                    iconSize: 20
-                    tooltipText: Translation.tr("Close")
-                    onTriggered: root.closed()
-                }
             }
 
             // ── Body: Two Columns (Revisions List & Diff View) ─────────────
@@ -160,7 +153,7 @@ Item {
                 Rectangle {
                     Layout.fillHeight: true
                     Layout.preferredWidth: 280
-                    radius: Appearance.rounding.medium
+                    radius: Appearance.rounding.normal
                     color: Appearance.colors.colLayer1
                     clip: true
 
@@ -170,7 +163,7 @@ Item {
                         spacing: 8
 
                         StyledText {
-                            text: Translation.tr("Past Snapshots")
+                            text: Translation.tr("Earlier versions")
                             font.pixelSize: Appearance.font.pixelSize.small
                             font.weight: Font.DemiBold
                             color: Appearance.colors.colSubtext
@@ -193,12 +186,10 @@ Item {
                                 implicitHeight: 52
                                 buttonRadius: Appearance.rounding.small
                                 toggled: root.selectedIndex === revBtn.index
-                                colBackground: toggled
-                                    ? Appearance.colors.colSecondaryContainer
-                                    : Appearance.colors.colLayer2
-                                colBackgroundHover: toggled
-                                    ? Appearance.colors.colSecondaryContainerHover
-                                    : Appearance.colors.colLayer2Hover
+                                colBackground: Appearance.colors.colLayer2
+                                colBackgroundHover: Appearance.colors.colLayer2Hover
+                                colBackgroundToggled: Appearance.colors.colSecondaryContainer
+                                colBackgroundToggledHover: Appearance.colors.colSecondaryContainerHover
 
                                 onClicked: root.loadRevisionAtIndex(revBtn.index)
 
@@ -240,14 +231,17 @@ Item {
                             }
                         }
 
-                        // Empty State if no revisions
-                        StyledText {
-                            visible: !root.revisions || root.revisions.length === 0
-                            Layout.alignment: Qt.AlignCenter
-                            text: Translation.tr("No past revisions yet.")
-                            font.pixelSize: Appearance.font.pixelSize.small
-                            color: Appearance.colors.colSubtext
-                        }
+                    }
+
+                    StyledText {
+                        anchors.centerIn: parent
+                        width: parent.width - 32
+                        horizontalAlignment: Text.AlignHCenter
+                        wrapMode: Text.WordWrap
+                        visible: !root.revisions || root.revisions.length === 0
+                        text: Translation.tr("Nothing saved yet. Versions appear here as you write.")
+                        font.pixelSize: Appearance.font.pixelSize.small
+                        color: Appearance.colors.colSubtext
                     }
                 }
 
@@ -255,7 +249,7 @@ Item {
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    radius: Appearance.rounding.medium
+                    radius: Appearance.rounding.normal
                     color: Appearance.colors.colLayer1
                     clip: true
 
@@ -405,7 +399,7 @@ Item {
                         }
 
                         StyledText {
-                            text: Translation.tr("Save Snapshot")
+                            text: Translation.tr("Keep this version")
                             font.pixelSize: Appearance.font.pixelSize.small
                             color: Appearance.colors.colOnLayer2
                         }
@@ -450,7 +444,7 @@ Item {
                         }
 
                         StyledText {
-                            text: Translation.tr("Restore Version")
+                            text: Translation.tr("Go back to this")
                             font.pixelSize: Appearance.font.pixelSize.small
                             font.weight: Font.DemiBold
                             color: Appearance.colors.colOnPrimary

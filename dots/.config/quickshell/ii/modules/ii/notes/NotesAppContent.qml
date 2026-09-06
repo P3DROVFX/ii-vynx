@@ -115,6 +115,37 @@ Item {
     property bool showingDetail: false
     property bool focusMode: false
 
+    /**
+     * Which whole-app page is open, if any: "" is the notes themselves, "settings" and
+     * "stats" take the place of the list and the note.
+     *
+     * Pages, not sheets. A modal over the notes says "answer me and get back to what you
+     * were doing" — right for a confirmation, wrong for settings, which is somewhere you
+     * go, read, change one thing and leave. The rail stays put while a page is open, so
+     * leaving is one click on any place in it.
+     */
+    property string page: ""
+
+    readonly property string barTitle: {
+        if (root.page === "settings")
+            return Translation.tr("Settings");
+        if (root.page === "stats")
+            return Translation.tr("Statistics");
+        return root.scopeName;
+    }
+
+    readonly property string barSubtitle: {
+        if (root.page === "settings")
+            return Translation.tr("This app only");
+        if (root.page === "stats")
+            return Translation.tr("Across every note");
+        if (root.query.trim().length > 0)
+            return Translation.tr("%1 of %2 notes").arg(root.visibleNotes.length).arg(root.scopedNotes.length);
+        if (root.visibleNotes.length === 1)
+            return Translation.tr("One note");
+        return Translation.tr("%1 notes").arg(root.visibleNotes.length);
+    }
+
     // ── Actions ───────────────────────────────────────────────────────────
 
     function createNote(): void {
@@ -219,10 +250,8 @@ Item {
                 templatesSheet.visible = false;
             else if (revisionsSheet.visible)
                 revisionsSheet.visible = false;
-            else if (statsSheet.visible)
-                statsSheet.visible = false;
-            else if (settingsSheet.visible)
-                settingsSheet.visible = false;
+            else if (root.page.length > 0)
+                root.page = "";
             else if (outlineDrawer.visible)
                 outlineDrawer.visible = false;
             else if (root.focusMode)
@@ -234,15 +263,6 @@ Item {
             else
                 root.closeRequested();
         }
-    }
-
-    NotesSettingsSheet {
-        id: settingsSheet
-        anchors.fill: parent
-        z: 40
-        visible: false
-        onClosed: settingsSheet.visible = false
-        onExportRequested: detail.openExportSheet()
     }
 
     NotesTemplatesSheet {
@@ -277,14 +297,6 @@ Item {
         onRevisionRestored: revisionsSheet.visible = false
     }
 
-    NotesStatsSheet {
-        id: statsSheet
-        anchors.fill: parent
-        z: 42
-        visible: false
-        onClosed: statsSheet.visible = false
-    }
-
     NotesOutline {
         id: outlineDrawer
         anchors.top: parent.top
@@ -298,6 +310,7 @@ Item {
         onClosed: outlineDrawer.visible = false
         onHeadingClicked: blockId => {
             outlineDrawer.visible = false;
+            detail.goToBlock(blockId);
         }
     }
 
@@ -312,16 +325,21 @@ Item {
             id: topBar
             Layout.fillWidth: true
             visible: !root.focusMode
-            title: root.scopeName
-            subtitle: root.query.trim().length > 0
-                ? Translation.tr("%1 of %2 notes").arg(root.visibleNotes.length).arg(root.scopedNotes.length)
-                : Translation.tr("%1 notes").arg(root.visibleNotes.length)
-            showBack: root.compact && root.showingDetail
-            showRailToggle: !root.compact && root.width >= 1100
+            title: root.barTitle
+            subtitle: root.barSubtitle
+            showBack: (root.compact && root.showingDetail) || root.page.length > 0
+            showRailToggle: !root.compact && root.width >= 1100 && root.page.length === 0
             railExpanded: root.railExpanded
+            statsActive: root.page === "stats"
 
             onRailToggled: root.state.railExpanded = !root.state.railExpanded
-            onBackRequested: root.showingDetail = false
+            onBackRequested: {
+                if (root.page.length > 0)
+                    root.page = "";
+                else
+                    root.showingDetail = false;
+            }
+            onStatsRequested: root.page = root.page === "stats" ? "" : "stats"
             onCloseRequested: root.closeRequested()
         }
 
@@ -342,14 +360,24 @@ Item {
                 visible: !root.compact && !root.focusMode
                 expanded: root.railExpanded
                 scope: root.state.scope
+                settingsOpen: root.page === "settings"
 
                 onScopePicked: scope => {
                     root.state.scope = scope;
                     root.state.noteId = "";
+                    // A place was asked for, so a page that is covering the places is in
+                    // the way of the answer.
+                    root.page = "";
                 }
-                onCreateRequested: root.createNote()
-                onSettingsRequested: settingsSheet.visible = true
-                onStatsRequested: statsSheet.visible = true
+                onCreateRequested: {
+                    root.page = "";
+                    root.createNote();
+                }
+                onTemplatesRequested: {
+                    root.page = "";
+                    templatesSheet.visible = true;
+                }
+                onSettingsRequested: root.page = root.page === "settings" ? "" : "settings"
 
                 Behavior on Layout.preferredWidth {
                     animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
@@ -378,7 +406,7 @@ Item {
                     : Math.max(NotesMetrics.listMinimumWidth,
                                Math.min(NotesMetrics.listMaximumWidth, root.state.listWidth))
                 Layout.fillWidth: root.compact
-                visible: (!root.compact || !root.showingDetail) && !root.focusMode
+                visible: (!root.compact || !root.showingDetail) && !root.focusMode && root.page.length === 0
                 notes: root.visibleNotes
                 selectedId: root.selectedId
                 searching: root.query.trim().length > 0
@@ -391,18 +419,48 @@ Item {
 
             NotesPaneSplitter {
                 Layout.fillHeight: true
-                visible: !root.compact
+                visible: !root.compact && root.page.length === 0
                 resizable: !root.focusMode
                 Layout.preferredWidth: root.focusMode ? 0 : -1
                 onMoved: delta => root.state.listWidth = Math.max(NotesMetrics.listMinimumWidth,
                     Math.min(NotesMetrics.listMaximumWidth, root.state.listWidth + delta))
             }
 
+            /**
+             * The whole-app pages, where the list and the note would be.
+             *
+             * In `Loader`s because both of them cost something to exist — the statistics
+             * page reads every document in the store to count what is in it — and neither
+             * is open most of the time.
+             */
+            Loader {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                active: root.page === "settings"
+                visible: active
+
+                sourceComponent: NotesSettingsPage {
+                    onExportRequested: {
+                        root.page = "";
+                        detail.openExportSheet();
+                    }
+                }
+            }
+
+            Loader {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                active: root.page === "stats"
+                visible: active
+
+                sourceComponent: NotesStatsPage {}
+            }
+
             NotesDetail {
                 id: detail
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                visible: (!root.compact || root.showingDetail) || root.focusMode
+                visible: ((!root.compact || root.showingDetail) || root.focusMode) && root.page.length === 0
                 note: root.selectedNote
                 trash: root.trashScope
 

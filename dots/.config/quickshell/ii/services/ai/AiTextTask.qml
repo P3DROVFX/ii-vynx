@@ -53,7 +53,7 @@ QtObject {
         return current;
     }
 
-    readonly property string modelName: root.model ? (root.model.title || root.model.name) : (root.localOnly ? Translation.tr("Local model required") : Translation.tr("No model"))
+    readonly property string modelName: root.model ? (root.model.title || root.model.name) : (root.localOnly ? Translation.tr("A local model is required") : Translation.tr("No model"))
     readonly property bool isLocal: root.model ? Ai.catalog.isModelLocal(root.model) : false
     readonly property int charCount: (root.systemPrompt.length + root.userText.length)
 
@@ -82,7 +82,7 @@ QtObject {
 
         if (!root.allowed) {
             root.status = "error";
-            root.errorText = Translation.tr("AI is disabled by policy (policies.ai = 0).");
+            root.errorText = Translation.tr("The AI features are switched off in the shell's settings.");
             root.failed(root.errorText);
             return false;
         }
@@ -91,8 +91,8 @@ QtObject {
         if (!activeModel) {
             root.status = "error";
             root.errorText = root.localOnly
-                ? Translation.tr("No local model is available under local-only policy.")
-                : Translation.tr("No AI model is configured or available.");
+                ? Translation.tr("Only a model running on this machine may be used, and none is set up.")
+                : Translation.tr("No AI model is set up yet.");
             root.failed(root.errorText);
             return false;
         }

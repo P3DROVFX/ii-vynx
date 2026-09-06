@@ -297,6 +297,22 @@ Item {
         return root.blocks.findIndex(item => item.id === blockId);
     }
 
+    /**
+     * Brings a block into view and puts the caret in it.
+     *
+     * The table of contents had no way to do this: clicking a heading closed the drawer
+     * and left the page exactly where it was, which looks like the click missed.
+     */
+    function goToBlock(blockId): void {
+        const at = root.indexOfBlock(blockId);
+        if (at < 0)
+            return;
+        list.positionViewAtIndex(at, ListView.Beginning);
+        root.focusCaret = 0;
+        root.focusRequest = blockId;
+        root.focusTick++;
+    }
+
     // ── What the delegates ask for ────────────────────────────────────────
 
     /// Text as it is typed. Not structural: the delegate is already showing this.
@@ -780,7 +796,9 @@ Item {
                 root.aiCompareOpen = true;
             }
 
-            onChatRequested: (contextText) => {
+            onChatRequested: contextText => {
+                if (contextText.length > 0)
+                    Quickshell.execDetached(["wl-copy", "--", contextText]);
                 GlobalStates.sidebarLeftOpen = true;
             }
 

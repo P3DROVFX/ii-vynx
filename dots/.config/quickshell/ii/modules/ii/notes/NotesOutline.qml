@@ -64,7 +64,7 @@ Item {
 
                 StyledText {
                     Layout.fillWidth: true
-                    text: Translation.tr("Table of Contents")
+                    text: Translation.tr("Table of contents")
                     font.pixelSize: Appearance.font.pixelSize.normal
                     font.weight: Font.DemiBold
                     color: Appearance.colors.colOnLayer0
@@ -74,7 +74,7 @@ Item {
                     symbol: "close"
                     size: 30
                     iconSize: 18
-                    tooltipText: Translation.tr("Close Outline")
+                    tooltipText: Translation.tr("Close")
                     onTriggered: root.closed()
                 }
             }

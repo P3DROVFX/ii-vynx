@@ -69,13 +69,10 @@ Rectangle {
                 root.blockType === "heading" && root.block.level === 2)
         }
 
-        Rectangle {
-            Layout.preferredWidth: 1
-            Layout.preferredHeight: 22
-            Layout.leftMargin: 5
-            Layout.rightMargin: 5
-            color: Appearance.colors.colOnLayer1Inactive
-            opacity: 0.4
+        // Air between the groups, not a rule: the app separates things with space and
+        // shape everywhere else, and these hairlines were the only lines in it.
+        Item {
+            Layout.preferredWidth: 12
         }
 
         NotesIconButton {
@@ -123,13 +120,10 @@ Rectangle {
             onTriggered: root.toggleType("callout", { tone: "info" }, root.blockType === "callout")
         }
 
-        Rectangle {
-            Layout.preferredWidth: 1
-            Layout.preferredHeight: 22
-            Layout.leftMargin: 5
-            Layout.rightMargin: 5
-            color: Appearance.colors.colOnLayer1Inactive
-            opacity: 0.4
+        // Air between the groups, not a rule: the app separates things with space and
+        // shape everywhere else, and these hairlines were the only lines in it.
+        Item {
+            Layout.preferredWidth: 12
         }
 
         NotesIconButton {
@@ -158,13 +152,10 @@ Rectangle {
             onTriggered: root.setType("divider", {})
         }
 
-        Rectangle {
-            Layout.preferredWidth: 1
-            Layout.preferredHeight: 22
-            Layout.leftMargin: 5
-            Layout.rightMargin: 5
-            color: Appearance.colors.colOnLayer1Inactive
-            opacity: 0.4
+        // Air between the groups, not a rule: the app separates things with space and
+        // shape everywhere else, and these hairlines were the only lines in it.
+        Item {
+            Layout.preferredWidth: 12
         }
 
         // Inserting, rather than converting: a snippet and a table are not what the
@@ -210,13 +201,10 @@ Rectangle {
             onTriggered: root.editor.insertInk()
         }
 
-        Rectangle {
-            Layout.preferredWidth: 1
-            Layout.preferredHeight: 22
-            Layout.leftMargin: 5
-            Layout.rightMargin: 5
-            color: Appearance.colors.colOnLayer1Inactive
-            opacity: 0.4
+        // Air between the groups, not a rule: the app separates things with space and
+        // shape everywhere else, and these hairlines were the only lines in it.
+        Item {
+            Layout.preferredWidth: 12
         }
 
         NotesIconButton {
@@ -237,14 +225,9 @@ Rectangle {
             onTriggered: root.editor.redo()
         }
 
-        Rectangle {
+        Item {
             visible: Number(Config.options?.policies?.ai ?? 1) !== 0
-            Layout.preferredWidth: 1
-            Layout.preferredHeight: 22
-            Layout.leftMargin: 5
-            Layout.rightMargin: 5
-            color: Appearance.colors.colOnLayer1Inactive
-            opacity: 0.4
+            Layout.preferredWidth: 12
         }
 
         NotesIconButton {
@@ -252,7 +235,7 @@ Rectangle {
             symbol: "auto_awesome"
             size: 42
             iconSize: 21
-            tooltipText: Translation.tr("AI Assistant")
+            tooltipText: Translation.tr("Ask the AI")
             colIcon: Appearance.colors.colTertiary
             onTriggered: {
                 if (root.editor)
@@ -265,7 +248,7 @@ Rectangle {
             size: 42
             iconSize: 21
             tooltipText: DictationService.recording ? Translation.tr("Stop dictation") : Translation.tr("Voice dictation")
-            colIcon: DictationService.recording ? Appearance.m3colors.m3error : Appearance.colors.colPrimary
+            colIcon: DictationService.recording ? Appearance.m3colors.m3error : Appearance.colors.colOnLayer1
             onTriggered: DictationService.toggle()
         }
     }

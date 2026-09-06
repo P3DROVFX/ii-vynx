@@ -127,7 +127,7 @@ Rectangle {
             symbol: "code"
             size: 32
             iconSize: 18
-            tooltipText: Translation.tr("Inline Code (`code`)")
+            tooltipText: Translation.tr("Code, inline")
             colIcon: Appearance.colors.colOnLayer1
             onTriggered: root.toggleWrap("`", "`")
         }
@@ -141,16 +141,10 @@ Rectangle {
             onTriggered: root.toggleWrap("[", "](https://)")
         }
 
-        // Divider
-        Rectangle {
+        // Air, not a rule — the same decision as the formatting bar below it.
+        Item {
             visible: root.policy !== 0
-            Layout.preferredWidth: 2
-            Layout.preferredHeight: 18
-            Layout.leftMargin: 4
-            Layout.rightMargin: 4
-            color: Appearance.colors.colOnLayer1Inactive
-            opacity: 0.35
-            radius: 1
+            Layout.preferredWidth: 10
         }
 
         // AI Assistant Action Button

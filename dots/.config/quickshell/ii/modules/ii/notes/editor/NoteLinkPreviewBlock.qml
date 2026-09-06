@@ -11,10 +11,17 @@ import qs.modules.common.widgets
 import qs.modules.ii.notes
 
 /**
- * A rich card preview for a web URL.
+ * A link, as a card.
  *
- * Shows the page title, description, domain, favicon and thumbnail image.
- * Metadata is retrieved asynchronously by NotesLinkPreview.
+ * The title, the description and the picture come from the site, fetched once by
+ * `NotesLinkPreview` and kept on disk. Nothing here is loaded from the network by the
+ * card itself: `localOnly` below refuses any source that is not a file, so a preference
+ * that says "nothing leaves this machine" holds at paint time too, and a favicon that has
+ * moved cannot be re-requested on every repaint.
+ *
+ * The four buttons that used to sit in this card's header — refresh, open, copy, remove —
+ * were on screen at all times, which made a quiet reference to a page look like a control
+ * panel. They wait for the pointer now, and opening the page is the card itself.
  */
 Item {
     id: root
@@ -34,6 +41,12 @@ Item {
     }
 
     readonly property bool loading: root.block && (!root.block.title || root.block.title.length === 0) && (root.block.fetchedAt === 0 || root.block.fetchedAt === undefined)
+
+    /// A file, or nothing at all. Never a URL: an `Image` given one fetches it.
+    function localOnly(path) {
+        const value = String(path ?? "");
+        return value.startsWith("/") ? `file://${value}` : "";
+    }
 
     implicitHeight: card.height + 16
 
@@ -70,8 +83,10 @@ Item {
         width: Math.max(160, Math.min(NotesMetrics.readingWidth,
             root.width - NotesMetrics.readingPadding * 2))
         height: contentLayout.implicitHeight + 24
-        radius: Appearance.rounding.normal
-        color: Appearance.m3colors.m3surfaceContainerLowest
+        radius: Appearance.rounding.large
+        // On the page, not a hole in it. `surfaceContainerLowest` is all but black, and a
+        // near-black card is the one thing on a written page that shouts.
+        color: Appearance.m3colors.m3surfaceContainerHighest
         clip: true
 
         // Subtle hover indicator
@@ -115,8 +130,9 @@ Item {
                     Layout.preferredHeight: 16
 
                     Image {
+                        id: faviconImage
                         anchors.fill: parent
-                        source: root.block && root.block.favicon ? root.block.favicon : ""
+                        source: root.block ? root.localOnly(root.block.favicon) : ""
                         fillMode: Image.PreserveAspectFit
                         visible: status === Image.Ready
                         asynchronous: true
@@ -127,7 +143,7 @@ Item {
                         text: "language"
                         iconSize: 15
                         color: Appearance.colors.colSubtext
-                        visible: !root.block || !root.block.favicon
+                        visible: faviconImage.status !== Image.Ready
                     }
                 }
 
@@ -139,50 +155,50 @@ Item {
                     elide: Text.ElideRight
                 }
 
-                NotesIconButton {
-                    symbol: "refresh"
-                    size: 30
-                    iconSize: 16
-                    tooltipText: Translation.tr("Refresh preview")
-                    onTriggered: {
-                        if (root.url.length > 0) {
-                            NotesLinkPreview.invalidate(root.url);
-                            root.refreshPreview();
+                RowLayout {
+                    Layout.alignment: Qt.AlignVCenter
+                    spacing: 2
+                    opacity: cardHover.containsMouse ? 1 : 0
+                    visible: opacity > 0
+
+                    Behavior on opacity {
+                        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                    }
+
+                    NotesIconButton {
+                        symbol: "refresh"
+                        size: 32
+                        iconSize: 17
+                        tooltipText: Translation.tr("Ask the site again")
+                        onTriggered: {
+                            if (root.url.length > 0) {
+                                NotesLinkPreview.invalidate(root.url);
+                                root.refreshPreview();
+                            }
                         }
                     }
-                }
 
-                NotesIconButton {
-                    symbol: "open_in_new"
-                    size: 30
-                    iconSize: 16
-                    tooltipText: Translation.tr("Open in browser")
-                    onTriggered: {
-                        if (root.url.length > 0)
-                            Qt.openUrlExternally(root.url);
+                    NotesIconButton {
+                        symbol: "content_copy"
+                        size: 32
+                        iconSize: 17
+                        tooltipText: Translation.tr("Copy the link")
+                        onTriggered: {
+                            if (root.url.length > 0)
+                                Quickshell.execDetached(["wl-copy", root.url]);
+                        }
                     }
-                }
 
-                NotesIconButton {
-                    symbol: "content_copy"
-                    size: 30
-                    iconSize: 16
-                    tooltipText: Translation.tr("Copy link")
-                    onTriggered: {
-                        if (root.url.length > 0)
-                            Quickshell.exec(["wl-copy", root.url]);
-                    }
-                }
-
-                NotesIconButton {
-                    symbol: "delete"
-                    size: 30
-                    iconSize: 16
-                    colIcon: Appearance.colors.colSubtext
-                    tooltipText: Translation.tr("Remove block")
-                    onTriggered: {
-                        if (root.editor && root.block)
-                            root.editor.removeBlock(root.block.id);
+                    NotesIconButton {
+                        symbol: "delete"
+                        size: 32
+                        iconSize: 17
+                        colIcon: Appearance.colors.colSubtext
+                        tooltipText: Translation.tr("Remove this card")
+                        onTriggered: {
+                            if (root.editor && root.block)
+                                root.editor.removeBlock(root.block.id);
+                        }
                     }
                 }
             }
@@ -219,25 +235,26 @@ Item {
                 }
 
                 // Thumbnail image if present
-                Item {
-                    Layout.preferredWidth: 84
-                    Layout.preferredHeight: 64
+                // Sixteen by nine, because that is the shape of nearly every picture a
+                // page offers about itself. An 84×64 box cropped a video still into a
+                // stamp with black bars down its sides.
+                Rectangle {
+                    Layout.preferredWidth: 128
+                    Layout.preferredHeight: 72
+                    Layout.alignment: Qt.AlignVCenter
                     visible: thumbImage.status === Image.Ready
+                    radius: Appearance.rounding.small
+                    color: Appearance.colors.colLayer2
+                    clip: true
 
-                    Rectangle {
+                    Image {
+                        id: thumbImage
                         anchors.fill: parent
-                        radius: Appearance.rounding.small
-                        clip: true
-                        color: Appearance.m3colors.m3surfaceContainerHigh
-
-                        Image {
-                            id: thumbImage
-                            anchors.fill: parent
-                            source: root.block && root.block.image ? (root.block.image.startsWith("/") ? "file://" + root.block.image : root.block.image) : ""
-                            fillMode: Image.PreserveAspectCrop
-                            asynchronous: true
-                            smooth: true
-                        }
+                        source: root.block ? root.localOnly(root.block.image) : ""
+                        fillMode: Image.PreserveAspectCrop
+                        asynchronous: true
+                        smooth: true
+                        sourceSize.width: 512
                     }
                 }
             }

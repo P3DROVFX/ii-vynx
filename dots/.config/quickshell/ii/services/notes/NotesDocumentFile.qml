@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import qs.modules.common
 
 import "NotesDocument.js" as Doc
 
@@ -37,7 +38,8 @@ Scope {
      */
     property var initialDocument: null
 
-    property int debounceInterval: 400
+    /// From the preference: how long the editor waits before writing.
+    property int debounceInterval: Config.options.notes.autosaveDelay ?? 400
     /// A write happens at least this often while somebody is still typing. Without a
     /// ceiling the debounce never fires during continuous typing, and a long paragraph
     /// exists only in memory until the user pauses.
@@ -116,6 +118,11 @@ Scope {
         // is nothing to read, and letting it try logs a failed read for every note anybody
         // makes — which teaches whoever reads the log to ignore failed reads.
         preload: root.initialDocument === null
+        // `onLoadFailed` below decides what a missing file means, and for this view it
+        // usually means "new note" or "just purged". The view's own warning arrives first
+        // and says neither, so the log filled up with failed reads that were nothing of
+        // the kind — every note created, and every note deleted.
+        printErrors: false
 
         onLoaded: {
             root.loaded = true;

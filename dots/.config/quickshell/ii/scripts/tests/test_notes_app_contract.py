@@ -30,7 +30,31 @@ def read(path: Path) -> str:
 
 
 def app_files():
-    return sorted(APP_DIR.glob("*.qml"))
+    """Every QML file in the app, not only the ones at the top.
+
+    The design rules below were written when the app was one directory deep. Globbing only
+    the top level meant every file added under editor/ or sketch/ was exempt from all of
+    them, which is exactly how fourteen corners ended up rounded by a token that does not
+    exist.
+    """
+    return sorted(APP_DIR.rglob("*.qml"))
+
+
+def surface_files():
+    """The notes surfaces that live outside the app's own directory.
+
+    The dashboard widget and the quick toggles are notes UI too, and they were exempt from
+    every rule here: two of the widget's colours named tokens that do not exist, so its
+    buttons did not react to the pointer at all and nothing said so.
+    """
+    paths = [
+        ROOT / "modules/common/models/quickToggles/NotesToggle.qml",
+        ROOT / "modules/common/quickToggles/androidStyle/AndroidNotesToggle.qml",
+        *sorted((ROOT / "modules/common/dashboardWidgets/notes").rglob("*.qml")),
+        *sorted((ROOT / "services/notes").rglob("*.qml")),
+        ROOT / "services/ai/AiTextTask.qml",
+    ]
+    return [path for path in paths if path.exists()]
 
 
 class LayoutTests(unittest.TestCase):
@@ -48,8 +72,12 @@ class ThemeTests(unittest.TestCase):
         for path in app_files():
             for number, line in enumerate(read(path).splitlines(), start=1):
                 if "Qt.rgba(0, 0, 0," in line:
-                    # The scrim behind the panel. It is darkness, not a theme colour, and
-                    # the game overlay's dim is written the same way for the same reason.
+                    # A scrim. It is darkness, not a theme colour, and the game overlay's
+                    # dim is written the same way for the same reason.
+                    continue
+                if path.name == "NotesInkSheet.qml" and "#111111" in line:
+                    # The ink palette's fallback. Pigment, not chrome — the documented
+                    # exception, and the same one the tablet's live draw takes.
                     continue
                 found = re.search(r'"#[0-9a-fA-F]{3,8}"', line)
                 if found:
@@ -87,11 +115,18 @@ class ThemeTests(unittest.TestCase):
         # What that forbids is a hairline rectangle spanning a pane — not the outline
         # colour itself. The mail sidebar's own search field is an outlined pill, and an
         # outline around a control is not a divider between sections.
-        hairline = re.compile(r"^\s*(?:Layout\.preferred)?(?:width|height|Width|Height):\s*1\s*$")
+        hairline = re.compile(r"^\s*(?:width|height):\s*1\s*$")
         for path in app_files():
-            for number, line in enumerate(read(path).splitlines(), start=1):
-                if hairline.match(line):
-                    self.fail(f"{path.name}:{number} looks like a divider rule")
+            lines = read(path).splitlines()
+            for number, line in enumerate(lines, start=1):
+                if not hairline.match(line):
+                    continue
+                # `Layout.preferredWidth: 1` beside `Layout.fillWidth` is the equal-columns
+                # idiom, not a rule: it gives every cell the same weight. A divider is a
+                # bare width or height of one on something that fills nothing.
+                if "fillWidth" in "".join(lines[max(0, number - 3):number + 2]):
+                    continue
+                self.fail(f"{path.name}:{number} looks like a divider rule")
 
     def test_each_pane_contains_its_own_content(self):
         # The slab is a sibling of the content, so its own `clip` contains nothing. Without
@@ -241,6 +276,82 @@ class InkTests(unittest.TestCase):
         self.assertIn("Config.options?.tablet?.liveDraw", sheet)
 
 
+class DesignTokenTests(unittest.TestCase):
+    """Every `Appearance.x.y` the app names must actually be there.
+
+    QML resolves a missing property to `undefined` and assigns it without complaint beyond
+    a line in a log nobody is reading: the corner simply does not round, the font simply
+    does not change size. `Appearance.rounding.medium` — a token this design system has
+    never had — was used in fourteen places before anybody looked at the log.
+    """
+
+    GROUPS = {
+        "rounding": r"property\s+(?:int|real)\s+(\w+)\s*:",
+        "colors": r"property\s+color\s+(\w+)\s*:",
+        "m3colors": r"property\s+color\s+(\w+)\s*:",
+    }
+
+    def known_names(self, group):
+        body = read(ROOT / "modules/common/Appearance.qml")
+        block = re.search(rf"\n    {group}: QtObject \{{(.*?)\n    \}}", body, re.S)
+        haystack = block.group(1) if block else body
+        return set(re.findall(self.GROUPS[group], haystack))
+
+    def test_every_rounding_token_exists(self):
+        known = self.known_names("rounding")
+        self.assertIn("normal", known, "the token list could not be read")
+        for path in app_files() + surface_files():
+            for number, line in enumerate(read(path).splitlines(), start=1):
+                for name in re.findall(r"Appearance\.rounding\.(\w+)", line):
+                    self.assertIn(name, known,
+                                  f"{path.name}:{number} uses Appearance.rounding.{name}, "
+                                  f"which does not exist")
+
+    def test_a_toggled_button_says_what_it_paints(self):
+        """`colBackground` is dead while `toggled` is true.
+
+        `RippleButton` reads `colBackgroundToggled` in that state, which defaults to
+        `colPrimary`. Eleven buttons wrote `colBackground: toggled ? container : layer`
+        and were therefore bright primary behind text coloured for the container — the
+        selected tab was the hardest one in the row to read.
+        """
+        for path in app_files():
+            body = read(path)
+            self.assertNotIn("colBackground: toggled", body,
+                             f"{path.name} sets colBackground for a toggled state; "
+                             f"set colBackgroundToggled instead")
+            if "toggled:" not in body:
+                continue
+            # Every file that toggles a button must also name the toggled colour, unless
+            # it is happy with primary — which the ones that pass a container are not.
+            if "colBackgroundToggled" in body or "colSecondaryContainer" not in body:
+                continue
+            self.fail(f"{path.name} toggles buttons and uses container colours without "
+                      f"setting colBackgroundToggled")
+
+    def test_every_colour_token_exists(self):
+        known = self.known_names("colors") | self.known_names("m3colors")
+        self.assertIn("colPrimary", known, "the token list could not be read")
+        for path in app_files() + surface_files():
+            for number, line in enumerate(read(path).splitlines(), start=1):
+                for name in re.findall(r"Appearance\.(?:colors|m3colors)\.(\w+)", line):
+                    self.assertIn(name, known,
+                                  f"{path.name}:{number} uses a colour token that does not "
+                                  f"exist: {name}")
+
+    def test_every_font_size_exists(self):
+        body = read(ROOT / "modules/common/Appearance.qml")
+        block = re.search(r"pixelSize:\s*QtObject\s*\{(.*?)\n        \}", body, re.S)
+        known = set(re.findall(r"property\s+int\s+(\w+)", block.group(1))) if block else set()
+        self.assertIn("normal", known, "the font size list could not be read")
+        for path in app_files():
+            for number, line in enumerate(read(path).splitlines(), start=1):
+                for name in re.findall(r"Appearance\.font\.pixelSize\.(\w+)", line):
+                    self.assertIn(name, known,
+                                  f"{path.name}:{number} uses Appearance.font.pixelSize."
+                                  f"{name}, which does not exist")
+
+
 class TranslationTests(unittest.TestCase):
     def test_every_visible_string_can_be_translated(self):
         # A literal in a `text:` assignment is a string nobody outside en_US will read.
@@ -263,6 +374,11 @@ class TranslationTests(unittest.TestCase):
                 value = found.group(1)
                 # Material Symbol names and other identifiers are not prose.
                 if re.fullmatch(r"[a-z0-9_]*", value):
+                    continue
+                # Neither is punctuation: a separator glyph reads the same in every
+                # language, and routing it through the translator invites somebody to
+                # translate it.
+                if not re.search(r"[A-Za-z]", value):
                     continue
                 self.fail(f"{path.name}:{number} has an untranslated string: {value!r}")
 
@@ -419,15 +535,56 @@ class WiringTests(unittest.TestCase):
         for command in ("open", "close", "toggle", "openNote", "capture", "list"):
             self.assertIn(f"function {command}(", app)
 
-    def test_only_the_switches_that_belong_outside_the_app_are_outside_it(self):
-        # Everything about how notes look and behave lives in the app, where the person
-        # changing it can see what they are changing.
+    def test_only_one_notes_switch_is_reachable_from_the_settings_window(self):
+        """The app owns its own settings; the shell owns whether the app exists.
+
+        The rule is about the *settings window*, not about the config file: a preference
+        that makes sense in a preset belongs in `Config.options.notes` and is edited from
+        the app's own sheet. What must not happen is a notes page appearing in the shell's
+        settings, because then there are two places to look and they disagree.
+        """
+        self.assertNotIn("notes", read(ROOT / "modules/common/SettingsPageRegistry.qml"),
+                         "the settings window gained a notes page")
+
+        settings = ROOT / "modules/settings"
+        exposing = [p.relative_to(settings) for p in settings.rglob("*.qml")
+                    if "options.notes" in read(p)]
+        self.assertEqual([str(p) for p in exposing], ["configs/OverlaysConfig.qml"],
+                         "notes options leaked into the settings window")
+
+        # Counted by the keys named, not by the mentions: one switch reads, guards and
+        # writes the same key on three lines.
+        overlays = read(settings / "configs/OverlaysConfig.qml")
+        named = set(re.findall(r"options\.notes\??\.(\w+)", overlays))
+        self.assertEqual(named, {"enable"},
+                         f"the settings window exposes more than the one switch: {named}")
+
+    def test_every_notes_preference_is_reachable_from_the_app(self):
+        # An option nobody can find is an option that does not exist. Each key in
+        # `Config.options.notes`, apart from the one the shell owns, has to be named
+        # somewhere in the app's own settings sheet.
         config = read(CONFIG)
         opening = "property JsonObject notes: JsonObject {"
         block = config[config.index(opening) + len(opening):]
-        block = block[:block.index("}")]
-        self.assertIn("property bool enable: true", block)
-        self.assertEqual(block.count("property"), 1, "general settings gained a notes option")
+        block = block[:block.index("\n            }")]
+        keys = set(re.findall(r"property\s+\w+\s+(\w+)\s*:", block)) - {"enable"}
+        page = read(APP_DIR / "NotesSettingsPage.qml")
+        for key in sorted(keys):
+            self.assertIn(key, page, f"Config.options.notes.{key} is not editable in the app")
+
+    def test_the_app_settings_are_a_page_and_not_a_modal(self):
+        """Somewhere you go, not a question to answer.
+
+        The user asked for this directly, and it is also the difference between a
+        confirmation and a place: a scrim over the notes says "deal with me first", which
+        is the wrong thing for a page somebody opens to change one preference and leave.
+        """
+        page = read(APP_DIR / "NotesSettingsPage.qml")
+        self.assertNotIn("rgba(0, 0, 0", page, "the settings page still draws a scrim")
+        content = read(APP_DIR / "NotesAppContent.qml")
+        self.assertIn("NotesSettingsPage", content)
+        self.assertIn('root.page === "settings"', content,
+                      "the settings page is not part of the app's page state")
 
     def test_the_window_geometry_is_a_fact_about_this_machine(self):
         # Persistent, not Config: a preset carrying somebody else's geometry would put the

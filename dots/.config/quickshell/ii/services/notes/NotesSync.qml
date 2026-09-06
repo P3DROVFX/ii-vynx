@@ -94,7 +94,7 @@ Singleton {
                     const res = JSON.parse(exportOutput.text.trim());
                     root.exportFinished(res.ok === true, res.message || "", res.output || "");
                 } catch (e) {
-                    root.exportFinished(false, "Erro ao interpretar resultado da exportação: " + exportOutput.text, "");
+                    root.exportFinished(false, `The exporter answered with something unreadable: ${exportOutput.text}`, "");
                 }
             }
         }
@@ -124,10 +124,10 @@ Singleton {
                         NotesService.reload();
                         root.importFinished(true, `Importadas com sucesso: ${res.imported} notas (${res.updated} atualizadas).`, res.imported);
                     } else {
-                        root.importFinished(false, res.message || "Falha na importação.", 0);
+                        root.importFinished(false, res.message || Translation.tr("The import failed."), 0);
                     }
                 } catch (e) {
-                    root.importFinished(false, "Erro na resposta do importador: " + importOutput.text, 0);
+                    root.importFinished(false, `The importer answered with something unreadable: ${importOutput.text}`, 0);
                 }
             }
         }
