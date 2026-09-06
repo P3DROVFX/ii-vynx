@@ -44,6 +44,8 @@ Singleton {
         onWriteFinished: (ok, error) => root.writeFinished(ok, error)
         onCommitted: (tag, result) => root.onCommitted(tag, result)
         onAssetImported: (noteId, name) => root.assetImported(noteId, name)
+        onAssetRead: (noteId, name, contents) => root.assetRead(noteId, name, contents)
+        onAssetsReady: noteId => root.assetsReady(noteId)
     }
 
     // ── State ─────────────────────────────────────────────────────────────
@@ -63,6 +65,8 @@ Singleton {
     signal migrationCompleted(int count)
     /// A file has been copied into a note's folder and can be referenced by name.
     signal assetImported(string noteId, string name)
+    signal assetRead(string noteId, string name, var contents)
+    signal assetsReady(string noteId)
 
     // ── Store API ─────────────────────────────────────────────────────────
 
@@ -91,6 +95,36 @@ Singleton {
      */
     function importAsset(noteId: string, source: string): void {
         store.importAsset(noteId, source);
+    }
+
+    /**
+     * The vector strokes of a drawing, kept beside the picture rather than inside the note.
+     *
+     * A full page of ink is thousands of points, and the document is read and rewritten
+     * every time somebody types a character in the same note. The picture is what every
+     * surface shows; the strokes are what makes a second edit *continue* the drawing
+     * instead of painting over a flat image.
+     */
+    /// Creates a note's asset folder and answers on `assetsReady`. Saving an image writes
+    /// straight to a path, so the folder has to be there before the grab is written.
+    function prepareAssets(noteId: string): void {
+        store.prepareAssets(noteId);
+    }
+
+    function newInkAsset(): string {
+        return `ink-${new Date().toISOString().replace(/[:.]/g, "-")}.png`;
+    }
+
+    function readStrokes(noteId: string, name: string): void {
+        store.readAsset(noteId, name);
+    }
+
+    function writeStrokes(noteId: string, name: string, strokes: var): void {
+        store.writeAsset(noteId, name, { version: 1, strokes: strokes });
+    }
+
+    function newStrokesName(): string {
+        return `strokes-${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
     }
 
     /**

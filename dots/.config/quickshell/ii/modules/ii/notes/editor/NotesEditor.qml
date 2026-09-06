@@ -39,11 +39,25 @@ Item {
 
     // ── Loading ───────────────────────────────────────────────────────────
 
-    /// The shape of what is loaded: which blocks, in which order, of which type. Text is
-    /// deliberately not part of it — that is the thing the delegates own while they are
-    /// being typed in.
-    function structureOf(blocks): string {
-        return Doc.asArray(blocks).map(item => `${item.id}:${item.type}:${item.indent ?? 0}`).join("|");
+    /**
+     * Everything about the blocks *except* their text.
+     *
+     * Text is the one field a delegate owns while it is being typed in, so a change to it
+     * must not rebuild the row the caret is in. Everything else has to reach the delegate:
+     * an earlier version compared only id, type and indent, and the result was that a
+     * drawing saved its picture and its strokes to disk and the block on screen never
+     * heard about either — it went on offering to start a new drawing over a note that
+     * already had one.
+     */
+    function signatureOf(blocks): string {
+        return JSON.stringify(Doc.asArray(blocks).map(item => {
+            const copy = {};
+            for (const key in item) {
+                if (key !== "text")
+                    copy[key] = item[key];
+            }
+            return copy;
+        }));
     }
 
     /**
@@ -59,7 +73,7 @@ Item {
         const document = root.noteId.length > 0 ? NotesService.documentOf(root.noteId) : null;
         const next = document ? Doc.asArray(document.blocks) : [];
         root.ready = document !== null;
-        if (root.structureOf(next) !== root.structureOf(root.blocks))
+        if (root.signatureOf(next) !== root.signatureOf(root.blocks))
             root.blocks = next;
         if (root.pendingAutoFocus && root.blocks.length > 0) {
             root.pendingAutoFocus = false;
@@ -269,11 +283,23 @@ Item {
         root.apply([{ op: "update", id: blockId, patch: { checked: !block.checked } }]);
     }
 
+    /**
+     * Resizing a picture, live.
+     *
+     * Applied without a resync on purpose: the signature includes `width`, so a resync
+     * would rebuild the row on every frame of the drag and take the grip out from under
+     * the pointer. The delegate is told directly instead, and the document catches up when
+     * something else resyncs.
+     */
     function setImageWidth(blockId, fraction): void {
-        // Not structural: the block's own binding follows the new width, and rebuilding
-        // the row mid-drag would take the grip out from under the pointer.
         root.apply([{ op: "update", id: blockId, patch: { width: fraction } }], false);
+        root.liveWidths[blockId] = fraction;
+        root.liveWidthsChanged();
     }
+
+    /// Widths being dragged right now, so the picture follows the pointer without the list
+    /// being rebuilt underneath it.
+    property var liveWidths: ({})
 
     /**
      * Brings a file into the note as a picture.
@@ -310,6 +336,26 @@ Item {
 
     /// The picture somebody asked to see full size, or "".
     property string viewingImage: ""
+
+    /// The drawing being worked on, or "". The sheet is hosted by the pane rather than by
+    /// the block: it needs the whole page, and a surface that grew out of a row between
+    /// two paragraphs would push the note around while somebody drew on it.
+    property string editingInk: ""
+    readonly property var editingInkBlock: root.blockAt(root.indexOfBlock(root.editingInk))
+
+    function editInk(blockId): void {
+        root.editingInk = String(blockId ?? "");
+    }
+
+    /// A fresh drawing, appended after the caret and opened straight away.
+    function insertInk(): void {
+        const at = root.activeBlockId.length > 0
+            ? root.indexOfBlock(root.activeBlockId) + 1
+            : root.blocks.length;
+        if (!root.apply([{ op: "insert", index: at, block: { type: "ink" } }]))
+            return;
+        root.editInk(root.blockIdAt(at));
+    }
 
     function viewImage(path): void {
         root.viewingImage = String(path ?? "");

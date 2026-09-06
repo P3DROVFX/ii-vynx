@@ -167,6 +167,60 @@ class PageAndMediaTests(unittest.TestCase):
         self.assertIn('if (block.type !== "text")', shortcuts)
 
 
+class InkTests(unittest.TestCase):
+    def test_the_drawing_engine_is_reused_not_rewritten(self):
+        # Pressure through a PointHandler, three smoothing passes, pressure into width with
+        # a floor — none of that arithmetic is reimplemented here.
+        sheet = read(APP_DIR / "sketch/NotesInkSheet.qml")
+        self.assertIn("DrawSurface", sheet)
+        self.assertIn("StrokeGeometry", sheet)
+        # As a declaration, not as a substring: the file's own comment explains that
+        # `DrawSurface` uses one, and matching prose is not a contract.
+        self.assertNotIn("PointHandler {", sheet, "the sheet should not reimplement input")
+
+    def test_the_strokes_are_kept_beside_the_picture(self):
+        # The picture is what every surface shows. The strokes are what makes a second
+        # edit continue the drawing instead of painting over a flat image.
+        sheet = read(APP_DIR / "sketch/NotesInkSheet.qml")
+        self.assertIn("NotesService.readStrokes", sheet)
+        self.assertIn("NotesService.writeStrokes", sheet)
+        self.assertIn("property var undone", sheet)
+
+    def test_the_image_is_written_only_once_the_folder_exists(self):
+        # A grab written into a folder that a fired-and-forgotten mkdir had not created is
+        # a race whose loser is the drawing.
+        sheet = read(APP_DIR / "sketch/NotesInkSheet.qml")
+        self.assertIn("NotesService.prepareAssets", sheet)
+        self.assertIn("onAssetsReady", sheet)
+        self.assertIn("grabToImage", sheet)
+        self.assertIn("saveToFile", sheet)
+        # Canvas.save resolves against the component's base URL, which under Quickshell is
+        # always a qs: URL, and then fails for a perfectly valid absolute path.
+        self.assertNotIn("Canvas.save(", sheet)
+
+    def test_the_ink_colour_is_measured_against_the_paper(self):
+        # "Darkest in the palette" is right only half the time: on a dark theme the darkest
+        # ink is invisible and the pen looks broken.
+        sheet = read(APP_DIR / "sketch/NotesInkSheet.qml")
+        self.assertIn("hslLightness", sheet)
+        self.assertIn("m3surfaceContainerLowest", sheet)
+
+    def test_a_pen_tap_on_a_tool_is_not_a_stroke(self):
+        # A MouseArea never sees a tablet event: Qt synthesises a mouse event from a stylus
+        # one only if nobody accepted the stylus event first, and the drawing surface is a
+        # PointHandler, which accepts them natively.
+        button = read(APP_DIR / "sketch/NotesInkToolButton.qml")
+        self.assertIn("acceptedDevices: PointerDevice.Stylus", button)
+        sheet = read(APP_DIR / "sketch/NotesInkSheet.qml")
+        self.assertIn("excludeItem: tray", sheet)
+
+    def test_the_ink_palette_is_the_documented_exception(self):
+        # Pigment, not chrome. Ink that re-tinted itself with the theme would be ink nobody
+        # could trust — and it is the same palette the tablet's live draw uses.
+        sheet = read(APP_DIR / "sketch/NotesInkSheet.qml")
+        self.assertIn("Config.options?.tablet?.liveDraw", sheet)
+
+
 class TranslationTests(unittest.TestCase):
     def test_every_visible_string_can_be_translated(self):
         # A literal in a `text:` assignment is a string nobody outside en_US will read.
@@ -272,8 +326,12 @@ class WindowBehaviourTests(unittest.TestCase):
         # back through the model rebuilds the row and drops the caret to the start of the
         # line on every character.
         editor = read(APP_DIR / "editor/NotesEditor.qml")
-        self.assertIn("function structureOf(", editor)
-        self.assertIn("root.structureOf(next) !== root.structureOf(root.blocks)", editor)
+        # Everything except the text has to reach the delegate. An earlier version
+        # compared only id, type and indent, and a drawing then saved its picture and its
+        # strokes to disk while the block on screen never heard about either.
+        self.assertIn("function signatureOf(", editor)
+        self.assertIn("root.signatureOf(next) !== root.signatureOf(root.blocks)", editor)
+        self.assertIn('if (key !== "text")', editor)
         self.assertIn("commitText(blockId, text)", editor)
 
     def test_a_focus_request_is_only_spent_once_it_lands(self):

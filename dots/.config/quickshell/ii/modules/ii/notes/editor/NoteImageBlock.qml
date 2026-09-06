@@ -29,7 +29,14 @@ Item {
         ? NotesService.assetPath(root.editor.noteId, root.block.asset)
         : ""
     /// Zero means "as wide as it fits", which is what an image dropped in should do.
-    readonly property real widthFraction: root.block && root.block.width > 0 ? root.block.width : 1
+    /// A width being dragged comes from the editor rather than from the model, so the
+    /// picture follows the pointer without the row being rebuilt under it.
+    readonly property real widthFraction: {
+        const live = root.editor && root.block ? root.editor.liveWidths[root.block.id] : undefined;
+        if (live !== undefined)
+            return live;
+        return root.block && root.block.width > 0 ? root.block.width : 1;
+    }
 
     readonly property real available: Math.max(120,
         Math.min(NotesMetrics.readingWidth, root.width - NotesMetrics.readingPadding * 2))

@@ -26,10 +26,8 @@ Item {
                 return codeComponent;
             if (root.block.type === "table")
                 return tableComponent;
-            // Ink is read-only until the ink surface lands; without this a migrated sketch
-            // would open as an empty paragraph.
             if (root.block.type === "ink")
-                return mediaComponent;
+                return inkComponent;
             return textComponent;
         }
 
@@ -51,8 +49,8 @@ Item {
     }
 
     Component {
-        id: mediaComponent
-        NoteMediaBlock {}
+        id: inkComponent
+        NoteInkBlock {}
     }
 
     Component {

@@ -194,6 +194,14 @@ Rectangle {
             onTriggered: root.editor.pickImage()
         }
 
+        NotesIconButton {
+            symbol: "draw"
+            size: 42
+            iconSize: 21
+            tooltipText: Translation.tr("Draw")
+            onTriggered: root.editor.insertInk()
+        }
+
         Rectangle {
             Layout.preferredWidth: 1
             Layout.preferredHeight: 22

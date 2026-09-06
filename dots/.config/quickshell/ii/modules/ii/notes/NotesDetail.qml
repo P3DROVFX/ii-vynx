@@ -8,6 +8,7 @@ import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.ii.notes
 import qs.modules.ii.notes.editor
+import qs.modules.ii.notes.sketch
 
 /**
  * The note itself.
@@ -100,6 +101,25 @@ Item {
             tooltipText: Translation.tr("Close")
             colIcon: Appearance.m3colors.m3onSurface
             onTriggered: editor.viewImage("")
+        }
+    }
+
+    /**
+     * The ink sheet, over the page.
+     *
+     * Inside the pane and above everything, because drawing wants the whole page and a
+     * separate window would be one more thing to arrange and dismiss.
+     */
+    Loader {
+        anchors.fill: parent
+        z: 30
+        active: editor.editingInk.length > 0 && editor.editingInkBlock !== null
+
+        sourceComponent: NotesInkSheet {
+            noteId: root.noteId
+            block: editor.editingInkBlock
+            editor: editor
+            onFinished: editor.editInk("")
         }
     }
 

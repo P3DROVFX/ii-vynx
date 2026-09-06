@@ -194,7 +194,43 @@ def cmd_import_asset(args) -> int:
     return emit({"ok": True, "name": name, "path": str(folder / name)})
 
 
+def cmd_prepare_assets(args) -> int:
+    """Create a note's asset folder, and report the absolute path.
+
+    Saving a drawing writes an image straight to a path, so the folder has to exist
+    first — and a `mkdir` the caller fired and forgot is a race whose loser is the
+    drawing.
+    """
+    root = Path(args[0]).expanduser()
+    note_id = str(args[1])
+    if "/" in note_id or note_id in ("", ".", ".."):
+        return emit({"error": "bad note id"})
+    folder = root / "assets" / note_id
+    folder.mkdir(parents=True, exist_ok=True)
+    return emit({"ok": True, "path": str(folder)})
+
+
+def cmd_read_asset(args) -> int:
+    """Read one JSON sidecar from a note's asset folder.
+
+    The vector strokes of a drawing live beside the picture rather than inside the note:
+    a full page of ink is thousands of points, and the document is read and rewritten
+    every time somebody types a character in the same note.
+    """
+    root = Path(args[0]).expanduser()
+    note_id = str(args[1])
+    name = str(args[2])
+    if "/" in note_id or note_id in ("", ".", "..") or "/" in name or ".." in name:
+        return emit({"error": "bad asset name"})
+    target = root / "assets" / note_id / name
+    if not target.is_file():
+        return emit({"ok": True, "missing": True})
+    return emit({"ok": True, "contents": json.loads(target.read_text(encoding="utf-8"))})
+
+
 COMMANDS = {
+    "prepare-assets": (2, cmd_prepare_assets),
+    "read-asset": (3, cmd_read_asset),
     "init": (1, cmd_init),
     "commit": (1, cmd_commit),
     "purge": (2, cmd_purge),

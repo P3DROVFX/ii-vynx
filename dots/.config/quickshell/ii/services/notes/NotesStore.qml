@@ -55,6 +55,9 @@ Scope {
     /// Asynchronous because the copy is: the helper renames around collisions, so the name
     /// is not known until it answers.
     signal assetImported(string noteId, string name)
+    /// A JSON sidecar read back from a note's asset folder. `contents` is null when the
+    /// file is not there, which is how a drawing made before strokes were kept says so.
+    signal assetRead(string noteId, string name, var contents)
 
     // ── Documents ─────────────────────────────────────────────────────────
     // Every note in the index is kept resident.
@@ -333,6 +336,29 @@ Scope {
         root.enqueue({ tag: "purge", args: ["purge", root.dir, noteId] });
     }
 
+    /// Makes sure a note's asset folder exists, and says when it does.
+    ///
+    /// A drawing is saved by grabbing the sheet and writing the image straight to a path,
+    /// which fails if the folder is not there yet — and `mkdir` fired and forgotten is a
+    /// race whose loser is somebody's drawing.
+    signal assetsReady(string noteId)
+
+    function prepareAssets(noteId: string): void {
+        root.enqueue({ tag: "prepareAssets", noteId: noteId,
+                       args: ["prepare-assets", root.dir, noteId] });
+    }
+
+    /// Reads a JSON sidecar out of a note's asset folder.
+    function readAsset(noteId: string, name: string): void {
+        root.enqueue({ tag: "readAsset", noteId: noteId, name: name,
+                       args: ["read-asset", root.dir, noteId, name] });
+    }
+
+    /// Writes one, through the same batch commit everything else uses.
+    function writeAsset(noteId: string, name: string, contents: var): void {
+        root.commit({ files: [{ path: `assets/${noteId}/${name}`, contents: contents }] }, "writeAsset");
+    }
+
     function importAsset(noteId: string, source: string): void {
         root.enqueue({ tag: "importAsset", noteId: noteId,
                        args: ["import-asset", root.dir, noteId, source] });
@@ -370,6 +396,11 @@ Scope {
             if (!root.indexLoaded)
                 indexFile.reload();
         }
+        if (op.tag === "prepareAssets" && parsed.ok === true)
+            root.assetsReady(String(op.noteId ?? ""));
+        if (op.tag === "readAsset")
+            root.assetRead(String(op.noteId ?? ""), String(op.name ?? ""),
+                           parsed.missing === true ? null : (parsed.contents ?? null));
         if (op.tag === "importAsset" && parsed.ok === true)
             root.assetImported(String(op.noteId ?? ""), String(parsed.name ?? ""));
         root.committed(String(op.tag ?? ""), parsed);
