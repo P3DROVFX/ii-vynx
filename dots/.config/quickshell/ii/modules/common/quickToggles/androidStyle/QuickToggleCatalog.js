@@ -36,6 +36,7 @@ var TOGGLE_TYPES = {
     keyboardBacklight: { kind: "toggle", defaultSize: [1, 1], maxHeight: 8 },
     laptopKeyboard: { kind: "toggle", defaultSize: [1, 1], maxHeight: 8 },
     modes: { kind: "toggle", defaultSize: [1, 1], maxHeight: 8 },
+    notes: { kind: "toggle", defaultSize: [1, 1], maxHeight: 8 },
 
     volumeSlider: { kind: "slider", defaultSize: [4, 1], maxHeight: 8 },
     micSlider: { kind: "slider", defaultSize: [4, 1], maxHeight: 8 },

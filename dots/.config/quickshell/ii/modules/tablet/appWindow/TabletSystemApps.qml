@@ -167,6 +167,13 @@ Singleton {
             name: "Scratchpad",
             icon: "inventory_2",
             keywords: ["scratchpad", "special", "rascunho"]
+        },
+        {
+            id: "notes",
+            name: "Notes",
+            icon: "note_stack",
+            enabled: () => Config.options?.notes?.enable ?? true,
+            keywords: ["notes", "notebook", "notas", "anotacoes", "bloco", "caderno", "keep"]
         }
     ]
 

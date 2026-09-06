@@ -49,6 +49,54 @@ Item {
         }
 
         ContentSection {
+            title: Translation.tr("Notes App")
+            icon: "note_stack"
+            tooltip: Translation.tr("Dedicated notes workspace, Markdown editor, drawing and organization.")
+
+            ConfigSwitch {
+                buttonIcon: "note_stack"
+                text: Translation.tr("Enable Notes app")
+                description: Translation.tr("Dedicated notes workspace, editor, and global shortcuts")
+                checked: Config.options.notes?.enable ?? true
+                onCheckedChanged: {
+                    if (Config.ready && Config.options.notes)
+                        Config.options.notes.enable = checked;
+                }
+            }
+
+            KeyboardShortcutBox {
+                Layout.fillWidth: true
+                text: Translation.tr("Toggle Notes app")
+                keys: ["Super", "Shift", "N"]
+            }
+
+            NoticeBox {
+                Layout.fillWidth: true
+                materialIcon: "info"
+                text: Translation.tr("All editor, paper style, cloud backup, and preview options are inside the app.")
+
+                RippleButton {
+                    implicitWidth: 120
+                    implicitHeight: 36
+                    buttonRadius: Appearance.rounding.small
+                    colBackground: Appearance.colors.colPrimary
+                    colBackgroundHover: Appearance.colors.colPrimaryHover
+                    colBackgroundActive: Appearance.colors.colPrimaryActive
+
+                    StyledText {
+                        anchors.centerIn: parent
+                        text: Translation.tr("Open app")
+                        font.pixelSize: Appearance.font.pixelSize.smaller
+                        font.weight: Font.DemiBold
+                        color: Appearance.colors.colOnPrimary
+                    }
+
+                    onClicked: GlobalStates.openNotes()
+                }
+            }
+        }
+
+        ContentSection {
             title: Translation.tr("On-Screen Display (OSD)")
             icon: "desktop_windows"
 

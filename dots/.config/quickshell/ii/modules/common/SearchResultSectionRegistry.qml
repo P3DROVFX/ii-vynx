@@ -92,6 +92,11 @@ Singleton {
             icon: "settings"
         },
         {
+            id: "notes",
+            title: qsTr("Notes"),
+            icon: "note_stack"
+        },
+        {
             id: "files",
             title: qsTr("Files & folders"),
             icon: "folder"

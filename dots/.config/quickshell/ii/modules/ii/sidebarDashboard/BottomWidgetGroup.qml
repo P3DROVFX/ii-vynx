@@ -7,6 +7,7 @@ import qs.services
 import qs.modules.common.dashboardWidgets.calendar
 import qs.modules.common.dashboardWidgets.todo
 import qs.modules.common.dashboardWidgets.timer
+import qs.modules.common.dashboardWidgets.notes
 import QtQuick
 import QtQuick.Layouts
 import "SidebarPerformancePolicy.js" as PerformancePolicy
@@ -33,26 +34,39 @@ Rectangle {
     property int contentEntranceTrigger: -1
     readonly property bool entranceAnimationsEnabled: Config.options.sidebar.dashboardEntranceAnimations
     signal collapseRequested(bool shouldCollapse)
-    property var tabs: [
-        {
-            "type": "calendar",
-            "name": Translation.tr("Calendar"),
-            "icon": "calendar_month",
-            "widget": calendarWidgetComponent
-        },
-        {
-            "type": "todo",
-            "name": Translation.tr("To Do"),
-            "icon": "check_circle",
-            "widget": todoWidgetComponent
-        },
-        {
-            "type": "timer",
-            "name": Translation.tr("Timer"),
-            "icon": "schedule",
-            "widget": timerWidgetComponent
-        },
-    ]
+
+    readonly property bool showNotesTab: Config.ready && (Config.options.sidebar?.bottomGroup?.notesTab ?? true) && (Config.options.notes?.enable ?? true)
+    property var tabs: {
+        const list = [
+            {
+                "type": "calendar",
+                "name": Translation.tr("Calendar"),
+                "icon": "calendar_month",
+                "widget": calendarWidgetComponent
+            },
+            {
+                "type": "todo",
+                "name": Translation.tr("To Do"),
+                "icon": "check_circle",
+                "widget": todoWidgetComponent
+            },
+            {
+                "type": "timer",
+                "name": Translation.tr("Timer"),
+                "icon": "schedule",
+                "widget": timerWidgetComponent
+            }
+        ];
+        if (root.showNotesTab) {
+            list.push({
+                "type": "notes",
+                "name": Translation.tr("Notes"),
+                "icon": "note_stack",
+                "widget": notesWidgetComponent
+            });
+        }
+        return list;
+    }
 
     Component {
         id: calendarWidgetComponent
@@ -65,6 +79,10 @@ Rectangle {
     Component {
         id: timerWidgetComponent
         PomodoroWidget {}
+    }
+    Component {
+        id: notesWidgetComponent
+        NotesDashboardWidget {}
     }
 
     // The optimized default loads the selected widget after the outer slide.
@@ -382,8 +400,9 @@ Rectangle {
                 asynchronous: true
 
                 Component.onCompleted: {
-                    tabStack.sourceComponent = root.tabs[root.selectedTab].widget;
-                    root.previousIndex = root.selectedTab;
+                    const idx = Math.max(0, Math.min(root.selectedTab, root.tabs.length - 1));
+                    tabStack.sourceComponent = root.tabs[idx].widget;
+                    root.previousIndex = idx;
                 }
 
                 onLoaded: {
@@ -398,9 +417,10 @@ Rectangle {
                             tabStack.item.entranceTrigger = root.contentEntranceTrigger;
                     }
                     function onSelectedTabChanged() {
+                        const idx = Math.max(0, Math.min(root.selectedTab, root.tabs.length - 1));
                         if (!root.contentActivated || !tabStack.item) {
-                            tabStack.sourceComponent = root.tabs[root.selectedTab].widget;
-                            root.previousIndex = root.selectedTab;
+                            tabStack.sourceComponent = root.tabs[idx].widget;
+                            root.previousIndex = idx;
                             return;
                         }
                         if (root.selectedTab > root.previousIndex)
@@ -443,7 +463,7 @@ Rectangle {
         PropertyAction {
             target: tabStack
             property: "sourceComponent"
-            value: root.tabs[root.selectedTab].widget
+            value: root.tabs[Math.max(0, Math.min(root.selectedTab, root.tabs.length - 1))].widget
         } // The source change happens here
         ParallelAnimation {
             PropertyAnimation {

@@ -43,7 +43,7 @@ Singleton {
 
     function trigger(actionId, screenName) {
         if (actionId === "notes") {
-            GlobalStates.notesOpen = true;
+            GlobalStates.openNotes();
             return;
         }
         TouchGestureActionRegistry.trigger(actionId, screenName);

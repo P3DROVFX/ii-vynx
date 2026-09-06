@@ -1001,6 +1001,8 @@ Item {
         // they are the one group whose rows are a location on disk.
         if (/^(file:|fsearch:)/.test(key))
             return "files";
+        if (key.startsWith("note:"))
+            return "notes";
         if (key.startsWith("quicklink:"))
             return "quicklinks";
         if (key.startsWith("text-snippet:"))

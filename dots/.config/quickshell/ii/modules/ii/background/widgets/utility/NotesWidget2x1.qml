@@ -163,6 +163,29 @@ AbstractBackgroundWidget {
                             root.openNotes();
                         }
                     }
+
+                    RippleButton {
+                        implicitWidth: 32
+                        implicitHeight: 32
+                        buttonRadius: Appearance.rounding.small
+                        colBackground: "transparent"
+                        colBackgroundHover: Qt.rgba(0, 0, 0, 0.1)
+
+                        MaterialSymbol {
+                            anchors.centerIn: parent
+                            text: "open_in_new"
+                            iconSize: 18
+                            color: root.accentColor
+                        }
+
+                        onClicked: {
+                            GlobalStates.openNotes();
+                        }
+
+                        StyledToolTip {
+                            text: Translation.tr("Open Notes app")
+                        }
+                    }
                 }
 
                 // Scrollable list of notes
@@ -211,6 +234,30 @@ AbstractBackgroundWidget {
                                     font.weight: Font.DemiBold
                                     color: root.textColorOnBg
                                     elide: Text.ElideRight
+                                }
+
+                                RippleButton {
+                                    implicitWidth: 24
+                                    implicitHeight: 24
+                                    buttonRadius: Appearance.rounding.full
+                                    colBackground: "transparent"
+                                    colBackgroundHover: Qt.rgba(0, 0, 0, 0.1)
+
+                                    MaterialSymbol {
+                                        anchors.centerIn: parent
+                                        text: "open_in_new"
+                                        iconSize: 16
+                                        color: root.accentColor
+                                    }
+
+                                    onClicked: {
+                                        const noteId = noteCard.modelData.noteId || noteCard.modelData.id || "";
+                                        GlobalStates.openNotes(noteId);
+                                    }
+
+                                    StyledToolTip {
+                                        text: Translation.tr("Open in Notes app")
+                                    }
                                 }
 
                                 RippleButton {

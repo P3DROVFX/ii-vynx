@@ -885,6 +885,26 @@ Singleton {
         return tabs.filter(tab => tab.enabled && tab.keywords.some(keyword => keyword.includes(query)));
     }
 
+    function noteMatches(queryText: string, limit: int = 5): var {
+        const query = String(queryText ?? "").trim().toLocaleLowerCase();
+        if (query.length < 2 || !NotesService.ready || !(Config.options.notes?.enable ?? true))
+            return [];
+        const allNotes = Array.from(NotesService.notes ?? []);
+        const matches = [];
+        for (let i = 0; i < allNotes.length; i++) {
+            const note = allNotes[i];
+            const title = String(note.title ?? "").toLocaleLowerCase();
+            const preview = String(note.preview ?? "").toLocaleLowerCase();
+            const tags = Array.isArray(note.tags) ? note.tags.join(" ").toLocaleLowerCase() : "";
+            if (title.includes(query) || tags.includes(query) || preview.includes(query)) {
+                matches.push(note);
+                if (matches.length >= limit)
+                    break;
+            }
+        }
+        return matches;
+    }
+
     // Instantly evaluate simple arithmetic using JS — no qalc needed
     // Only allows digits, basic operators, parens, dots, spaces — safe subset
     function jsEvalMath(expr) {
@@ -2426,6 +2446,20 @@ Singleton {
                 iconType: LauncherSearchResult.IconType.Material,
                 comment: Translation.tr("Cheat Sheet"),
                 execute: () => GlobalStates.openCheatsheet(tab.id)
+            }));
+        }
+
+        ////////// Notes //////////
+        for (const note of root.noteMatches(root.query)) {
+            result.push(resultComp.createObject(null, {
+                key: "note:" + note.id,
+                name: note.title && note.title.length > 0 ? note.title : Translation.tr("Untitled note"),
+                type: Translation.tr("Note"),
+                verb: Translation.tr("Open"),
+                iconName: note.icon && note.icon.length > 0 ? note.icon : "description",
+                iconType: LauncherSearchResult.IconType.Material,
+                comment: note.preview && note.preview.length > 0 ? note.preview : Translation.tr("Note"),
+                execute: () => GlobalStates.openNotes(note.id)
             }));
         }
 

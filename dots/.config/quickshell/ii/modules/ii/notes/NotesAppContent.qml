@@ -208,15 +208,26 @@ Item {
         sequences: ["Escape"]
         context: Qt.WindowShortcut
         onActivated: {
-            // The smallest thing first: back out of the note, then clear the search, and
-            // only close the window when there is nothing left to back out of.
-            if (root.compact && root.showingDetail)
+            // The smallest thing first: back out of settings, then out of the note, then
+            // clear the search, and only close the window when there is nothing left to back out of.
+            if (settingsSheet.visible)
+                settingsSheet.visible = false;
+            else if (root.compact && root.showingDetail)
                 root.showingDetail = false;
             else if (rail.query.length > 0)
                 rail.clearSearch();
             else
                 root.closeRequested();
         }
+    }
+
+    NotesSettingsSheet {
+        id: settingsSheet
+        anchors.fill: parent
+        z: 40
+        visible: false
+        onClosed: settingsSheet.visible = false
+        onExportRequested: detail.openExportSheet()
     }
 
     // ── Layout ────────────────────────────────────────────────────────────
@@ -265,10 +276,7 @@ Item {
                     root.state.noteId = "";
                 }
                 onCreateRequested: root.createNote()
-                // The app's own settings sheet does not exist yet; until it does this
-                // opens the one switch about Notes that lives outside the app, rather
-                // than being a button that does nothing.
-                onSettingsRequested: GlobalStates.openSettingsPage("overlays", "", "")
+                onSettingsRequested: settingsSheet.visible = true
 
                 Behavior on Layout.preferredWidth {
                     animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)

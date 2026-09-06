@@ -153,6 +153,10 @@ Item {
         onClosed: exportSheet.visible = false
     }
 
+    function openExportSheet(): void {
+        exportSheet.visible = true;
+    }
+
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: 0

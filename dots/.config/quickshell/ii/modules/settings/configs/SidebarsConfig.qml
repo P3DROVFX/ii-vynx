@@ -208,6 +208,17 @@ Item {
                 }
             }
 
+            ConfigSwitch {
+                buttonIcon: "note_stack"
+                text: Translation.tr("Notes tab in dashboard")
+                description: Translation.tr("Show Notes in the bottom widget group alongside Calendar, Tasks, and Timer")
+                checked: Config.options.sidebar.bottomGroup?.notesTab ?? true
+                onCheckedChanged: {
+                    if (Config.ready && Config.options.sidebar?.bottomGroup)
+                        Config.options.sidebar.bottomGroup.notesTab = checked;
+                }
+            }
+
             ContentSubsection {
                 title: Translation.tr("Sidebar position")
                 icon: "switch_right"
