@@ -74,6 +74,43 @@ QtObject {
         return NotesService.create(preview.title, preview.text, preview.provenance);
     }
 
+    function search(args): var {
+        const query = String(args?.query ?? "").trim();
+        const limit = Math.max(1, Math.min(Number(args?.limit ?? 5), 20));
+        if (query.length === 0)
+            return { ok: false, error: "emptyQuery", results: [] };
+
+        const allNotes = Array.from(NotesService.index?.notes ?? []);
+        const results = [];
+        const qLower = query.toLowerCase();
+        for (let i = 0; i < allNotes.length; i++) {
+            const note = allNotes[i];
+            if (note.trashedAt > 0)
+                continue;
+            const title = String(note.title ?? "");
+            const preview = String(note.preview ?? "");
+            const tags = Array.from(note.tags ?? []).join(" ");
+            const hay = (title + " " + tags + " " + preview).toLowerCase();
+            if (hay.includes(qLower)) {
+                results.push({
+                    id: note.id,
+                    title: title,
+                    preview: preview,
+                    tags: note.tags ?? [],
+                    modified: note.modified ?? 0
+                });
+                if (results.length >= limit)
+                    break;
+            }
+        }
+        return {
+            ok: true,
+            query: query,
+            count: results.length,
+            results: results
+        };
+    }
+
     function safeProvenance(value): var {
         const candidate = value ?? ({});
         return {

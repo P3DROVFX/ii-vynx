@@ -627,6 +627,34 @@ Singleton {
             needsSearch: false
         },
         {
+            id: "notes_search",
+            version: 1,
+            domain: "notes",
+            title: Translation.tr("Search notes"),
+            summary: Translation.tr("Finds notes matching a query or keyword."),
+            icon: "search",
+            kind: "localRead",
+            network: "never",
+            sensitivity: "personal",
+            requiredModelCapabilities: ["tools"],
+            requiredServices: ["notes"],
+            defaultApproval: "allow",
+            timeoutMs: 4000,
+            maxResultTokens: 400,
+            idempotent: true,
+            description: "Search local notes by title, content, or tag. Returns a list of matching notes with excerpts.",
+            parameters: {
+                type: "object",
+                properties: {
+                    query: { type: "string", description: "Search query or keywords" },
+                    limit: { type: "integer", description: "Maximum number of results to return (1-20, default 5)" }
+                },
+                required: ["query"]
+            },
+            formats: ["gemini", "openai", "anthropic"],
+            needsSearch: false
+        },
+        {
             id: "tasks_list",
             version: 1,
             domain: "tasks",

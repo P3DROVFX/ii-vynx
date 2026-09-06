@@ -55,6 +55,10 @@ ShellRoot {
         BirthdaysService.enabled; // Touch singleton: projects contact birthdays into timetable items
         GoogleDriveService.configured; // Touch singleton: keeps scheduled backups independent of Settings
         AppStats.stateDir; // Instantiate: starts the usage sampler, which must collect whether or not the overlay is open
+        NotesService.ready; // Touch singleton: the notes store migrates once, on its own schedule rather than
+                            // whenever a surface happens to ask for a note first — the game overlay, the desktop
+                            // widgets and the AI tools all read it, and none of them should be the one waiting
+                            // for a migration to finish mid-interaction.
         Modes.ready; // Touch singleton: the modes engine must watch triggers whether or not its overlay is open
         TilingAssistant.enabled; // Touch singleton: watches for window drags, does nothing while disabled
         TouchGestureService.enabled; // Touch singleton: starts passive touch input helper daemon

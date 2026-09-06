@@ -68,6 +68,31 @@ Singleton {
     /// Where a note's drawing is written. Beside notes.json rather than in Pictures: a
     /// sketch here is part of a note, not a file the user filed anywhere.
     property string noteSketchesDir: FileUtils.trimFileProtocol(`${Directories.state}/user/note_sketches`)
+
+    // ── Notes store ─────────────────────────────────────────────────────────
+    /// Where the notes app keeps everything.
+    ///
+    /// An index plus one document per note, rather than the single `notes.json` above.
+    /// That file is read and rewritten whole on every keystroke, which is already why a
+    /// sketch is stored there as a path instead of pixels; with drawings, images and
+    /// history in it, one file would mean megabytes travelling through the typing loop.
+    /// Splitting it also means the note list, the desktop widgets and search read only
+    /// the small index, and typing in one note never rewrites another.
+    ///
+    /// Assets are filed under the note that owns them, so deleting a note deletes a
+    /// folder — today a sketch is orphaned forever because nothing records whose it was.
+    ///
+    /// Nothing is created here. The store creates its own directories on first write: a
+    /// shell whose owner never opens Notes should not grow the folder.
+    property string notesDir: FileUtils.trimFileProtocol(`${Directories.state}/user/notes`)
+    property string notesIndexPath: `${Directories.notesDir}/index.json`
+    property string notesDocsDir: `${Directories.notesDir}/docs`
+    property string notesAssetsDir: `${Directories.notesDir}/assets`
+    property string notesRevisionsDir: `${Directories.notesDir}/revisions`
+    /// Where `notes.json` is moved once it has been migrated. Renamed rather than deleted:
+    /// it is the only copy of everything written before the app existed.
+    property string notesLegacyBackupPath: `${Directories.notesPath}.migrated`
+    property string notesLinkPreviewsCacheDir: FileUtils.trimFileProtocol(`${Directories.cache}/media/link_previews`)
     property string conflictCachePath: FileUtils.trimFileProtocol(`${Directories.cache}/conflict-killer`)
     property string notificationsPath: FileUtils.trimFileProtocol(`${Directories.cache}/notifications/notifications.json`)
     property string lyricsPath: FileUtils.trimFileProtocol(`${Directories.cache}/lyrics/lyrics.json`)

@@ -335,6 +335,46 @@ Singleton {
                 }
             }
 
+            /**
+             * The notes app's window and where the user last was in it.
+             *
+             * `Persistent`, not `Config`: a window position is a fact about this screen,
+             * and a preset carrying somebody else's geometry would place the window off
+             * the edge of a monitor that does not exist here. Same reasoning the backup
+             * folder and the Google Drive settings already follow.
+             */
+            property JsonObject notes: JsonObject {
+                property real width: 1500
+                property real height: 940
+                /// Empty means "no note open"; the app falls back to the most recent.
+                property string noteId: ""
+                /// "all" | "recent" | "favorites" | "trash" | a notebook or section id.
+                property string scope: "all"
+                /// Both panes are dragged by the user, so both are facts about how they
+                /// like to work rather than about this machine's screen — but they live
+                /// here beside the window size, which is.
+                property real railWidth: 300
+                property real listWidth: 380
+                property bool railExpanded: true
+                property bool linkPreviews: true
+                property list<string> aiCustomStyles: []
+                property bool driveBackup: false
+                /**
+                 * The PIN that hides locked notes, as `md5(salt + pin)`.
+                 *
+                 * A digest rather than the PIN itself, and empty until one is set — there
+                 * is no default, because a lock everybody's shell opens with 1234 is worse
+                 * than no lock: it looks like protection.
+                 *
+                 * It is not protection either way, and the app says so where it is set:
+                 * the notes on disk are plain files, so this hides a note from somebody
+                 * looking over a shoulder and from nobody else. Real encryption is future
+                 * work.
+                 */
+                property string lockDigest: ""
+                property string lockSalt: ""
+            }
+
             property JsonObject cheatsheet: JsonObject {
                 property int tabIndex: 0
                 property list<string> sectionOrder: []

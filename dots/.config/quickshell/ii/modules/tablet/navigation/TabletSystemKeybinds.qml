@@ -88,4 +88,10 @@ Scope {
         description: "Opens Modes & Routines as a tablet application"
         onPressed: GlobalStates.toggleTabletApp("modes")
     }
+
+    GlobalShortcut {
+        name: "notesToggle"
+        description: "Opens Notes as a tablet application"
+        onPressed: GlobalStates.toggleTabletApp("notes")
+    }
 }

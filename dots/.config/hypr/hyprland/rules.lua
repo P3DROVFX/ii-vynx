@@ -17,6 +17,12 @@ hl.window_rule({match = {class = "^(?!(kitty|code|code-url-handler|vscodium|anti
 -- reserved edges, which a maximised floating window would have to be told about.
 
 hl.window_rule({match = {title = "^(Open File)(.*)$" },                      center = true})
+-- The notes app is a real toplevel, not a layer surface: it belongs to a workspace
+-- and a click elsewhere must not dismiss it. Floated and centred so it opens as a
+-- document window rather than taking over the tile layout.
+hl.window_rule({match = {title = "^(ii Notes)$" },                           float = true})
+hl.window_rule({match = {title = "^(ii Notes)$" },                           center = true})
+hl.window_rule({match = {title = "^(ii Notes)$" },                           size = "1500 940"})
 hl.window_rule({match = {title = "^(Open File)(.*)$" },                      float = true})
 hl.window_rule({match = {title = "^(Select a File)(.*)$" },                  center = true})
 hl.window_rule({match = {title = "^(Select a File)(.*)$" },                  float = true})
@@ -155,6 +161,9 @@ hl.layer_rule({ match = { namespace = "quickshell:workspaceBlurOverlay" }, anima
 hl.layer_rule({ match = { namespace = "quickshell:bar" }, animation = "slide", order = 5})
 hl.layer_rule({ match = { namespace = "quickshell:actionCenter" }, no_anim = true})
 hl.layer_rule({ match = { namespace = "quickshell:cheatsheet" }, animation = "slide bottom"})
+hl.layer_rule({ match = { namespace = "quickshell:notes" }, blur = true})
+hl.layer_rule({ match = { namespace = "quickshell:notes" }, ignore_alpha = 0.6})
+hl.layer_rule({ match = { namespace = "quickshell:notes" }, animation = "slide bottom"})
 hl.layer_rule({ match = { namespace = "quickshell:usage" }, animation = "slide bottom"})
 hl.layer_rule({ match = { namespace = "quickshell:modes" }, animation = "slide bottom"})
 hl.layer_rule({ match = { namespace = "quickshell:dock" }, animation = "slide bottom"})

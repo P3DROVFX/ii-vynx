@@ -4538,6 +4538,31 @@ Singleton {
                 }
             }
 
+            /**
+             * The notes app.
+             *
+             * Deliberately small. Everything about how notes look and behave — paper,
+             * typography, ink, autosave, cloud, AI — lives inside the app itself, where
+             * the person changing it can see what they are changing. What belongs out
+             * here is only what has to be answerable before the app exists: whether it
+             * exists at all.
+             */
+            property JsonObject notes: JsonObject {
+                property bool enable: true
+                /**
+                 * The defaults a new note starts from, and the one timing the editor has.
+                 *
+                 * These live here rather than inside the app's own sheet only because they
+                 * are preferences that make sense in a preset. Every one of them replaces
+                 * a number that used to be written into the code — a settings page whose
+                 * switches configure nothing is worse than no settings page, which is what
+                 * the first version of that sheet was.
+                 */
+                property string defaultPaper: "plain"
+                property int paperStrength: 50
+                property int autosaveDelay: 400
+            }
+
             property JsonObject overlay: JsonObject {
                 property bool openingZoomAnimation: true
                 property bool darkenScreen: true
@@ -5161,6 +5186,9 @@ Singleton {
                 property bool keepLeftSidebarLoaded: true
                 property bool dashboardEntranceAnimations: false
                 property bool volumeDialogMediaWidget: true
+                property JsonObject bottomGroup: JsonObject {
+                    property bool notesTab: true
+                }
                 property JsonObject translator: JsonObject {
                     property bool enable: false
                     property int delay: 300 // Delay before sending request. Reduces (potential) rate limits and lag.

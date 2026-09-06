@@ -56,6 +56,7 @@ import qs.modules.ii.sidebarPolicies
 import qs.modules.ii.sidebarPolicies.phone
 import qs.modules.ii.touchGestures
 import qs.modules.ii.wallpaperSelector
+import qs.modules.ii.notes
 
 /**
  * The tablet panel family: a touch-only shell for tablets and touchscreens.
@@ -205,6 +206,7 @@ Scope {
     Component { id: workspacesAppContent; CheatsheetWorkspaces {} }
     Component { id: emailAppContent; CheatsheetEmail {} }
     Component { id: typingTestAppContent; CheatsheetTypingTest {} }
+    Component { id: notesAppContent; NotesAppContent {} }
 
     // The policies tabs, each as its own app. They are plain standalone types in ii — the
     // tab bar around them was only there because they shared one narrow sidebar — so with a
@@ -240,7 +242,8 @@ Scope {
             "policies.media": policiesMedia,
             "policies.wallpapers": policiesWallpapers,
             "policies.anime": policiesAnime,
-            "policies.phone": policiesPhone
+            "policies.phone": policiesPhone,
+            "notes": notesAppContent
         };
         GlobalStates.addAppToHomeScreenHandler = (appId, x, y) => {
             const workspace = TabletHomeIcons.currentWorkspace;

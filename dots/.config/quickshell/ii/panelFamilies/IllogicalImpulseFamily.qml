@@ -11,6 +11,7 @@ import qs.modules.ii.bar
 import qs.modules.ii.bluetoothConnectionPopup
 import qs.modules.ii.bluetoothPairing
 import qs.modules.ii.cheatsheet
+import qs.modules.ii.notes
 import qs.modules.ii.dock
 import qs.modules.ii.lock
 import qs.modules.ii.mediaControls
@@ -86,6 +87,12 @@ Scope {
     }
     PanelLoader {
         component: Cheatsheet {}
+    }
+    PanelLoader {
+        // The Scope stays loaded so the keybind and the IPC target exist; the window
+        // itself is built by the loader inside, when somebody asks for it.
+        extraCondition: Config.options.notes.enable
+        component: NotesApp {}
     }
     PanelLoader {
         extraCondition: Config.options.appStats.overlayEnabled

@@ -62,6 +62,24 @@ Singleton {
     property int timetableNavigationRequest: 0
     property bool crosshairOpen: false
     property bool notesOpen: false
+    /**
+     * The notes app window.
+     *
+     * Deliberately not `notesOpen`, which is the small notes widget on the game overlay
+     * and has meant that for a long time. Two different surfaces; giving them one flag
+     * would make opening the app close the overlay note somebody was reading.
+     */
+    property bool notesAppOpen: false
+    /// A note the app should show as soon as it opens, consumed on arrival. Same shape as
+    /// `cheatsheetPendingTab`: an intent, not a command, so a request made while the app
+    /// is closed is not lost.
+    property string notesAppPendingNote: ""
+
+    function openNotes(noteId = "") {
+        root.notesAppPendingNote = String(noteId ?? "");
+        root.notesAppOpen = true;
+    }
+
     property bool mediaControlsOpen: false
     property bool mediaControlsPinned: false
     // Names of screens currently blacked out by the OLED saver overlay. Independent
