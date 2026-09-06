@@ -198,12 +198,32 @@ class InkTests(unittest.TestCase):
         # always a qs: URL, and then fails for a perfectly valid absolute path.
         self.assertNotIn("Canvas.save(", sheet)
 
+    def test_a_drawing_is_saved_as_ink_on_transparency(self):
+        # The tablet's live draw has always saved that way, which is why the migrated
+        # sketches have an alpha channel and sit on whatever is behind them. Baking the
+        # sheet's surface into the file put every drawing in a black box.
+        sheet = read(APP_DIR / "sketch/NotesInkSheet.qml")
+        self.assertIn("property bool grabbing", sheet)
+        self.assertIn('color: root.grabbing ? "transparent"', sheet)
+        self.assertIn("visible: !root.grabbing", sheet)
+        # And nothing paints a slab behind it afterwards.
+        block = read(APP_DIR / "editor/NoteInkBlock.qml")
+        self.assertIn('color: "transparent"', block)
+
+    def test_the_capture_waits_a_frame(self):
+        # Hiding the surface and grabbing in the same turn captures the frame already on
+        # screen, which is the one with the surface still in it.
+        sheet = read(APP_DIR / "sketch/NotesInkSheet.qml")
+        self.assertIn("grabTimer.restart()", sheet)
+        self.assertIn("function captureImage()", sheet)
+
     def test_the_ink_colour_is_measured_against_the_paper(self):
         # "Darkest in the palette" is right only half the time: on a dark theme the darkest
         # ink is invisible and the pen looks broken.
         sheet = read(APP_DIR / "sketch/NotesInkSheet.qml")
+        # Against the surface the drawing will be *shown* on, which is the reading pane's.
         self.assertIn("hslLightness", sheet)
-        self.assertIn("m3surfaceContainerLowest", sheet)
+        self.assertIn("m3surfaceContainerHigh", sheet)
 
     def test_a_pen_tap_on_a_tool_is_not_a_stroke(self):
         # A MouseArea never sees a tablet event: Qt synthesises a mouse event from a stylus

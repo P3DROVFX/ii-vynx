@@ -84,7 +84,7 @@ Item {
         // the sheet is a theme surface, so in a dark theme the darkest ink is invisible and
         // the pen looks broken. Comparing lightness against the paper works in both, and
         // keeps working when somebody edits the palette.
-        const paper = Qt.color(Appearance.m3colors.m3surfaceContainerLowest).hslLightness;
+        const paper = Qt.color(Appearance.m3colors.m3surfaceContainerHigh).hslLightness;
         root.inkColor = root.palette.reduce((best, candidate) =>
             Math.abs(Qt.color(candidate).hslLightness - paper)
                 > Math.abs(Qt.color(best).hslLightness - paper) ? candidate : best,
@@ -152,6 +152,17 @@ Item {
 
     // ── Saving ────────────────────────────────────────────────────────────
 
+    /**
+     * True for the one frame the picture is captured in.
+     *
+     * The saved file has to be **ink on transparency**, not ink on a slab. The tablet's
+     * own live draw has always saved that way, which is why the migrated sketches have an
+     * alpha channel and sit on whatever is behind them — and why baking this sheet's
+     * surface into the file put every drawing in a black box. So the sheet's fill and its
+     * paper are taken away for the grab and put back immediately afterwards.
+     */
+    property bool grabbing: false
+
     property bool saving: false
     property string statusText: ""
     property string pendingImage: ""
@@ -184,8 +195,22 @@ Item {
      * path.
      */
     function writeImage(): void {
+        // One frame with the surface hidden, then the capture. Setting the flag and
+        // grabbing in the same turn would capture the frame that is already on screen.
+        root.grabbing = true;
+        grabTimer.restart();
+    }
+
+    Timer {
+        id: grabTimer
+        interval: 32
+        onTriggered: root.captureImage()
+    }
+
+    function captureImage(): void {
         const path = NotesService.assetPath(root.noteId, root.pendingImage);
         const grabbed = sheet.grabToImage(result => {
+            root.grabbing = false;
             if (!result.saveToFile(`file://${path}`)) {
                 root.saving = false;
                 root.statusText = Translation.tr("Could not write the drawing.");
@@ -206,6 +231,7 @@ Item {
             root.finished();
         });
         if (!grabbed) {
+            root.grabbing = false;
             root.saving = false;
             root.statusText = Translation.tr("Could not write the drawing.");
         }
@@ -251,10 +277,10 @@ Item {
                 width: sheetArea.fitWidth * zoom.factor
                 height: width / sheetArea.sheetAspect
                 radius: Appearance.rounding.small
-                // Opaque, and not a theme layer that might be translucent: this rectangle
-                // is what the saved image is painted on, and a note whose drawing came out
-                // half-transparent would look broken everywhere it is shown.
-                color: Appearance.m3colors.m3surfaceContainerLowest
+                // The surface the reading pane uses, so what you draw on is what you will
+                // see the drawing on afterwards. It is *not* baked into the saved file —
+                // see `grabbing` below.
+                color: root.grabbing ? "transparent" : Appearance.m3colors.m3surfaceContainerHigh
                 clip: true
 
                 NotesPaper {
@@ -262,6 +288,10 @@ Item {
                     paperStyle: root.block && root.block.paper !== undefined ? root.block.paper : "grid"
                     paperSpacing: 26 * zoom.factor
                     paperStrength: 0.45
+                    // Out of the way for the capture. A grid baked into the file would
+                    // follow the drawing everywhere, including onto a note whose own page
+                    // is plain.
+                    visible: !root.grabbing && paperStyle !== "plain"
                 }
 
                 Image {

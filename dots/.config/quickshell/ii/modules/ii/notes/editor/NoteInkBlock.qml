@@ -44,7 +44,9 @@ Item {
             ? width / root.block.aspect
             : (image.implicitWidth > 0 ? width * (image.implicitHeight / image.implicitWidth) : 160)
         radius: Appearance.rounding.normal
-        color: Appearance.m3colors.m3surfaceContainerLowest
+        // No fill. The drawing is ink on transparency, so it belongs on the note's own
+        // page — a slab behind it put every sketch in a black box.
+        color: "transparent"
         clip: true
 
         Image {
