@@ -51,6 +51,10 @@ Scope {
     signal documentReady(string noteId, var document)
     signal writeFinished(bool ok, string error)
     signal committed(string tag, var result)
+    /// A file that has been copied into a note's own folder, by the name it landed under.
+    /// Asynchronous because the copy is: the helper renames around collisions, so the name
+    /// is not known until it answers.
+    signal assetImported(string noteId, string name)
 
     // ── Documents ─────────────────────────────────────────────────────────
     // Every note in the index is kept resident.
@@ -330,7 +334,8 @@ Scope {
     }
 
     function importAsset(noteId: string, source: string): void {
-        root.enqueue({ tag: "importAsset", args: ["import-asset", root.dir, noteId, source] });
+        root.enqueue({ tag: "importAsset", noteId: noteId,
+                       args: ["import-asset", root.dir, noteId, source] });
     }
 
     /// Absolute path of an asset. An absolute value is passed through: a drawing made by
@@ -365,6 +370,8 @@ Scope {
             if (!root.indexLoaded)
                 indexFile.reload();
         }
+        if (op.tag === "importAsset" && parsed.ok === true)
+            root.assetImported(String(op.noteId ?? ""), String(parsed.name ?? ""));
         root.committed(String(op.tag ?? ""), parsed);
     }
 

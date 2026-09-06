@@ -122,6 +122,51 @@ class ThemeTests(unittest.TestCase):
             self.assertIn("radius: Appearance.rounding.large", body)
 
 
+class PageAndMediaTests(unittest.TestCase):
+    def test_the_page_is_drawn_procedurally_and_scrolls_with_the_text(self):
+        # A tiled image would have to be regenerated whenever the spacing, the colour or
+        # the theme changed, and would stretch its squares out of square with the pane.
+        paper = read(APP_DIR / "NotesPaper.qml")
+        self.assertIn("ShaderEffect", paper)
+        self.assertIn('fragmentShader: "shaders/paper.frag.qsb"', paper)
+        self.assertIn("property real scrollOffset", paper)
+        self.assertTrue((APP_DIR / "shaders/paper.frag").exists(), "the shader source is missing")
+        self.assertTrue((APP_DIR / "shaders/paper.frag.qsb").exists(), "the shader is not compiled")
+
+    def test_the_page_colour_comes_from_the_theme(self):
+        # Paper that stayed the same shade when the wallpaper changed would be the one
+        # surface in the app that did.
+        paper = read(APP_DIR / "NotesPaper.qml")
+        self.assertIn("Appearance.colors.colOutlineVariant", paper)
+
+    def test_a_picture_is_never_enlarged_past_its_own_size(self):
+        # A 320px screenshot stretched to the reading measure is a blurred screenshot.
+        block = read(APP_DIR / "editor/NoteImageBlock.qml")
+        self.assertIn("image.implicitWidth", block)
+        self.assertIn("Math.min(root.available * root.widthFraction", block)
+
+    def test_a_picture_keeps_its_place_at_any_window_size(self):
+        # Stored as a fraction of the reading measure, so the same note does not disagree
+        # with itself on two monitors.
+        block = read(APP_DIR / "editor/NoteImageBlock.qml")
+        self.assertIn("widthFraction", block)
+        self.assertIn("patch: { width: fraction }", read(APP_DIR / "editor/NotesEditor.qml"))
+
+    def test_a_pasted_file_is_copied_into_the_note(self):
+        # By name, from the store: the helper renames around a collision, so a block
+        # written before the copy answered could point at a name that was changed.
+        editor = read(APP_DIR / "editor/NotesEditor.qml")
+        self.assertIn("NotesService.importAsset", editor)
+        self.assertIn("onAssetImported", editor)
+        self.assertIn("DropArea", editor)
+
+    def test_code_and_table_do_not_take_part_in_the_typing_shortcuts(self):
+        # Inside code, "# " is a comment and "- " is a flag; a block that converted itself
+        # while somebody pasted a diff would be unusable.
+        shortcuts = read(ROOT / "services/notes/NotesShortcuts.js")
+        self.assertIn('if (block.type !== "text")', shortcuts)
+
+
 class TranslationTests(unittest.TestCase):
     def test_every_visible_string_can_be_translated(self):
         # A literal in a `text:` assignment is a string nobody outside en_US will read.

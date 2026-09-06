@@ -321,6 +321,10 @@ Item {
                 onRestoreRequested: root.restoreSelected()
                 onFavoriteToggled: root.toggleFavorite()
                 onPinToggled: root.togglePinned()
+                onPaperPicked: style => {
+                    if (root.selectedId.length > 0)
+                        NotesService.updateMeta(root.selectedId, { paper: style });
+                }
                 onTitleEdited: title => {
                     if (root.selectedId.length > 0)
                         NotesService.updateMeta(root.selectedId, { title: title });

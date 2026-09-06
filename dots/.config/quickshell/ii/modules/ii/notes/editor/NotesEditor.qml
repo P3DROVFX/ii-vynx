@@ -3,6 +3,8 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 
+import Quickshell
+import Quickshell.Io
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
@@ -29,6 +31,9 @@ Item {
     property bool ready: false
 
     readonly property int count: root.blocks.length
+
+    /// How far the page has been scrolled, so the paper behind it can travel along.
+    readonly property real scrollOffset: list.contentY
 
     signal blockFocused(string blockId)
 
@@ -262,6 +267,151 @@ Item {
         if (!block || block.type !== "list" || block.style !== "checkbox")
             return;
         root.apply([{ op: "update", id: blockId, patch: { checked: !block.checked } }]);
+    }
+
+    function setImageWidth(blockId, fraction): void {
+        // Not structural: the block's own binding follows the new width, and rebuilding
+        // the row mid-drag would take the grip out from under the pointer.
+        root.apply([{ op: "update", id: blockId, patch: { width: fraction } }], false);
+    }
+
+    /**
+     * Brings a file into the note as a picture.
+     *
+     * Two steps, because the copy is asynchronous: the file is handed to the store, and
+     * the block is inserted when the store reports the name it landed under. Inserting
+     * first and hoping would leave a block pointing at a name the helper may have had to
+     * change to avoid overwriting something.
+     */
+    property string pendingImageFor: ""
+    property int pendingImageIndex: -1
+
+    function insertImageFromFile(path): void {
+        if (root.noteId.length === 0)
+            return;
+        root.pendingImageFor = root.noteId;
+        root.pendingImageIndex = root.activeBlockId.length > 0
+            ? root.indexOfBlock(root.activeBlockId) + 1
+            : root.blocks.length;
+        NotesService.importAsset(root.noteId, String(path));
+    }
+
+    Connections {
+        target: NotesService
+        function onAssetImported(noteId, name) {
+            if (noteId !== root.pendingImageFor || name.length === 0)
+                return;
+            const at = root.pendingImageIndex < 0 ? root.blocks.length : root.pendingImageIndex;
+            root.pendingImageFor = "";
+            root.pendingImageIndex = -1;
+            root.apply([{ op: "insert", index: at, block: { type: "image", asset: name } }]);
+        }
+    }
+
+    /// The picture somebody asked to see full size, or "".
+    property string viewingImage: ""
+
+    function viewImage(path): void {
+        root.viewingImage = String(path ?? "");
+    }
+
+    /**
+     * Pastes whatever the clipboard holds.
+     *
+     * The clipboard has to be *asked* what it holds, and asking is a subprocess, so this
+     * cannot answer synchronously — which is why the text block hands the keystroke over
+     * rather than deciding for itself. An image becomes a block; anything else is pasted
+     * as text by the field that asked, one frame later.
+     */
+    signal pasteFellThrough()
+
+    function pasteFromClipboard(): void {
+        if (root.noteId.length === 0 || pasteProbe.running)
+            return;
+        pasteProbe.running = true;
+    }
+
+    Process {
+        id: pasteProbe
+        // One command rather than a probe and a fetch: two runs can see two different
+        // clipboards, and the second would write a file for an image that is no longer
+        // there.
+        command: ["bash", "-c",
+            `set -e
+             type=$(wl-paste --list-types 2>/dev/null | grep -m1 '^image/') || true
+             if [ -z "$type" ]; then echo NONE; exit 0; fi
+             mkdir -p ${Directories.tempImages}
+             out=${Directories.tempImages}/paste-$(date +%s%N).png
+             wl-paste --type "$type" > "$out"
+             echo "$out"`]
+
+        stdout: StdioCollector {
+            id: pasteOutput
+            onStreamFinished: {
+                const answer = pasteOutput.text.trim();
+                if (answer.length === 0 || answer === "NONE") {
+                    root.pasteFellThrough();
+                    return;
+                }
+                root.insertImageFromFile(answer);
+            }
+        }
+    }
+
+    /**
+     * Files dropped on the page.
+     *
+     * Only images are taken for now, and a file that is not one is left alone rather than
+     * turned into a link nobody asked for — file blocks arrive with their own preview.
+     */
+    DropArea {
+        anchors.fill: parent
+        keys: ["text/uri-list"]
+
+        onDropped: drop => {
+            for (const url of drop.urls) {
+                const path = String(url).replace(/^file:\/\//, "");
+                if (/\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(path))
+                    root.insertImageFromFile(decodeURIComponent(path));
+            }
+        }
+    }
+
+    /// Puts a new block after the one the caret is in, which is where somebody asking for
+    /// a table expects it — not at the end of the note.
+    function insertBlock(type, props): void {
+        const at = root.activeBlockId.length > 0
+            ? root.indexOfBlock(root.activeBlockId) + 1
+            : root.blocks.length;
+        const made = Object.assign({ type: type }, props ?? {});
+        if (root.apply([{ op: "insert", index: at, block: made }]))
+            root.focusRequest = root.blockIdAt(at);
+    }
+
+    /// The file chooser, through the same helpers the rest of the shell uses.
+    function pickImage(): void {
+        if (!imagePicker.running)
+            imagePicker.running = true;
+    }
+
+    Process {
+        id: imagePicker
+        command: ["bash", "-c",
+            `if command -v zenity >/dev/null; then
+                 zenity --file-selection --title="Insert a picture" \
+                     --file-filter='Images | *.png *.jpg *.jpeg *.gif *.webp *.bmp *.svg' 2>/dev/null
+             elif command -v kdialog >/dev/null; then
+                 kdialog --getopenfilename "$HOME" 'image/png image/jpeg image/gif image/webp' 2>/dev/null
+             fi`]
+
+        stdout: StdioCollector {
+            id: pickerOutput
+            onStreamFinished: {
+                const path = pickerOutput.text.trim();
+                if (path.length > 0)
+                    root.insertImageFromFile(path);
+            }
+        }
     }
 
     function removeBlock(blockId): void {

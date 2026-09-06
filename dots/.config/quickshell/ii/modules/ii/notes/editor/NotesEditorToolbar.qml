@@ -167,6 +167,42 @@ Rectangle {
             opacity: 0.4
         }
 
+        // Inserting, rather than converting: a snippet and a table are not what the
+        // paragraph you are in should *become*, they are things that go after it.
+        NotesIconButton {
+            symbol: "code"
+            size: 42
+            iconSize: 21
+            tooltipText: Translation.tr("Code snippet")
+            colIcon: root.blockType === "code" ? Appearance.colors.colPrimary : Appearance.colors.colOnLayer1
+            onTriggered: root.toggleType("code", {}, root.blockType === "code")
+        }
+
+        NotesIconButton {
+            symbol: "table"
+            size: 42
+            iconSize: 21
+            tooltipText: Translation.tr("Table")
+            onTriggered: root.editor.insertBlock("table", { columns: 3, rows: [["", "", ""], ["", "", ""]] })
+        }
+
+        NotesIconButton {
+            symbol: "image"
+            size: 42
+            iconSize: 21
+            tooltipText: Translation.tr("Insert a picture")
+            onTriggered: root.editor.pickImage()
+        }
+
+        Rectangle {
+            Layout.preferredWidth: 1
+            Layout.preferredHeight: 22
+            Layout.leftMargin: 5
+            Layout.rightMargin: 5
+            color: Appearance.colors.colOnLayer1Inactive
+            opacity: 0.4
+        }
+
         NotesIconButton {
             symbol: "undo"
             size: 42

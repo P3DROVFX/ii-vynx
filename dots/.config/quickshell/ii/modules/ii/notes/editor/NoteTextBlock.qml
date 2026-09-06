@@ -294,6 +294,21 @@ Item {
      */
     property bool applying: false
 
+    /// True while this block is the one waiting to hear what the clipboard held.
+    property bool pasteTarget: false
+
+    Connections {
+        target: root.editor
+        enabled: root.pasteTarget
+        function onPasteFellThrough() {
+            root.pasteTarget = false;
+            // No image in the clipboard, so this is an ordinary paste after all — done
+            // here rather than by the key handler, which could not have known yet.
+            if (editText.activeFocus)
+                editText.paste();
+        }
+    }
+
     function endApplying(): void {
         Qt.callLater(() => root.applying = false);
     }
@@ -325,6 +340,16 @@ Item {
                 root.editor.redo();
             else
                 root.editor.undo();
+            event.accepted = true;
+            return;
+        }
+
+        if (ctrl && event.key === Qt.Key_V && !shift) {
+            // Handed over rather than decided here: what the clipboard holds can only be
+            // learned from a subprocess. If it turns out not to be an image the editor
+            // says so and the text paste happens then.
+            root.pasteTarget = true;
+            root.editor.pasteFromClipboard();
             event.accepted = true;
             return;
         }

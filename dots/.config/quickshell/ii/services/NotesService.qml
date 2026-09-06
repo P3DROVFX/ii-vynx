@@ -43,6 +43,7 @@ Singleton {
         onDocumentReady: (noteId, document) => root.onDocumentReady(noteId, document)
         onWriteFinished: (ok, error) => root.writeFinished(ok, error)
         onCommitted: (tag, result) => root.onCommitted(tag, result)
+        onAssetImported: (noteId, name) => root.assetImported(noteId, name)
     }
 
     // ── State ─────────────────────────────────────────────────────────────
@@ -60,6 +61,8 @@ Singleton {
     signal writeFinished(bool success, string error)
     signal noteChanged(string noteId)
     signal migrationCompleted(int count)
+    /// A file has been copied into a note's folder and can be referenced by name.
+    signal assetImported(string noteId, string name)
 
     // ── Store API ─────────────────────────────────────────────────────────
 
@@ -77,6 +80,17 @@ Singleton {
 
     function assetPath(noteId: string, asset: string): string {
         return store.assetPath(noteId, asset);
+    }
+
+    /**
+     * Copies a file into a note's own folder.
+     *
+     * The answer arrives on `assetImported`, not as a return value: the helper renames
+     * around a name that is already taken, so what the file ends up called is not known
+     * until it has been written.
+     */
+    function importAsset(noteId: string, source: string): void {
+        store.importAsset(noteId, source);
     }
 
     /**

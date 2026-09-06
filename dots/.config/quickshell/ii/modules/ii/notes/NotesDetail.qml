@@ -42,6 +42,10 @@ Item {
     }
 
     readonly property string noteId: root.note ? root.note.id : ""
+    /// Empty means the note has not chosen one, which is plain.
+    readonly property string paperStyle: root.note && root.note.paper.length > 0 ? root.note.paper : "plain"
+
+    signal paperPicked(string style)
     Rectangle {
         anchors.fill: parent
         radius: Appearance.rounding.large
@@ -56,6 +60,63 @@ Item {
         icon: "edit_note"
         title: Translation.tr("No note selected")
         description: Translation.tr("Pick one from the list, or start a new one.")
+    }
+
+    /**
+     * A picture, full size, over the page.
+     *
+     * Inside the pane rather than a window of its own: it is a closer look at something in
+     * this note, not a separate thing, and a second window to dismiss would be one more
+     * than the job needs.
+     */
+    Rectangle {
+        id: imageViewer
+        anchors.fill: parent
+        z: 20
+        color: Qt.rgba(0, 0, 0, 0.82)
+        visible: editor.viewingImage.length > 0
+
+        MouseArea {
+            anchors.fill: parent
+            onClicked: editor.viewImage("")
+        }
+
+        Image {
+            anchors.centerIn: parent
+            width: Math.min(parent.width - 64, implicitWidth)
+            height: implicitWidth > 0 ? width * (implicitHeight / implicitWidth) : 0
+            source: editor.viewingImage.length > 0 ? `file://${editor.viewingImage}` : ""
+            fillMode: Image.PreserveAspectFit
+            asynchronous: true
+            smooth: true
+            sourceSize.width: 2400
+        }
+
+        NotesIconButton {
+            anchors.top: parent.top
+            anchors.right: parent.right
+            anchors.margins: 12
+            symbol: "close"
+            tooltipText: Translation.tr("Close")
+            colIcon: Appearance.m3colors.m3onSurface
+            onTriggered: editor.viewImage("")
+        }
+    }
+
+    NotesPaperPicker {
+        id: paperPicker
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.rightMargin: NotesMetrics.panePadding
+        anchors.topMargin: 68
+        z: 10
+        visible: false
+        current: root.paperStyle
+
+        onPicked: style => {
+            root.paperPicked(style);
+            paperPicker.visible = false;
+        }
     }
 
     ColumnLayout {
@@ -104,6 +165,14 @@ Item {
                     color: Appearance.colors.colOnLayer1Inactive
                     visible: titleField.text.length === 0
                 }
+            }
+
+            NotesIconButton {
+                symbol: "grid_on"
+                tooltipText: Translation.tr("Page style")
+                colIcon: root.paperStyle !== "plain" ? Appearance.colors.colPrimary : Appearance.colors.colOnLayer1
+                visible: !root.trash
+                onTriggered: paperPicker.visible = !paperPicker.visible
             }
 
             NotesIconButton {
@@ -170,6 +239,15 @@ Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
             Layout.topMargin: 12
+
+            // The page, under the text. Its own item rather than a property of the
+            // editor: the editor scrolls, and the paper has to stay put and be *offset*
+            // instead, or the pattern would slide out from under the words.
+            NotesPaper {
+                anchors.fill: parent
+                paperStyle: root.paperStyle
+                scrollOffset: editor.scrollOffset
+            }
 
             NotesEditor {
                 id: editor

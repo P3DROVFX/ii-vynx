@@ -20,9 +20,15 @@ Item {
         sourceComponent: {
             if (root.block.type === "divider")
                 return dividerComponent;
-            // A file, not prose. Read-only until the ink surface and the image block land;
-            // without this a migrated sketch would open as an empty paragraph.
-            if (["ink", "image"].includes(root.block.type))
+            if (root.block.type === "image")
+                return imageComponent;
+            if (root.block.type === "code")
+                return codeComponent;
+            if (root.block.type === "table")
+                return tableComponent;
+            // Ink is read-only until the ink surface lands; without this a migrated sketch
+            // would open as an empty paragraph.
+            if (root.block.type === "ink")
                 return mediaComponent;
             return textComponent;
         }
@@ -47,5 +53,22 @@ Item {
     Component {
         id: mediaComponent
         NoteMediaBlock {}
+    }
+
+    Component {
+        id: imageComponent
+        NoteImageBlock {
+            onViewRequested: path => root.editor.viewImage(path)
+        }
+    }
+
+    Component {
+        id: codeComponent
+        NoteCodeBlock {}
+    }
+
+    Component {
+        id: tableComponent
+        NoteTableBlock {}
     }
 }
