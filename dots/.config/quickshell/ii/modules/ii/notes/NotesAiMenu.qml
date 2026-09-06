@@ -363,21 +363,21 @@ Item {
                         Repeater {
                             model: [
                                 { id: "professional", name: Translation.tr("Professional"), icon: "work",
-                                  prompt: "Reescreva o texto a seguir em tom profissional, refinado e corporativo. Retorne apenas o texto reescrito, sem saudações ou explicações adicionais." },
+                                  prompt: "Rewrite the text below in a professional, polished tone. Write in the same language as the text. Return only the rewritten text, with no greeting or explanation." },
                                 { id: "casual", name: Translation.tr("Casual"), icon: "chat",
-                                  prompt: "Reescreva o texto a seguir em tom casual, descontraído e amigável, mantendo a clareza. Retorne apenas o texto reescrito." },
+                                  prompt: "Rewrite the text below in a relaxed, friendly tone, keeping it clear. Write in the same language as the text. Return only the rewritten text." },
                                 { id: "direct", name: Translation.tr("Direct and short"), icon: "bolt",
-                                  prompt: "Reescreva o texto a seguir de forma direta, concisa e objetiva, eliminando palavras vazias e prolixidade. Retorne apenas o texto direto." },
+                                  prompt: "Rewrite the text below so it is direct and short, cutting filler and repetition. Write in the same language as the text. Return only the rewritten text." },
                                 { id: "academic", name: Translation.tr("Academic"), icon: "school",
-                                  prompt: "Reescreva o texto a seguir em tom acadêmico formal, utilizando vocabulário rigoroso e estrutura precisa. Retorne apenas o texto reescrito." },
+                                  prompt: "Rewrite the text below in a formal academic register, with precise vocabulary and structure. Write in the same language as the text. Return only the rewritten text." },
                                 { id: "empathetic", name: Translation.tr("Empathetic"), icon: "favorite",
-                                  prompt: "Reescreva o texto a seguir com tom acolhedor, empático, compreensivo e humano. Retorne apenas o texto reescrito." },
+                                  prompt: "Rewrite the text below in a warm, understanding tone. Write in the same language as the text. Return only the rewritten text." },
                                 { id: "poetic", name: Translation.tr("Poetic"), icon: "auto_stories",
-                                  prompt: "Reescreva o texto a seguir com lirismo, elegância estilística e tom poético sutil. Retorne apenas o texto reescrito." },
+                                  prompt: "Rewrite the text below with a light lyrical quality, without losing its meaning. Write in the same language as the text. Return only the rewritten text." },
                                 { id: "humorous", name: Translation.tr("Humorous"), icon: "mood",
-                                  prompt: "Reescreva o texto a seguir adicionando um toque de humor inteligente, leve e bem-humorado. Retorne apenas o texto reescrito." },
+                                  prompt: "Rewrite the text below with a touch of light, intelligent humour. Write in the same language as the text. Return only the rewritten text." },
                                 { id: "persuasive", name: Translation.tr("Persuasive"), icon: "campaign",
-                                  prompt: "Reescreva o texto a seguir de forma persuasiva e convincente, ressaltando valor e clareza de argumentos. Retorne apenas o texto persuasivo." }
+                                  prompt: "Rewrite the text below so it persuades: clear argument, plain value, no hyperbole. Write in the same language as the text. Return only the rewritten text." }
                             ]
 
                             delegate: RippleButton {
@@ -437,22 +437,22 @@ Item {
                             model: [
                                 { id: "grammar", name: Translation.tr("Fix the grammar"), icon: "spellcheck",
                                   desc: Translation.tr("Corrects typos, punctuation and grammar while preserving original tone."),
-                                  prompt: "Corrija rigorosamente todos os erros de ortografia, acentuação, gramática e concordância do texto a seguir. Mantenha integralmente o sentido, vocabulário e estilo original. Retorne unicamente o texto corrigido, sem preâmbulos." },
-                                { id: "sum_para", name: Translation.tr("Summarize in 1 Paragraph"), icon: "short_text",
+                                  prompt: "Correct every spelling, grammar and agreement error in the text below. Keep its meaning, vocabulary and style exactly. Write in the same language as the text. Return only the corrected text, with nothing before it." },
+                                { id: "sum_para", name: Translation.tr("Summarise in a paragraph"), icon: "short_text",
                                   desc: Translation.tr("Synthesizes the core message in one well-structured paragraph."),
-                                  prompt: "Resuma as principais ideias do texto a seguir em um único parágrafo fluido, claro e conciso. Retorne apenas o parágrafo." },
-                                { id: "sum_bullets", name: Translation.tr("Summarize as Bullet Points"), icon: "format_list_bulleted",
+                                  prompt: "Summarise the main ideas of the text below in one flowing paragraph. Write in the same language as the text. Return only the paragraph." },
+                                { id: "sum_bullets", name: Translation.tr("Summarise as bullet points"), icon: "format_list_bulleted",
                                   desc: Translation.tr("Extracts key takeaways into a concise markdown bullet list."),
-                                  prompt: "Extraia os pontos fundamentais do texto a seguir em uma lista sucinta de tópicos em Markdown (- item). Retorne apenas a lista." },
-                                { id: "sum_tldr", name: Translation.tr("1-Line TL;DR"), icon: "summarize",
+                                  prompt: "Pull the key points out of the text below as a short Markdown list (- item). Write in the same language as the text. Return only the list." },
+                                { id: "sum_tldr", name: Translation.tr("One line, and no more"), icon: "summarize",
                                   desc: Translation.tr("One punchy sentence summarizing everything."),
-                                  prompt: "Escreva um resumo ultra-conciso (TL;DR) do texto a seguir em exatamente UMA única frase direta. Retorne apenas a frase." },
-                                { id: "expand", name: Translation.tr("Expand & Develop"), icon: "unfold_more",
+                                  prompt: "Summarise the text below in exactly one direct sentence. Write in the same language as the text. Return only that sentence." },
+                                { id: "expand", name: Translation.tr("Say more about it"), icon: "unfold_more",
                                   desc: Translation.tr("Deepens ideas with more depth, clarity and context."),
-                                  prompt: "Desenvolva e aprofunde as ideias e argumentos do texto a seguir, agregando contexto explicativo, clareza e riqueza de detalhes, sem fugir do tema nem mudar o tom. Retorne apenas o texto expandido." },
+                                  prompt: "Develop the ideas in the text below with more context and detail, without drifting from the subject or changing the tone. Write in the same language as the text. Return only the expanded text." },
                                 { id: "continue", name: Translation.tr("Keep writing it"), icon: "edit_note",
                                   desc: Translation.tr("Completes the thought from the end of the text."),
-                                  prompt: "Continue a escrita do texto a seguir a partir de onde ele parou, dando sequência lógica, coerente e natural ao pensamento e completando o raciocínio. Retorne apenas o trecho continuado." }
+                                  prompt: "Continue the text below from where it stops, following the same thought and voice. Write in the same language as the text. Return only the continuation." }
                             ]
 
                             delegate: RippleButton {
@@ -523,18 +523,18 @@ Item {
 
                         Repeater {
                             model: [
-                                { id: "checklist", name: Translation.tr("Convert to Checklist"), icon: "checklist",
-                                  prompt: "Transforme o texto a seguir em uma checklist de tarefas em formato Markdown (- [ ] item). Seja claro e conciso. Retorne apenas a lista de itens." },
-                                { id: "table", name: Translation.tr("Convert to Markdown Table"), icon: "table_chart",
-                                  prompt: "Transforme os dados, comparações ou informações do texto a seguir em uma tabela Markdown limpa e bem formatada, com cabeçalho. Retorne apenas a tabela em Markdown." },
+                                { id: "checklist", name: Translation.tr("Turn into a checklist"), icon: "checklist",
+                                  prompt: "Turn the text below into a Markdown checklist (- [ ] item), one clear item per line. Write in the same language as the text. Return only the list." },
+                                { id: "table", name: Translation.tr("Turn into a table"), icon: "table_chart",
+                                  prompt: "Turn the data or comparisons in the text below into a clean Markdown table with a header row. Write in the same language as the text. Return only the table." },
                                 { id: "actions", name: Translation.tr("Pull out the actions"), icon: "task_alt",
-                                  prompt: "Identifique e extraia todas as tarefas, pendências e ações práticas mencionadas no texto a seguir, formulando uma lista organizada de afazeres em Markdown (- [ ] ação). Retorne apenas os itens de ação." },
+                                  prompt: "Find every task, promise and next step in the text below and list them as a Markdown checklist (- [ ] action). Write in the same language as the text. Return only the list." },
                                 { id: "tr_en", name: Translation.tr("Translate to English"), icon: "translate",
                                   prompt: "Translate the following text into fluent, natural English. Keep markdown formatting and structure. Return only the translated text." },
-                                { id: "tr_pt", name: Translation.tr("Translate to Portuguese (PT-BR)"), icon: "translate",
-                                  prompt: "Traduza o texto a seguir para português brasileiro fluente, idiomático e natural. Mantenha a estrutura Markdown. Retorne apenas o texto traduzido." },
+                                { id: "tr_pt", name: Translation.tr("Translate to Portuguese"), icon: "translate",
+                                  prompt: "Translate the text below into fluent, natural Brazilian Portuguese. Keep the Markdown structure. Return only the translation." },
                                 { id: "tr_es", name: Translation.tr("Translate to Spanish"), icon: "translate",
-                                  prompt: "Traduce el siguiente texto a español fluido y natural. Mantén el formato Markdown. Devuelve únicamente el texto traducido." }
+                                  prompt: "Translate the text below into fluent, natural Spanish. Keep the Markdown structure. Return only the translation." }
                             ]
 
                             delegate: RippleButton {
@@ -594,16 +594,16 @@ Item {
                             model: [
                                 { id: "title", name: Translation.tr("Suggest a title"), icon: "title",
                                   desc: Translation.tr("Creates a short, expressive title (max 6 words) based on content."),
-                                  prompt: "Com base no conteúdo desta nota, crie um título conciso, memorável e altamente relevante de no máximo 6 palavras. Retorne APENAS o título puro, sem aspas, ponto final ou explicações." },
+                                  prompt: "Read the note below and write a short, memorable title for it — six words at most. Write in the same language as the text. Return only the title: no quotes, no full stop, no explanation." },
                                 { id: "tags", name: Translation.tr("Suggest tags"), icon: "label",
                                   desc: Translation.tr("Extracts 3 to 5 relevant tags formatted as #tag."),
-                                  prompt: "Analise o conteúdo completo desta nota e identifique os 3 a 5 principais temas ou entidades. Retorne apenas as tags no formato '#tag1 #tag2 #tag3', separadas por espaço." },
+                                  prompt: "Read the note below and name its three to five main subjects. Write in the same language as the text. Return only the tags, as '#one #two #three', separated by spaces." },
                                 { id: "callout_summary", name: Translation.tr("Summarise it at the top"), icon: "article",
                                   desc: Translation.tr("Drafts a high-level summary to place at the top of the note."),
-                                  prompt: "Gere um resumo executivo claro, estruturado e conciso (em 2 a 3 frases) do conteúdo desta nota, adequado para ser destacado como resumo de cabeçalho. Retorne apenas o texto do resumo." },
-                                { id: "structure", name: Translation.tr("Structure in Topics"), icon: "format_align_left",
+                                  prompt: "Write a clear two or three sentence summary of the note below, the kind that belongs at the top of it. Write in the same language as the text. Return only the summary." },
+                                { id: "structure", name: Translation.tr("Give it structure"), icon: "format_align_left",
                                   desc: Translation.tr("Reorganizes the note content with clean headings and sections."),
-                                  prompt: "Reorganize o conteúdo a seguir em seções lógicas com títulos Markdown (##, ###) e tópicos estruturados, preservando todas as informações originais. Retorne o documento reorganizado em Markdown." }
+                                  prompt: "Reorganise the text below into logical sections with Markdown headings (##, ###) and structured points, keeping every piece of information. Write in the same language as the text. Return only the reorganised Markdown." }
                             ]
 
                             delegate: RippleButton {
@@ -675,11 +675,11 @@ Item {
                         Repeater {
                             model: [
                                 { id: "code_explain", name: Translation.tr("Explain this code"), icon: "code",
-                                  prompt: "Explique a lógica, o fluxo de execução e o propósito deste bloco de código de forma clara, didática e estruturada." },
+                                  prompt: "Explain what the code below does: its purpose, its flow, and anything surprising in it. Be clear and concrete." },
                                 { id: "code_bugs", name: Translation.tr("Look for bugs"), icon: "bug_report",
-                                  prompt: "Analise detalhadamente o código a seguir procurando por possíveis bugs, vulnerabilidades de segurança, casos de borda não tratados, condições de corrida ou vazamentos de recursos. Liste os problemas encontrados e proponha correções." },
+                                  prompt: "Review the code below for bugs, security problems, unhandled edge cases, race conditions and leaks. List what you find and how to fix each one." },
                                 { id: "code_opt", name: Translation.tr("Suggest a faster way"), icon: "speed",
-                                  prompt: "Proponha uma versão otimizada e mais performática para o código a seguir. Explique brevemente as melhorias implementadas e retorne o código aprimorado." }
+                                  prompt: "Propose a faster version of the code below. Explain briefly what you changed and why, then give the improved code." }
                             ]
 
                             delegate: RippleButton {

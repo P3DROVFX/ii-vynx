@@ -207,8 +207,36 @@ Singleton {
         const result = Doc.applyOps(current, ops);
         if (!result.changed)
             return { ok: true, changed: false, inverse: [] };
+        // Before the change lands, not after: a version you can go back to is the note as
+        // it was, and the only moment that document still exists is this one.
+        root.snapshotIfDue(noteId, current);
         root.writeDocument(noteId, result.document);
         return { ok: true, changed: true, inverse: result.inverse };
+    }
+
+    /// When each note was last kept, in memory only: a fresh shell takes one snapshot per
+    /// note on the first edit, which is exactly the restore point somebody wants.
+    property var snapshotTimes: ({})
+
+    /// A quarter of an hour between automatic versions.
+    ///
+    /// Short enough that an afternoon of writing leaves a trail, long enough that a
+    /// sentence typed at speed does not write fifty files. The helper keeps the last fifty
+    /// per note and drops the rest, so this cannot grow without bound.
+    readonly property int snapshotInterval: 15 * 60 * 1000
+
+    function snapshotIfDue(noteId, document): void {
+        if (!document)
+            return;
+        const now = Date.now();
+        const last = root.snapshotTimes[noteId] ?? 0;
+        if (now - last < root.snapshotInterval)
+            return;
+        const times = Object.assign({}, root.snapshotTimes);
+        times[noteId] = now;
+        root.snapshotTimes = times;
+        const record = root.allNoteRecords().find(note => note.id === noteId);
+        NotesRevisions.saveSnapshot(noteId, record ? record.title : "", document.blocks, "auto");
     }
 
     function updateMeta(noteId: string, patch: var): bool {

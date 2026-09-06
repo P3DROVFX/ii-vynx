@@ -82,6 +82,28 @@ Item {
     readonly property int trashCount: Array.from(NotesService.index.notes ?? [])
         .filter(note => note.trashedAt > 0).length
 
+    /// What the last Keep import said, so the row can answer rather than the log.
+    property string importStatus: ""
+
+    NotesTakeoutPicker {
+        id: takeout
+        onPicked: path => {
+            root.importStatus = Translation.tr("Reading %1…").arg(path);
+            NotesSync.importTakeout(path);
+        }
+    }
+
+    Connections {
+        target: NotesSync
+        function onImportFinished(success, message, importedCount) {
+            root.importStatus = success
+                ? (importedCount === 1
+                    ? Translation.tr("One note came in.")
+                    : Translation.tr("%1 notes came in.").arg(importedCount))
+                : message;
+        }
+    }
+
     StyledFlickable {
         id: flickable
         anchors.fill: parent
@@ -245,6 +267,36 @@ Item {
             NotesSettingsSection {
                 Layout.fillWidth: true
                 title: Translation.tr("Your notes")
+
+                NotesSettingsRow {
+                    Layout.fillWidth: true
+                    symbol: "cloud_download"
+                    title: Translation.tr("Import from Google Keep")
+                    description: root.importStatus.length > 0
+                        ? root.importStatus
+                        : Translation.tr("Point this at a Google Takeout folder. The official Keep API is for Workspace accounts only, so an export is the way in for a personal one.")
+
+                    RippleButton {
+                        implicitHeight: 40
+                        buttonRadius: NotesMetrics.pillRadius(40)
+                        enabled: !takeout.choosing
+                        colBackground: Appearance.colors.colSecondaryContainer
+                        colBackgroundHover: Appearance.colors.colSecondaryContainerHover
+                        onClicked: takeout.pick()
+
+                        contentItem: StyledText {
+                            anchors.centerIn: parent
+                            leftPadding: 16
+                            rightPadding: 16
+                            text: takeout.choosing
+                                ? Translation.tr("Choosing…")
+                                : Translation.tr("Choose a folder…")
+                            font.pixelSize: Appearance.font.pixelSize.small
+                            font.weight: Font.DemiBold
+                            color: Appearance.m3colors.m3onSecondaryContainer
+                        }
+                    }
+                }
 
                 NotesSettingsRow {
                     Layout.fillWidth: true

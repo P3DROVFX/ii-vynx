@@ -351,12 +351,12 @@ OverlayBackground {
                     Layout.fillWidth: true
                 }
 
-                Loader {
-                    active: root.tabEditModeEnabled || (item && item.height > 0)
-                    sourceComponent: TitleEditComp {
-                        Layout.fillWidth: false
-                    }
-                    onLoaded: item.height = 50
+                // Always loaded, and zero pixels tall until it is wanted. Reading the
+                // loaded item's height inside `active` — to keep it alive for the collapse
+                // animation — is a binding that depends on its own result, and Qt said so
+                // on every open.
+                TitleEditComp {
+                    Layout.fillWidth: false
                 }
             }
         }
@@ -549,20 +549,23 @@ OverlayBackground {
     component TitleEditComp: Row {
         id: row
         spacing: 4
-        height: 0
 
         property bool editMode: root.tabEditModeEnabled
-        onEditModeChanged: {
-            if (!editMode) height = 0
-        }
+        // The height *is* the state: fifty while editing, nothing otherwise, animated
+        // between the two. Nobody has to keep it alive to watch it fold away.
+        height: row.editMode ? 50 : 0
+        clip: true
 
         function updateTitle(disableEditMode = false) {
             let newTabs = root.tabsData.tabs.slice();
-            newTabs[currentTabIndex] = {
+            // Everything the tab already carried, with the two edited fields over the top.
+            // Rebuilt from scratch it lost its `noteId`, and a tab with no id is a tab the
+            // service has never seen: renaming one made a *second* note with the same text
+            // and left the first orphaned in the store.
+            newTabs[currentTabIndex] = Object.assign({}, newTabs[currentTabIndex], {
                 title: titleInput.text.split("\n")[0],  // only getting the first line
-                icon: iconInput.text.split("\n")[0],
-                content: newTabs[currentTabIndex].content
-            };
+                icon: iconInput.text.split("\n")[0]
+            });
             
             if (disableEditMode) root.tabEditModeEnabled = false;
 

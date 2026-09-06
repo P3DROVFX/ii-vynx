@@ -239,7 +239,7 @@ Item {
                         horizontalAlignment: Text.AlignHCenter
                         wrapMode: Text.WordWrap
                         visible: !root.revisions || root.revisions.length === 0
-                        text: Translation.tr("Nothing saved yet. Versions appear here as you write.")
+                        text: Translation.tr("Nothing yet. A version is kept when you come back to a note after a while, and whenever you ask for one.")
                         font.pixelSize: Appearance.font.pixelSize.small
                         color: Appearance.colors.colSubtext
                     }

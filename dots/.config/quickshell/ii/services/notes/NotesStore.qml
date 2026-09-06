@@ -385,7 +385,7 @@ Scope {
         }
         if (parsed.error) {
             root.lastError = String(parsed.error);
-            console.log("[NotesStore]", op.tag, "failed:", root.lastError);
+            console.warn("[NotesStore]", op.tag, "failed:", root.lastError);
         }
         if (op.tag === "init") {
             root.initialised = true;
