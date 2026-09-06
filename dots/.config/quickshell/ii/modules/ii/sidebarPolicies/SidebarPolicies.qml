@@ -449,6 +449,7 @@ Scope { // Scope
 
         sourceComponent: FloatingWindow {
             id: detachedSidebarRoot
+            title: "ii Policies"
             property var contentParent: detachedSidebarBackground
             color: "transparent"
 
@@ -457,8 +458,8 @@ Scope { // Scope
                 ?? Quickshell.screens.find(s => s.name === (Hyprland.focusedMonitor ? Hyprland.focusedMonitor.name : ""))
                 ?? Quickshell.screens[0]
                 ?? null
-            width: root.sidebarWidth
-            height: detachedSidebarRoot.screen ? Math.max(0, detachedSidebarRoot.screen.height - root.topBarOffset - root.bottomBarOffset - Appearance.sizes.hyprlandGapsOut * 2) : 0
+            implicitWidth: root.sidebarWidth
+            implicitHeight: detachedSidebarRoot.screen ? Math.max(0, detachedSidebarRoot.screen.height - root.topBarOffset - root.bottomBarOffset - Appearance.sizes.hyprlandGapsOut * 2) : 0
 
             Shortcut {
                 sequence: "Ctrl+D"
@@ -477,33 +478,8 @@ Scope { // Scope
             }
 
             onVisibleChanged: {
-                if (visible) {
-                    if (!root.pin) GlobalFocusGrab.addDismissable(detachedSidebarRoot);
-                } else {
-                    GlobalFocusGrab.removeDismissable(detachedSidebarRoot);
-                }
-            }
-
-            Component.onDestruction: GlobalFocusGrab.removeDismissable(detachedSidebarRoot)
-
-            Connections {
-                target: root
-                function onPinChanged() {
-                    if (!detachedSidebarRoot.visible)
-                        return;
-                    if (root.pin)
-                        GlobalFocusGrab.removeDismissable(detachedSidebarRoot);
-                    else
-                        GlobalFocusGrab.addDismissable(detachedSidebarRoot);
-                }
-            }
-
-            Connections {
-                target: GlobalFocusGrab
-                function onDismissed() {
-                    if (!root.pin)
-                        GlobalStates.sidebarLeftOpen = false;
-                }
+                if (!visible && GlobalStates.sidebarLeftOpen)
+                    GlobalStates.sidebarLeftOpen = false;
             }
             
             Rectangle {
@@ -513,6 +489,11 @@ Scope { // Scope
                 color: Config.options.bar.expressiveColors ? activeTheme.barBackground : Appearance.colors.colLayer0
 
                 Keys.onPressed: (event) => {
+                    if (event.key === Qt.Key_Escape) {
+                        GlobalStates.sidebarLeftOpen = false;
+                        event.accepted = true;
+                        return;
+                    }
                     if ((event.modifiers & Qt.ControlModifier) !== 0) {
                         if (event.key === Qt.Key_D) {
                             root.toggleDetach();

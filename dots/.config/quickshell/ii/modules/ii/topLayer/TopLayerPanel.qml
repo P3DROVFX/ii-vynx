@@ -815,11 +815,12 @@ PanelWindow {
         active: GlobalStates.connectModeActive && !GlobalStates.connectSidebarsSeparate && GlobalStates.policiesDetached && topPanel.policiesOpenOnMonitor
         sourceComponent: FloatingWindow {
             id: detachedPoliciesWindow
+            title: "ii Policies"
             screen: topPanel.screen
             color: "transparent"
             visible: true
-            width: GlobalStates.policiesWidth
-            height: Math.max(0, topPanel.height - topPanel.sidebarTopOffset - topPanel.sidebarBottomOffset - (Appearance.sizes.hyprlandGapsOut * 2))
+            implicitWidth: GlobalStates.policiesWidth
+            implicitHeight: Math.max(0, topPanel.height - topPanel.sidebarTopOffset - topPanel.sidebarBottomOffset - (Appearance.sizes.hyprlandGapsOut * 2))
 
             Shortcut {
                 sequence: "Ctrl+D"
@@ -854,6 +855,11 @@ PanelWindow {
                 }
 
                 Keys.onPressed: event => {
+                    if (event.key === Qt.Key_Escape) {
+                        GlobalStates.sidebarLeftOpen = false;
+                        event.accepted = true;
+                        return;
+                    }
                     if ((event.modifiers & Qt.ControlModifier) !== 0) {
                         if (event.key === Qt.Key_D) {
                             topPanel.togglePoliciesDetach();
