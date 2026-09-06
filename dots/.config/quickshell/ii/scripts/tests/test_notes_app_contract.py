@@ -307,6 +307,21 @@ class DesignTokenTests(unittest.TestCase):
                                   f"{path.name}:{number} uses Appearance.rounding.{name}, "
                                   f"which does not exist")
 
+    def test_anything_naming_globalstates_imports_the_root_module(self):
+        """`GlobalStates` lives at the repo root, so it needs `import qs`.
+
+        Without it the name is simply undefined, and QML says so once per click in a log
+        nobody is watching while the button appears to do nothing. That is exactly what
+        happened to the dashboard widget: every button in the notes tab threw, so the tab
+        could neither make a note nor open the app.
+        """
+        for path in app_files() + surface_files():
+            body = read(path)
+            if "GlobalStates" not in body:
+                continue
+            self.assertRegex(body, r"(?m)^import qs$",
+                             f"{path.name} names GlobalStates without importing qs")
+
     def test_a_toggled_button_says_what_it_paints(self):
         """`colBackground` is dead while `toggled` is true.
 

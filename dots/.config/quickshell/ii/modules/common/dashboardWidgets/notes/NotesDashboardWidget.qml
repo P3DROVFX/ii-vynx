@@ -4,6 +4,9 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell
+// The root module, for `GlobalStates` — without it every button here threw
+// `ReferenceError: GlobalStates is not defined` and the whole tab did nothing.
+import qs
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
@@ -135,7 +138,10 @@ Item {
                         if (quickInput.text.trim().length === 0)
                             return;
                         const text = quickInput.text.trim();
-                        NotesService.create("", text, null);
+                        // The first line names it. `create` with an empty title falls back
+                        // to "AI note", which is right where it is used — the assistant —
+                        // and wrong for something jotted down by hand.
+                        NotesService.create(text.split("\n")[0].slice(0, 80), text, null);
                         quickInput.text = "";
                     }
                 }
@@ -159,7 +165,10 @@ Item {
                         if (quickInput.text.trim().length === 0)
                             return;
                         const text = quickInput.text.trim();
-                        NotesService.create("", text, null);
+                        // The first line names it. `create` with an empty title falls back
+                        // to "AI note", which is right where it is used — the assistant —
+                        // and wrong for something jotted down by hand.
+                        NotesService.create(text.split("\n")[0].slice(0, 80), text, null);
                         quickInput.text = "";
                     }
                 }

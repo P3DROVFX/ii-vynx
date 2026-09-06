@@ -369,7 +369,9 @@ Item {
                     KeyboardShortcutBox {
                         Layout.fillWidth: true
                         text: Translation.tr("Open notes from anywhere")
-                        keys: ["Super", "Shift", "N"]
+                        // Super+Shift+N is the shell's "next track"; the notes took the
+                        // same letter with the other modifier rather than a stranger key.
+                        keys: ["Super", "Alt", "N"]
                     }
 
                     KeyboardShortcutBox {
