@@ -58,6 +58,10 @@ Item {
     // monitor-centered origin below.
     readonly property real parallaxScaleOriginX: wallpaperPlaneWidth / 2 + parallaxX
     readonly property real parallaxScaleOriginY: wallpaperPlaneHeight / 2 + parallaxY
+    readonly property real centeredParallaxX: -(wallpaperPlaneWidth - screenWidth) / 2
+    readonly property real centeredParallaxY: -(wallpaperPlaneHeight - screenHeight) / 2
+    property real wallpaperDisplacementX: videoEffectsDisabled ? 0 : (parallaxX - centeredParallaxX)
+    property real wallpaperDisplacementY: videoEffectsDisabled ? 0 : (parallaxY - centeredParallaxY)
     property real animationScaleOriginX: centeredScaleOriginX
     property real animationScaleOriginY: centeredScaleOriginY
 

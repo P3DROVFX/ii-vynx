@@ -250,29 +250,35 @@ Item {
     // mask stays nearly square until progress stops at the end of the overview.
     readonly property real wallpaperClipRadius: overviewController ? overviewController.cornerRadius : 0
 
-    // Wallpaper planes: scale zoom-out.
+    // Edit Mode container: shrinks the whole plane so it lands inside the card.
     Item {
-        id: wallpaperPlanes
+        id: wallpaperPlanesContainer
         anchors.fill: parent
 
-        readonly property real wallpaperW: wallpaperWidth / wallpaperToScreenRatio * baseWallpaperScale
-        readonly property real wallpaperH: wallpaperHeight / wallpaperToScreenRatio * baseWallpaperScale
-        readonly property real centeredX: -movableXSpace
-        readonly property real centeredY: -movableYSpace
-
         transform: [
-            Scale {
-                origin.x: scaleOriginX
-                origin.y: scaleOriginY
-                xScale: scaleValue
-                yScale: scaleValue
-            },
-            // Edit Mode's shrink, applied after the overview's zoom so the whole plane - overview
-            // state included - lands inside the card. The identity outside the mode.
             Matrix4x4 {
                 matrix: wallpaperImageRoot.editMatrix
             }
         ]
+
+        // Wallpaper planes: scale zoom-out.
+        Item {
+            id: wallpaperPlanes
+            anchors.fill: parent
+
+            readonly property real wallpaperW: wallpaperWidth / wallpaperToScreenRatio * baseWallpaperScale
+            readonly property real wallpaperH: wallpaperHeight / wallpaperToScreenRatio * baseWallpaperScale
+            readonly property real centeredX: -movableXSpace
+            readonly property real centeredY: -movableYSpace
+
+            transform: [
+                Scale {
+                    origin.x: scaleOriginX
+                    origin.y: scaleOriginY
+                    xScale: scaleValue
+                    yScale: scaleValue
+                }
+            ]
 
         Rectangle {
             id: centralClipMask
@@ -616,5 +622,6 @@ Item {
             }
         }
 
+        }
     }
 }

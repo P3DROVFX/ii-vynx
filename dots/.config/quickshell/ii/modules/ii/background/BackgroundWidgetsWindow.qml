@@ -207,7 +207,10 @@ PanelWindow {
         }
     }
     onAnyWidgetShownChanged: updateSurfaceNeed()
-    Component.onCompleted: updateSurfaceNeed()
+    Component.onCompleted: {
+        updateSurfaceNeed();
+        updateWallpaperSize();
+    }
 
     visible: isTargetMonitor && widgetsNeedSurface && (GlobalStates.screenLocked || !bgWidgetsWindow.deferredFullscreen || !(Config && Config.options && Config.options.background && Config.options.background.hideWhenFullscreen))
 
@@ -292,7 +295,13 @@ PanelWindow {
 
     property int wallpaperWidth: modelData.width
     property int wallpaperHeight: modelData.height
-    property real baseWallpaperScale: 1
+    property real baseWallpaperScale: {
+        let targetScale = preferredWallpaperScale;
+        if (Config.options.background.blurWhenWindowsOpen || Config.options.lock.blur.enable) {
+            targetScale *= 1.03;
+        }
+        return targetScale;
+    }
 
     WallpaperSizeProbe {
         id: getWallpaperSizeProc
@@ -303,6 +312,12 @@ PanelWindow {
             bgWidgetsWindow.recalcWallpaperScale();
         }
     }
+
+    function updateWallpaperSize() {
+        getWallpaperSizeProc.path = bgWidgetsWindow.wallpaperPath;
+        getWallpaperSizeProc.running = true;
+    }
+    onWallpaperPathChanged: updateWallpaperSize()
 
     property bool wallpaperSafetyTriggered: {
         const enabled = Config.options.workSafety.enable.wallpaper;
@@ -369,6 +384,35 @@ PanelWindow {
             let activeId = bgWidgetsWindow.monitor && bgWidgetsWindow.monitor.activeWorkspace ? bgWidgetsWindow.monitor.activeWorkspace.id : 1;
             return activeId > 1000000 ? (2147483647 - activeId) : activeId;
         }
+    }
+
+    readonly property real wallpaperDisplacementX: (overviewController && overviewController.wallpaperDisplacementX !== undefined && !isNaN(overviewController.wallpaperDisplacementX))
+        ? overviewController.wallpaperDisplacementX
+        : (parallax.parallaxX - parallax.centeredX)
+    readonly property real wallpaperDisplacementY: (overviewController && overviewController.wallpaperDisplacementY !== undefined && !isNaN(overviewController.wallpaperDisplacementY))
+        ? overviewController.wallpaperDisplacementY
+        : (parallax.parallaxY - parallax.centeredY)
+    readonly property real widgetsParallaxFactor: videoEffectsDisabled ? 1.0 : (Config.options.background.parallax.widgetsFactor ?? 1.2)
+    readonly property bool widgetsParallaxCentered: GlobalStates.lockScreenCentered
+        || GlobalStates.workspaceRestoreInProgress
+        || bgWidgetsWindow.wallpaperSafetyTriggered
+        || GlobalStates.editMode
+
+    readonly property real widgetParallaxX: {
+        if (widgetsParallaxCentered)
+            return 0;
+        const disp = overviewController && overviewController.progress > 0.001
+            ? wallpaperDisplacementX * (1.0 - overviewController.progress)
+            : wallpaperDisplacementX;
+        return disp * widgetsParallaxFactor;
+    }
+    readonly property real widgetParallaxY: {
+        if (widgetsParallaxCentered)
+            return 0;
+        const disp = overviewController && overviewController.progress > 0.001
+            ? wallpaperDisplacementY * (1.0 - overviewController.progress)
+            : wallpaperDisplacementY;
+        return disp * widgetsParallaxFactor;
     }
 
     readonly property bool overviewOpen: GlobalStates.overviewOpen
@@ -516,14 +560,12 @@ PanelWindow {
             alignmentGridStep: 10
             visualGridStep: 40
             // In the mode the lattice is drawn on a card, not on a screen: the
-            // card is this window's own rect (the canvas sits off it by the
-            // parallax offset), and its corner is the one the wallpaper's card
+            // card is this window's own rect, and its corner is the one the wallpaper's card
             // draws, divided back out of the shrink so both curves match.
-            gridCardRect: bgWidgetsWindow.editProgress > 0
-                ? Qt.rect(Math.round(-widgetCanvas.x), Math.round(-widgetCanvas.y), bgWidgetsWindow.width, bgWidgetsWindow.height)
-                : Qt.rect(0, 0, widgetCanvas.width, widgetCanvas.height)
-            gridCardRadius: bgWidgetsWindow.editTransform.scale > 0
-                ? Appearance.rounding.verylarge * bgWidgetsWindow.editProgress / bgWidgetsWindow.editTransform.scale : 0
+            // Evaluated statically for the mode to avoid repainting on every animation tick of editProgress.
+            gridCardRect: Qt.rect(0, 0, bgWidgetsWindow.width, bgWidgetsWindow.height)
+            gridCardRadius: GlobalStates.editMode && bgWidgetsWindow.editViewport && bgWidgetsWindow.editViewport.scale > 0
+                ? Appearance.rounding.verylarge / bgWidgetsWindow.editViewport.scale : 0
             // The desktop is the one canvas that opts into marquee selection;
             // the mode is handed in so this canvas, and not the overlay's,
             // follows it.
@@ -589,67 +631,31 @@ PanelWindow {
                 }
             }
 
-            anchors {
-                left: parent.left
-                right: parent.right
-                top: parent.top
-                bottom: parent.bottom
-                horizontalCenter: undefined
-                verticalCenter: undefined
-                readonly property real parallaxFactor: videoEffectsDisabled ? 1.0 : Config.options.background.parallax.widgetsFactor
-                leftMargin: {
-                    const xOnWallpaper = bgWidgetsWindow.movableXSpace;
-                    const extraMove = (parallax.effectiveValueX * 2 * bgWidgetsWindow.movableXSpace) * (parallaxFactor - 1);
-                    return xOnWallpaper - extraMove;
-                }
-                topMargin: {
-                    const yOnWallpaper = bgWidgetsWindow.movableYSpace;
-                    const extraMove = (parallax.effectiveValueY * 2 * bgWidgetsWindow.movableYSpace) * (parallaxFactor - 1);
-                    return yOnWallpaper - extraMove;
-                }
-                Behavior on leftMargin {
-                    NumberAnimation {
-                        duration: Appearance.animation.elementMove.duration
-                        easing.type: Appearance.animation.elementMove.type
-                        easing.bezierCurve: Appearance.animation.elementMove.bezierCurve
-                    }
-                }
-                Behavior on topMargin {
-                    NumberAnimation {
-                        duration: Appearance.animation.elementMove.duration
-                        easing.type: Appearance.animation.elementMove.type
-                        easing.bezierCurve: Appearance.animation.elementMove.bezierCurve
-                    }
-                }
-            }
+            x: bgWidgetsWindow.widgetParallaxX
+            y: bgWidgetsWindow.widgetParallaxY
             width: parent.width
             height: parent.height
+
+            Behavior on x {
+                enabled: !bgWidgetsWindow.overviewAnimationVisible && !GlobalStates.editMode
+                NumberAnimation {
+                    duration: Math.round(450 * Appearance.animMultiplier)
+                    easing.type: Easing.OutCubic
+                }
+            }
+            Behavior on y {
+                enabled: !bgWidgetsWindow.overviewAnimationVisible && !GlobalStates.editMode
+                NumberAnimation {
+                    duration: Math.round(450 * Appearance.animMultiplier)
+                    easing.type: Easing.OutCubic
+                }
+            }
 
             Binding {
                 target: widgetStateManager
                 property: "draggingActive"
                 value: widgetCanvas.draggingActive
                 when: typeof widgetStateManager !== "undefined" && widgetStateManager && widgetStateManager.hasOwnProperty("draggingActive")
-            }
-
-            states: State {
-                name: "centered"
-                when: GlobalStates.lockScreenCentered || GlobalStates.workspaceRestoreInProgress || bgWidgetsWindow.wallpaperSafetyTriggered
-                PropertyChanges {
-                    target: widgetCanvas
-                    anchors.leftMargin: 0
-                    anchors.rightMargin: 0
-                    anchors.topMargin: 0
-                    anchors.bottomMargin: 0
-                }
-            }
-
-            transitions: Transition {
-                PropertyAnimation {
-                    properties: "anchors.leftMargin,anchors.rightMargin,anchors.topMargin,anchors.bottomMargin"
-                    duration: 600
-                    easing.type: Easing.OutCubic
-                }
             }
 
             // Declared before the widget Repeater, so widgets stack above the overlay and a

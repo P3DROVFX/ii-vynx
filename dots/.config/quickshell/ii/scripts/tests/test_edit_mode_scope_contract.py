@@ -141,6 +141,7 @@ ALLOWED_HELPERS = {
     "clearWidgetLockPositions",
     "setLockIslandOrder",
     "setLockIslandHidden",
+    "removeLastWidgetInstance",
     # Flushes the adapter; writes no option of its own. A history replay of a
     # scheme pick calls it so the switch script reads the scheme it was given.
     "saveOptionsNow",

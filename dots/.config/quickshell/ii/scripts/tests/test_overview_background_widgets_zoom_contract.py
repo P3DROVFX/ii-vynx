@@ -118,6 +118,18 @@ class OverviewBackgroundWidgetsZoomContractTests(unittest.TestCase):
             OVERVIEW_WINDOW_TRANSITION,
         )
 
+    def test_background_widgets_parallax_synchronization(self):
+        """BackgroundWidgetsWindow must calculate wallpaper displacement and translate widgetCanvas."""
+        self.assertIn("readonly property real wallpaperDisplacementX:", BG_WIDGETS_WINDOW)
+        self.assertIn("parallax.parallaxX - parallax.centeredX", BG_WIDGETS_WINDOW)
+        self.assertIn("readonly property real wallpaperDisplacementY:", BG_WIDGETS_WINDOW)
+        self.assertIn("parallax.parallaxY - parallax.centeredY", BG_WIDGETS_WINDOW)
+        self.assertIn("readonly property real widgetsParallaxFactor: videoEffectsDisabled ? 1.0 : (Config.options.background.parallax.widgetsFactor ?? 1.2)", BG_WIDGETS_WINDOW)
+        self.assertIn("x: bgWidgetsWindow.widgetParallaxX", BG_WIDGETS_WINDOW)
+        self.assertIn("y: bgWidgetsWindow.widgetParallaxY", BG_WIDGETS_WINDOW)
+        self.assertIn("Behavior on x {", BG_WIDGETS_WINDOW)
+        self.assertIn("Behavior on y {", BG_WIDGETS_WINDOW)
+
 
 if __name__ == "__main__":
     unittest.main()

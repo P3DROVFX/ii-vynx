@@ -40,6 +40,11 @@ RippleButton {
     bottomPadding: root.compact ? 8 : NotesMetrics.rowPaddingVertical
     toggled: root.current
 
+    // Cards must remain aligned to the ListView viewport. RippleButton's generic hover
+    // scale grows around the center and changes the apparent side margins of a full-width
+    // delegate, which is especially visible in this narrow column.
+    scale: 1.0
+
     /**
      * The Settings sidebar's smart radius, and the reason it is not a full pill.
      *

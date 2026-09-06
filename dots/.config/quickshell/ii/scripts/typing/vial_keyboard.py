@@ -27,6 +27,9 @@ MSG_LEN = 32
 
 CMD_GET_PROTOCOL_VERSION = 0x01
 CMD_GET_KEYBOARD_VALUE = 0x02
+CMD_DYNAMIC_KEYMAP_MACRO_GET_COUNT = 0x0C
+CMD_DYNAMIC_KEYMAP_MACRO_GET_BUFFER_SIZE = 0x0D
+CMD_DYNAMIC_KEYMAP_MACRO_GET_BUFFER = 0x0E
 CMD_DYNAMIC_KEYMAP_GET_LAYER_COUNT = 0x11
 CMD_DYNAMIC_KEYMAP_GET_BUFFER = 0x12
 CMD_VIAL_PREFIX = 0xFE
@@ -122,6 +125,31 @@ class Keyboard:
             block += 1
             left -= MSG_LEN
         return json.loads(lzma.decompress(payload))
+
+    def macros(self):
+        """The macros as text, indexed by number.
+
+        A macro is a run of bytes in one shared buffer, ended by a zero. What it
+        finally produces depends on the layout the desktop runs -- "'a" is
+        a-acute under a dead-key layout and two characters under a plain one --
+        so this is what the key sends, not what appears.
+        """
+        count = self.send([CMD_DYNAMIC_KEYMAP_MACRO_GET_COUNT])[1]
+        size = struct.unpack(">H", self.send([CMD_DYNAMIC_KEYMAP_MACRO_GET_BUFFER_SIZE])[1:3])[0]
+        buf, offset = b"", 0
+        while offset < size:
+            chunk = min(28, size - offset)
+            buf += self.send([CMD_DYNAMIC_KEYMAP_MACRO_GET_BUFFER,
+                              (offset >> 8) & 0xFF, offset & 0xFF, chunk])[4:4 + chunk]
+            offset += chunk
+        out = []
+        for raw in buf.split(b"\x00")[:count]:
+            try:
+                text = raw.decode("ascii")
+            except UnicodeDecodeError:
+                text = ""
+            out.append(text if text.isprintable() else "")
+        return out + [""] * (count - len(out))
 
     def keymap(self, rows, cols, layers):
         """Every layer in one bulk read rather than a round trip per key."""
@@ -267,6 +295,9 @@ def layout_groups(definition):
 # the character the key actually types, which is what lets the typing test keep
 # pointing at the next key on a keymap it has never seen before.
 _BASIC = {
+    0xA8: ("Mute", ""), 0xA9: ("Vol+", ""), 0xAA: ("Vol-", ""),
+    0xAB: ("Next", ""), 0xAC: ("Prev", ""), 0xAE: ("Play", ""),
+    0xBD: ("Bri+", ""), 0xBE: ("Bri-", ""),
     0x28: ("Enter", "\n"), 0x29: ("Esc", ""), 0x2A: ("Bksp", ""), 0x2B: ("Tab", "\t"),
     0x2C: ("Space", " "), 0x2D: ("-", "-"), 0x2E: ("=", "="), 0x2F: ("[", "["),
     0x30: ("]", "]"), 0x31: ("\\", "\\"), 0x32: ("#", "#"), 0x33: (";", ";"),
@@ -327,12 +358,16 @@ def _mod_label(bits):
     return "+".join(names)
 
 
-def describe(code):
+def describe(code, macros=None):
     """One keycode as (label, char). Unknown codes keep their hex, not a lie."""
     if code in (KC_NO, KC_TRANSPARENT):
         return "", ""
     if code <= 0xFF:
         return _basic(code)
+    # A macro is named by what it sends, which beats a number nobody can read.
+    if 0x7700 <= code <= 0x77FF:
+        text = (macros or [])[code - 0x7700] if code - 0x7700 < len(macros or []) else ""
+        return (text or "M%d" % (code - 0x7700)), ""
     if code in _QUANTUM:
         return _QUANTUM[code], ""
     # Modified basic key: mods in the high byte, the key itself in the low one.
@@ -350,6 +385,13 @@ def describe(code):
     if 0x4000 <= code <= 0x4FFF:                    # layer-tap
         label, _ = _basic(code & 0xFF)
         return "%s\nL%d" % (label, (code >> 8) & 0x0F), ""
+    # One-shot ("sticky") modifiers: tapped, they hang on the next key pressed.
+    if 0x52A0 <= code <= 0x52BF:
+        return "OSM\n%s" % (_mod_label(code & 0x0F) or "?"), ""
+    # Tap dance: one key with separate tap, hold and double-tap actions, which
+    # live in their own table rather than in the keycode.
+    if 0x5700 <= code <= 0x57FF:
+        return "TD%d" % (code - 0x5700), ""
     for base, name in _LAYER_RANGES:
         if base <= code < base + 0x20:
             return "%s(%d)" % (name, code - base), ""
@@ -358,7 +400,7 @@ def describe(code):
     return "0x%04X" % code, ""
 
 
-def build_layers(codes, keys, rows, cols, layer_count):
+def build_layers(codes, keys, rows, cols, layer_count, macros=None):
     """Per-layer labels for each key, with transparency already resolved.
 
     A transparent key is not blank on screen: it falls through to the layer
@@ -378,7 +420,7 @@ def build_layers(codes, keys, rows, cols, layer_count):
                 index = probe * rows * cols + key["row"] * cols + key["col"]
                 code = codes[index] if index < len(codes) else KC_NO
                 inherited = True
-            label, char = describe(code)
+            label, char = describe(code, macros)
             entries.append({"label": label, "char": char, "inherited": inherited})
         layers.append(entries)
     return layers
@@ -412,7 +454,7 @@ def read_keyboard():
             "width": width,
             "height": height,
             "keys": keys,
-            "layers": build_layers(codes, keys, rows, cols, layer_count),
+            "layers": build_layers(codes, keys, rows, cols, layer_count, board.macros()),
         }
     finally:
         board.close()

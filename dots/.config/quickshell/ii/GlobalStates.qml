@@ -709,6 +709,8 @@ Singleton {
         root.overviewOpen = false;
         root.sessionOpen = false;
         root._editRequestedMonitor = monitor;
+        root.editModeMonitor = monitor !== "" ? monitor
+            : (Hyprland.focusedMonitor?.name ?? Quickshell.primaryScreen?.name ?? "");
         root._editKeepWorkspace = keepWorkspace;
         root.editMode = true;
     }
