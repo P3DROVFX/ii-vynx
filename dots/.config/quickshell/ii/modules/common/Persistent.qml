@@ -358,6 +358,7 @@ Singleton {
                 property bool railExpanded: true
                 property bool linkPreviews: true
                 property list<string> aiCustomStyles: []
+                property bool driveBackup: false
             }
 
             property JsonObject cheatsheet: JsonObject {

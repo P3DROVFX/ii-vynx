@@ -143,6 +143,16 @@ Item {
         }
     }
 
+    NotesExportSheet {
+        id: exportSheet
+        anchors.fill: parent
+        z: 35
+        visible: false
+        noteId: root.noteId
+        note: root.note
+        onClosed: exportSheet.visible = false
+    }
+
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: 0
@@ -213,6 +223,14 @@ Item {
                 colIcon: root.note && root.note.favorite ? Appearance.colors.colPrimary : Appearance.colors.colOnLayer1
                 visible: !root.trash
                 onTriggered: root.favoriteToggled()
+            }
+
+            NotesIconButton {
+                symbol: "file_export"
+                tooltipText: Translation.tr("Export note")
+                colIcon: Appearance.colors.colOnLayer1
+                visible: !root.trash
+                onTriggered: exportSheet.visible = true
             }
 
             NotesIconButton {
