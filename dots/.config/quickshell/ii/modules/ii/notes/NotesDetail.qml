@@ -51,6 +51,25 @@ Item {
         editor.goToBlock(blockId);
     }
 
+    /**
+     * One note giving way to another.
+     *
+     * The pane keeps its shape and its scroll, so without this the whole column simply
+     * held different words in the next frame — indistinguishable from a redraw. A fade is
+     * enough: the title, the counts and the page all change together, and the eye follows
+     * a column that dims and comes back.
+     */
+    NumberAnimation {
+        id: noteEntrance
+        target: body
+        property: "opacity"
+        from: 0
+        to: 1
+        duration: Appearance.animation.elementMoveEnter.duration
+        easing.type: Appearance.animation.elementMoveEnter.type
+        easing.bezierCurve: Appearance.animation.elementMoveEnter.bezierCurve
+    }
+
     readonly property string noteId: root.note ? root.note.id : ""
     /// Empty means the note has not chosen one, which is plain.
     /// A note that has not chosen a page falls back to the preference, not to a constant.
@@ -110,7 +129,11 @@ Item {
 
     /// Typing the PIN opens this note until the shell restarts, not for ever.
     property bool unlockedThisSession: false
-    onNoteIdChanged: root.unlockedThisSession = false
+
+    onNoteIdChanged: {
+        root.unlockedThisSession = false;
+        noteEntrance.restart();
+    }
 
     readonly property string reminderLabel: root.reminderAt > 0
         ? Qt.formatDateTime(new Date(root.reminderAt), "d MMM, HH:mm")
@@ -426,6 +449,7 @@ Item {
     }
 
     ColumnLayout {
+        id: body
         anchors.fill: parent
         anchors.margins: 0
         spacing: 0
@@ -740,10 +764,22 @@ Item {
 
             // Floating at the foot of the page rather than pinned above it: it belongs to
             // the block the caret is in, and following the page keeps it near the hand.
+            /**
+             * Sized to the page it floats on.
+             *
+             * Sixteen controls at full size need more width than a narrow window gives
+             * the note, and the bar was simply cut off at both ends. It scales down to
+             * whatever room there is, from the bottom edge it sits on, and stops at full
+             * size — a toolbar bigger than its own design would be worse than a small one.
+             */
             NotesEditorToolbar {
+                id: editorToolbar
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.bottom: parent.bottom
                 anchors.bottomMargin: 16
+                transformOrigin: Item.Bottom
+                scale: Math.min(1, Math.max(0.6,
+                    (parent.width - NotesMetrics.paneGap * 2) / Math.max(1, editorToolbar.implicitWidth)))
                 editor: editor
                 opacity: editor.activeBlockId.length > 0 ? 1 : 0
                 visible: opacity > 0

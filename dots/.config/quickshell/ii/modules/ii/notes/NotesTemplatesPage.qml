@@ -26,6 +26,40 @@ Item {
 
     clip: true
 
+    /**
+     * The page arrives rather than appearing.
+     *
+     * Nothing else in this app changes a whole column without saying so, and a third of
+     * the window swapping its contents between two frames reads as a glitch. The column
+     * fades and settles by a few pixels — the shell's own `elementMoveEnter` curve, the
+     * one the lists use.
+     */
+    Component.onCompleted: entrance.restart()
+
+    ParallelAnimation {
+        id: entrance
+
+        NumberAnimation {
+            target: root
+            property: "opacity"
+            from: 0
+            to: 1
+            duration: Appearance.animation.elementMoveEnter.duration
+            easing.type: Appearance.animation.elementMoveEnter.type
+            easing.bezierCurve: Appearance.animation.elementMoveEnter.bezierCurve
+        }
+
+        NumberAnimation {
+            target: sections
+            property: "y"
+            from: NotesMetrics.readingPadding + 14
+            to: NotesMetrics.readingPadding
+            duration: Appearance.animation.elementMoveEnter.duration
+            easing.type: Appearance.animation.elementMoveEnter.type
+            easing.bezierCurve: Appearance.animation.elementMoveEnter.bezierCurve
+        }
+    }
+
     readonly property var templates: Templates.getBuiltinTemplates()
     property int selectedIndex: 0
     readonly property var selected: root.templates[root.selectedIndex] ?? root.templates[0] ?? null
@@ -197,7 +231,14 @@ Item {
 
                 onClicked: root.use()
 
-                contentItem: RowLayout {
+                // An `Item` that fills, and the row centred inside it. A `RowLayout` used
+                // directly as a `contentItem` is positioned by the control instead, and
+                // `anchors.centerIn` on it is ignored — which is how the icon and the
+                // label ended up left of centre in a full-width pill.
+                contentItem: Item {
+                    anchors.fill: parent
+
+                RowLayout {
                     anchors.centerIn: parent
                     spacing: 8
 
@@ -217,6 +258,7 @@ Item {
                         font.weight: Font.DemiBold
                         color: Appearance.colors.colOnPrimary
                     }
+                }
                 }
             }
         }

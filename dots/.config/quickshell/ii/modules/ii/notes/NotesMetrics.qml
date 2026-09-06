@@ -84,6 +84,15 @@ Singleton {
     readonly property int groupEndRadius: Appearance.rounding.scale === 0 ? 0 : Appearance.rounding.large
     readonly property int groupJoinRadius: Appearance.rounding.scale === 0 ? 0 : Appearance.rounding.verysmall
 
+    /**
+     * How much room a hovered element needs beside it.
+     *
+     * Buttons here grow by two percent under the pointer, and the panes clip — so without
+     * an inset the edges of the widest ones are shaved off at the very moment they are
+     * meant to lift. Four pixels covers a 400px row.
+     */
+    readonly property int hoverGrowth: 4
+
     readonly property int railExpandedWidth: 300
     readonly property int railCollapsedWidth: 88
     readonly property int topBarHeight: 64

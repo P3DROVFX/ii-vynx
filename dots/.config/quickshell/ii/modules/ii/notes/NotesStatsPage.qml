@@ -26,6 +26,40 @@ Item {
 
     clip: true
 
+    /**
+     * The page arrives rather than appearing.
+     *
+     * Nothing else in this app changes a whole column without saying so, and a third of
+     * the window swapping its contents between two frames reads as a glitch. The column
+     * fades and settles by a few pixels — the shell's own `elementMoveEnter` curve, the
+     * one the lists use.
+     */
+    Component.onCompleted: entrance.restart()
+
+    ParallelAnimation {
+        id: entrance
+
+        NumberAnimation {
+            target: root
+            property: "opacity"
+            from: 0
+            to: 1
+            duration: Appearance.animation.elementMoveEnter.duration
+            easing.type: Appearance.animation.elementMoveEnter.type
+            easing.bezierCurve: Appearance.animation.elementMoveEnter.bezierCurve
+        }
+
+        NumberAnimation {
+            target: sections
+            property: "y"
+            from: NotesMetrics.readingPadding + 14
+            to: NotesMetrics.readingPadding
+            duration: Appearance.animation.elementMoveEnter.duration
+            easing.type: Appearance.animation.elementMoveEnter.type
+            easing.bezierCurve: Appearance.animation.elementMoveEnter.bezierCurve
+        }
+    }
+
     readonly property var liveNotes: Array.from(NotesService.notes ?? [])
     readonly property var notebooks: Array.from(NotesService.notebooks ?? [])
     readonly property int trashCount: Array.from(NotesService.index.notes ?? [])

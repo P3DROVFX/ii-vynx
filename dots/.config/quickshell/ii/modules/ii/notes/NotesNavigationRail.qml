@@ -194,14 +194,19 @@ Item {
         }
 
         Flickable {
+            id: railScroll
             Layout.fillWidth: true
             Layout.fillHeight: true
             contentHeight: railColumn.implicitHeight
+            // Clipped, because a scrolled row must not paint over the pane's corner — so
+            // the rows are inset instead, leaving the two-percent hover scale somewhere to
+            // grow rather than a slice taken off both ends of it.
             clip: true
 
             ColumnLayout {
                 id: railColumn
-                width: parent.width
+                x: NotesMetrics.hoverGrowth
+                width: railScroll.width - NotesMetrics.hoverGrowth * 2
                 spacing: 2
 
                 Repeater {

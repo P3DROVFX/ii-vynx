@@ -22,6 +22,22 @@ Item {
     signal createRequested()
     signal templatesRequested()
 
+    /**
+     * Whether the staggered entrance is still owed.
+     *
+     * `populate` runs on every model *reset*, and this model is a plain array that the
+     * service rebuilds whenever anything is saved — so the whole list re-entered, row by
+     * row, on every keystroke's autosave. It plays once, when the list first fills, and
+     * then the rows just are where they are.
+     */
+    property bool entranceSpent: false
+
+    Timer {
+        id: entranceGuard
+        interval: 700
+        onTriggered: root.entranceSpent = true
+    }
+
     // Clipped at the pane's own bounds.
     //
     // The slab below is a *sibling* of the content, so its own `clip` contains nothing —
@@ -50,12 +66,23 @@ Item {
         model: root.notes
         // The cards arrive one after another rather than all at once. It is the app's
         // entrance, and a list that snaps into place reads as a redraw rather than a view.
-        staggerStep: 18
+        // Once.
+        staggerStep: root.entranceSpent ? 0 : 18
+        animatePopulate: !root.entranceSpent
+
+        onCountChanged: {
+            if (list.count > 0 && !root.entranceSpent)
+                entranceGuard.restart();
+        }
 
         delegate: NotesListCard {
             required property var modelData
             required property int index
-            width: list.width
+            // Inset, so the two-percent hover scale has somewhere to grow. The list clips
+            // — it has to, or a scrolled card paints over the pane's rounded corner — and
+            // a full-width card scaled inside a clip loses a slice of both edges.
+            x: NotesMetrics.hoverGrowth
+            width: list.width - NotesMetrics.hoverGrowth * 2
             isFirst: index === 0
             isLast: index === root.notes.length - 1
             // Guarded on both sides. A delegate outlives the array it indexes for a frame

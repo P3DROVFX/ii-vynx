@@ -41,6 +41,17 @@ Item {
     readonly property real available: Math.max(120,
         Math.min(NotesMetrics.readingWidth, root.width - NotesMetrics.readingPadding * 2))
 
+    /**
+     * How wide the picture really is, taken once when it loads.
+     *
+     * Read as a binding on `image.implicitWidth` it went round in a circle — the frame's
+     * width feeds the size the image decodes at, and the decoded size feeds the frame —
+     * and Qt reported a binding loop for the width of every image in a note. A plain
+     * property, written once on load, cannot loop.
+     */
+    property real naturalWidth: 0
+    property real naturalHeight: 0
+
     implicitHeight: image.status === Image.Ready ? frame.height + 22 : 0
 
     // A rounded container that clips, rather than a mask effect on the image: a
@@ -56,9 +67,9 @@ Item {
         // reading measure is a blurred 320px screenshot, and the fraction is there to make
         // a picture *smaller* than the column, not to inflate it.
         width: Math.round(Math.min(root.available * root.widthFraction,
-                                   Math.max(120, image.implicitWidth)))
-        height: image.implicitWidth > 0
-            ? width * (image.implicitHeight / image.implicitWidth)
+                                   Math.max(120, root.naturalWidth)))
+        height: root.naturalWidth > 0 && root.naturalHeight > 0
+            ? width * (root.naturalHeight / root.naturalWidth)
             : 0
 
         Image {
@@ -71,6 +82,13 @@ Item {
             mipmap: true
             // Decoded at the size it is shown at rather than at whatever produced it.
             sourceSize.width: Math.max(320, Math.round(root.available * 2))
+
+            onStatusChanged: {
+                if (image.status !== Image.Ready)
+                    return;
+                root.naturalWidth = image.implicitWidth;
+                root.naturalHeight = image.implicitHeight;
+            }
         }
 
         MouseArea {
