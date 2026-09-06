@@ -152,11 +152,12 @@ DockButton {
     // is only open gets a dashed outline and a dimmed icon - the shape the
     // shell already uses for "a slot, not yet filled".
     readonly property bool editPinned: root.appToplevel?.pinned ?? false
+    readonly property bool editBadgesActive: GlobalStates.editMode && (GlobalStates.editProgress > 0.85 || Appearance.reducedMotion)
 
     Loader {
         anchors.centerIn: parent
         z: -1
-        active: GlobalStates.editMode && (root.appToplevel?.appId ?? "") !== ""
+        active: root.editBadgesActive && (root.appToplevel?.appId ?? "") !== ""
         width: root.buttonSize
         height: root.buttonSize
         sourceComponent: Item {
@@ -184,7 +185,7 @@ DockButton {
         anchors.top: parent.top
         anchors.right: parent.right
         z: 11
-        active: GlobalStates.editMode && root.editPinned
+        active: root.editBadgesActive && root.editPinned
         sourceComponent: EditRemoveBadge {
             onClicked: {
                 const appId = root.appToplevel?.appId ?? "";
@@ -213,7 +214,7 @@ DockButton {
         anchors.top: parent.top
         anchors.right: parent.right
         z: 11
-        active: GlobalStates.editMode && !root.editPinned
+        active: root.editBadgesActive && !root.editPinned
             && (root.appToplevel?.appId ?? "") !== ""
         sourceComponent: EditAddBadge {
             onClicked: {

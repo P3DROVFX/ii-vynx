@@ -920,7 +920,7 @@ Item {
     Loader {
         anchors.fill: wrapper
         z: 5
-        active: GlobalStates.editMode && rootItem.hasLayoutContent && rootItem.editController !== null
+        active: GlobalStates.editMode && (GlobalStates.editProgress > 0.85 || Appearance.reducedMotion) && rootItem.hasLayoutContent && rootItem.editController !== null
         sourceComponent: BarEditSlot {
             controller: rootItem.editController
             bucket: rootItem.barSection

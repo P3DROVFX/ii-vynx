@@ -266,6 +266,8 @@ Item {
     // ── Catalogues ───────────────────────────────────────────────────────────
     readonly property var activeWidgets: Config.options.background.activeWidgets ?? []
     readonly property var usedBarIds: {
+        if (root.section !== "bar")
+            return [];
         const layouts = Config.options.bar.layouts;
         const ids = [];
         for (const bucket of ["left", "center", "right"])
@@ -282,10 +284,14 @@ Item {
     // component built a fresh array, reset the view, and replayed the whole
     // list's entrance - a cascade every time you placed a widget. The rows ask
     // `usedBarIds` for themselves instead, which re-evaluates one binding.
-    readonly property var barCatalogue: (BarComponentRegistry.allComponents ?? []).map(component => ({
-        "component": component,
-        "hay": root.prepared(component.title, component.id)
-    }))
+    readonly property var barCatalogue: {
+        if (root.section !== "bar")
+            return [];
+        return (BarComponentRegistry.allComponents ?? []).map(component => ({
+            "component": component,
+            "hay": root.searching ? root.prepared(component.title, component.id) : ""
+        }));
+    }
     readonly property var barRows: root.searching ? root.fuzzyPick(root.barCatalogue) : root.barCatalogue
 
     // How many copies of a widget the desktop holds - and, on the Lockscreen
@@ -366,6 +372,8 @@ Item {
     // The flattened list a query searches, prepared once per catalogue rather
     // than per keystroke.
     readonly property var widgetSearchRows: {
+        if (root.section !== "widgets" || !root.searching)
+            return [];
         const rows = [];
         for (const group of root.widgetGroups)
             for (const widget of group.items)
@@ -388,6 +396,8 @@ Item {
     // merely installed. Without the last one an app that is neither pinned nor
     // running could not be pinned at all - it had to be launched first.
     readonly property var dockGroups: {
+        if (root.section !== "dock")
+            return [];
         const pinnedIds = Config.options.dock.pinnedApps ?? [];
         const running = (TaskbarApps.apps ?? []).filter(app => app && !app.pinned && app.appId);
         const taken = {};
@@ -401,29 +411,29 @@ Item {
         // The name is resolved HERE, once per catalogue, and carried on the
         // item: a heuristic lookup per row per keystroke over two hundred apps
         // is the exact cost the launcher had to have taken out of it.
-        const item = (appId, pinned) => ({
+        const item = (appId, pinned, name) => ({
             "appId": appId,
             "pinned": pinned,
-            "name": root.appName(appId)
+            "name": name || root.appName(appId)
         });
         return [
             {
                 "key": "pinned",
                 "title": Translation.tr("On the dock"),
                 "icon": "keep",
-                "items": pinnedIds.filter(id => !!id).map(id => item(id, true))
+                "items": pinnedIds.filter(id => !!id).map(id => item(id, true, ""))
             },
             {
                 "key": "running",
                 "title": Translation.tr("Open now"),
                 "icon": "select_window",
-                "items": running.map(app => item(app.appId, false))
+                "items": running.map(app => item(app.appId, false, ""))
             },
             {
                 "key": "installed",
                 "title": Translation.tr("All apps"),
                 "icon": "apps",
-                "items": rest.map(entry => item(entry.id, false))
+                "items": rest.map(entry => item(entry.id, false, entry.name))
             }
         ];
     }
@@ -437,6 +447,8 @@ Item {
     }
 
     readonly property var dockSearchRows: {
+        if (root.section !== "dock" || !root.searching)
+            return [];
         const rows = [];
         for (const group of root.dockGroups)
             for (const app of group.items)
@@ -454,6 +466,8 @@ Item {
     }
 
     readonly property var homeAppsItems: {
+        if (root.section !== "apps")
+            return [];
         void GlobalStates.homeScreenAppsRevision;
         const q = root.needle;
         const all = Array.from(AppSearch.list ?? []).filter(e => e && e.id && !e.noDisplay);

@@ -130,6 +130,8 @@ Item {
     readonly property bool pointerShown: root.currentStep?.pointer ?? true
 
     readonly property point anchorPoint: {
+        if (!root.shown)
+            return Qt.point(0, 0);
         const fixed = root.currentStep?.point ?? null;
         if (fixed)
             return fixed;

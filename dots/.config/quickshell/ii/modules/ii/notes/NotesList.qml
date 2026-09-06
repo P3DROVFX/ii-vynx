@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Layouts
+import Qt5Compat.GraphicalEffects
 
 import qs.services
 import qs.modules.common
@@ -63,6 +64,27 @@ Item {
         bottomMargin: NotesMetrics.panePadding
         spacing: NotesMetrics.cardSpacing
         clip: true
+
+        // This is the actual scrolling viewport. Masking the parent pane does not change
+        // the rectangular clip applied here, so a card entering at the top or leaving at
+        // the bottom could still end in a hard horizontal edge. The mask follows this
+        // viewport's bounds and rounds both ends of the visible list content.
+        layer.enabled: true
+        layer.samples: 8
+        layer.smooth: true
+        layer.effect: OpacityMask {
+            maskSource: Rectangle {
+                width: list.width
+                height: list.height
+                topLeftRadius: Appearance.rounding.large
+                topRightRadius: Appearance.rounding.large
+                bottomLeftRadius: Appearance.rounding.large
+                bottomRightRadius: Appearance.rounding.large
+                color: Appearance.colors.colOnSurface
+                antialiasing: true
+            }
+        }
+
         model: root.notes
         // The cards arrive one after another rather than all at once. It is the app's
         // entrance, and a list that snaps into place reads as a redraw rather than a view.
@@ -78,11 +100,11 @@ Item {
         delegate: NotesListCard {
             required property var modelData
             required property int index
-            // Inset, so the two-percent hover scale has somewhere to grow. The list clips
-            // — it has to, or a scrolled card paints over the pane's rounded corner — and
-            // a full-width card scaled inside a clip loses a slice of both edges.
-            x: NotesMetrics.hoverGrowth
-            width: list.width - NotesMetrics.hoverGrowth * 2
+            // ListView owns the delegate's x position. The previous manual inset was
+            // ignored by the view while its width reduction remained active, leaving the
+            // card with space on the right but none on the left. Fill the masked viewport
+            // so both sides use the same pane padding.
+            width: list.width
             isFirst: index === 0
             isLast: index === root.notes.length - 1
             // Guarded on both sides. A delegate outlives the array it indexes for a frame

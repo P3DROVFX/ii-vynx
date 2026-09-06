@@ -60,6 +60,27 @@ class KeycodeTests(unittest.TestCase):
         self.assertEqual(vial.describe(vial.KC_NO), ("", ""))
         self.assertEqual(vial.describe(vial.KC_TRANSPARENT), ("", ""))
 
+    def test_a_macro_is_named_by_what_it_sends(self):
+        self.assertEqual(vial.describe(0x7700, ["'a", "~o"])[0], "'a")
+        self.assertEqual(vial.describe(0x7701, ["'a", "~o"])[0], "~o")
+
+    def test_an_empty_or_unread_macro_falls_back_to_its_number(self):
+        self.assertEqual(vial.describe(0x7703, ["'a", "~o"])[0], "M3")
+        self.assertEqual(vial.describe(0x7702, None)[0], "M2")
+
+    def test_one_shot_modifiers_are_named_by_their_modifier(self):
+        self.assertEqual(vial.describe(0x52A8)[0], "OSM\nSuper")
+        self.assertEqual(vial.describe(0x52A1)[0], "OSM\nCtrl")
+        self.assertEqual(vial.describe(0x52AA)[0], "OSM\nShift+Super")
+
+    def test_tap_dance_keys_are_named_by_their_slot(self):
+        self.assertEqual(vial.describe(0x5700)[0], "TD0")
+        self.assertEqual(vial.describe(0x5701)[0], "TD1")
+
+    def test_media_keys_are_named(self):
+        self.assertEqual(vial.describe(0xA9)[0], "Vol+")
+        self.assertEqual(vial.describe(0xBD)[0], "Bri+")
+
     def test_an_unknown_keycode_keeps_its_hex_instead_of_lying(self):
         self.assertEqual(vial.describe(0x6001)[0], "0x6001")
 

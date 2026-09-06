@@ -131,6 +131,8 @@ PanelWindow {
         baseWallpaperScale: bgRoot.baseWallpaperScale
         parallaxX: bgRoot.videoEffectsDisabled ? 0 : parallax.parallaxX
         parallaxY: bgRoot.videoEffectsDisabled ? 0 : parallax.parallaxY
+        wallpaperDisplacementX: bgRoot.videoEffectsDisabled ? 0 : (parallax.parallaxX - parallax.centeredX)
+        wallpaperDisplacementY: bgRoot.videoEffectsDisabled ? 0 : (parallax.parallaxY - parallax.centeredY)
         wallpaperPath: bgRoot.wallpaperPath
         wallpaperSafetyTriggered: bgRoot.wallpaperSafetyTriggered
     }

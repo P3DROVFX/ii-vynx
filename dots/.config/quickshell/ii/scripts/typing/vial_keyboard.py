@@ -295,6 +295,9 @@ def layout_groups(definition):
 # the character the key actually types, which is what lets the typing test keep
 # pointing at the next key on a keymap it has never seen before.
 _BASIC = {
+    0xA8: ("Mute", ""), 0xA9: ("Vol+", ""), 0xAA: ("Vol-", ""),
+    0xAB: ("Next", ""), 0xAC: ("Prev", ""), 0xAE: ("Play", ""),
+    0xBD: ("Bri+", ""), 0xBE: ("Bri-", ""),
     0x28: ("Enter", "\n"), 0x29: ("Esc", ""), 0x2A: ("Bksp", ""), 0x2B: ("Tab", "\t"),
     0x2C: ("Space", " "), 0x2D: ("-", "-"), 0x2E: ("=", "="), 0x2F: ("[", "["),
     0x30: ("]", "]"), 0x31: ("\\", "\\"), 0x32: ("#", "#"), 0x33: (";", ";"),

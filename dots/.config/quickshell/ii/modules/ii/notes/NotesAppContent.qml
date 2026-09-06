@@ -398,7 +398,7 @@ Item {
                 id: notesList
                 Layout.fillHeight: true
                 Layout.preferredWidth: root.compact
-                    ? root.width
+                    ? -1
                     : Math.max(NotesMetrics.listMinimumWidth,
                                Math.min(NotesMetrics.listMaximumWidth, root.state.listWidth))
                 Layout.fillWidth: root.compact

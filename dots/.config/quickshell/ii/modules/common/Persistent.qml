@@ -354,7 +354,7 @@ Singleton {
                 /// like to work rather than about this machine's screen — but they live
                 /// here beside the window size, which is.
                 property real railWidth: 300
-                property real listWidth: 380
+                property real listWidth: 360
                 property bool railExpanded: true
                 property bool linkPreviews: true
                 property list<string> aiCustomStyles: []

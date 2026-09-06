@@ -101,5 +101,7 @@ Singleton {
     readonly property int railMinimumWidth: 220
     readonly property int railMaximumWidth: 460
     readonly property int listMinimumWidth: 260
-    readonly property int listMaximumWidth: 620
+    /// The note column is a sidebar, not a second reading pane. Keep its width compact so
+    /// previews wrap consistently and the editor keeps the visual weight of the app.
+    readonly property int listMaximumWidth: 360
 }

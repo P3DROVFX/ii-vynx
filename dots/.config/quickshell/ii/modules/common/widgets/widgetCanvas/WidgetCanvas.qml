@@ -666,14 +666,17 @@ MouseArea {
         id: dotGrid
         anchors.fill: parent
         z: -1
+        renderTarget: Canvas.FramebufferObject
         // The lattice shows for a drag, and throughout the mode: in the mode
         // the desktop is being laid out, and the grid is what it is laid out on.
         readonly property bool wanted: (root.draggingActive || root.editMode) && root.gridOverlayEnabled
         visible: wanted && opacity > 0.001
         opacity: wanted ? 0.55 : 0
 
+        readonly property bool animating: GlobalStates.editProgress > 0 && GlobalStates.editProgress < 1
+
         property real dotSize: 4.0
-        onDotSizeChanged: requestPaint()
+        onDotSizeChanged: { if (wanted && !animating) requestPaint(); }
         readonly property color dotColor: Appearance.colors.colPrimary
 
         // Uniform on purpose. A radial falloff around the dragged widget was
@@ -691,6 +694,8 @@ MouseArea {
         readonly property real cardRadius: Math.max(0, Math.min(root.gridCardRadius, Math.min(card.width, card.height) / 2))
 
         onPaint: {
+            if (!wanted)
+                return;
             const ctx = getContext("2d");
             ctx.reset();
             ctx.fillStyle = dotGrid.dotColor;
@@ -703,6 +708,7 @@ MouseArea {
             const bottom = top + dotGrid.card.height;
             const radius = dotGrid.cardRadius;
             const tau = Math.PI * 2;
+            const radiusSq = radius * radius;
 
             ctx.beginPath();
             for (let y = 0; y <= height; y += step) {
@@ -713,7 +719,7 @@ MouseArea {
                 const depth = Math.max(0, Math.max(top + radius - y, y - (bottom - radius)));
                 if (depth > radius)
                     continue;
-                const inset = depth > 0 ? radius - Math.sqrt(Math.max(0, radius * radius - depth * depth)) : 0;
+                const inset = depth > 0 ? radius - Math.sqrt(Math.max(0, radiusSq - depth * depth)) : 0;
                 const rowLeft = left + inset;
                 const rowRight = right - inset;
                 for (let x = 0; x <= width; x += step) {
@@ -726,17 +732,21 @@ MouseArea {
             ctx.fill();
         }
 
-        onWidthChanged: requestPaint()
-        onHeightChanged: requestPaint()
-        onDotColorChanged: requestPaint()
-        onCardChanged: requestPaint()
+        onWidthChanged: { if (wanted && !animating) requestPaint(); }
+        onHeightChanged: { if (wanted && !animating) requestPaint(); }
+        onDotColorChanged: { if (wanted && !animating) requestPaint(); }
+        onCardChanged: { if (wanted && !animating) requestPaint(); }
         // Whole pixels only: the corner grows with the shrink, and repainting a
         // full-screen lattice on every sub-pixel step of that animation is a
         // hitch nobody asked for.
         property int roundedRadius: Math.round(cardRadius)
-        onRoundedRadiusChanged: requestPaint()
+        onRoundedRadiusChanged: { if (wanted && !animating) requestPaint(); }
         onVisibleChanged: {
-            if (visible)
+            if (visible && !animating)
+                requestPaint();
+        }
+        onAnimatingChanged: {
+            if (!animating && wanted)
                 requestPaint();
         }
 
