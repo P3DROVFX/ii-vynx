@@ -27,7 +27,7 @@ Item {
     property color accentContainerColor: Appearance.colors.colPrimaryContainer
     property color onAccentContainerColor: Appearance.colors.colOnPrimaryContainer
 
-    readonly property var entries: queueSnapshot?.entries ?? []
+    property var entries: []
     readonly property string currentEntryId: String(queueSnapshot?.currentEntryId ?? "")
     readonly property int currentIndex: {
         for (let i = 0; i < entries.length; ++i) {
@@ -40,61 +40,121 @@ Item {
     readonly property real headerButtonSize: Appearance.sizes.minimumTouchTarget - Appearance.sizes.elevationMargin
     readonly property real headerHeight: Appearance.sizes.minimumTouchTarget
         + Appearance.sizes.elevationMargin * 2
+    readonly property real rowHeight: Appearance.sizes.minimumTouchTarget
+        + Appearance.sizes.elevationMargin
     implicitHeight: headerHeight
 
     signal expandedToggled()
     signal lyricsExpandedToggled()
 
-    function centerCurrentTrack() {
-        if (root.currentIndex < 0 || root.currentIndex >= root.entries.length)
-            return;
-        if (!root.expanded || !root.visible || queueList.height <= 0 || queueList.count <= 0)
-            return;
-        if (queueList.dragging || queueList.moving)
-            return;
+    property bool initialCenterDone: false
 
-        queueList.positionViewAtIndex(root.currentIndex, ListView.Center);
+    function _syncEntries(): void {
+        const rawEntries = root.queueSnapshot?.entries;
+        if (!rawEntries || !Array.isArray(rawEntries)) {
+            if (root.entries.length > 0)
+                root.entries = [];
+            return;
+        }
+
+        const current = root.entries;
+        if (current.length === rawEntries.length) {
+            let same = true;
+            for (let i = 0; i < current.length; ++i) {
+                if ((current[i]?.entryId ?? "") !== (rawEntries[i]?.entryId ?? "")) {
+                    same = false;
+                    break;
+                }
+            }
+            if (same)
+                return;
+        }
+
+        const savedContentY = queueList ? queueList.contentY : 0;
+        root.entries = rawEntries;
+        if (savedContentY > 0) {
+            Qt.callLater(() => {
+                if (queueList && !queueList.dragging && !queueList.moving) {
+                    queueList.contentY = Math.max(0, Math.min(queueList.contentHeight - queueList.height, savedContentY));
+                }
+            });
+        }
     }
 
-    function scheduleCenterCurrentTrack() {
-        if (!root.expanded || root.currentIndex < 0)
-            return;
+    onQueueSnapshotChanged: {
+        root._syncEntries();
+    }
 
-        Qt.callLater(function() {
-            root.centerCurrentTrack();
-        });
-        centerTimer.restart();
+    function centerCurrentTrack(force = false) {
+        if (root.currentIndex < 0 || root.currentIndex >= root.entries.length)
+            return false;
+        if (!root.expanded || !root.visible || queueList.height <= 0 || queueList.count <= 0)
+            return false;
+        if (!force && (queueList.dragging || queueList.moving))
+            return false;
+
+        queueList.currentIndex = root.currentIndex;
+        queueList.positionViewAtIndex(root.currentIndex, ListView.Center);
+        return true;
+    }
+
+    function tryInitialCenter() {
+        if (root.initialCenterDone)
+            return;
+        if (root.centerCurrentTrack()) {
+            root.initialCenterDone = true;
+            initialCenterTimer.stop();
+        } else if (root.expanded && root.visible && root.currentIndex >= 0) {
+            initialCenterTimer.restart();
+        }
     }
 
     Timer {
-        id: centerTimer
-        interval: 120
+        id: initialCenterTimer
+        interval: 100
         repeat: false
-        onTriggered: root.centerCurrentTrack()
+        onTriggered: {
+            if (!root.initialCenterDone)
+                root.tryInitialCenter();
+        }
     }
 
     Component.onCompleted: {
-        root.scheduleCenterCurrentTrack();
-    }
-
-    onCurrentIndexChanged: {
-        root.scheduleCenterCurrentTrack();
-    }
-
-    onExpandedChanged: {
-        if (root.expanded)
-            root.scheduleCenterCurrentTrack();
+        root._syncEntries();
+        root.tryInitialCenter();
     }
 
     onVisibleChanged: {
-        if (visible && root.expanded)
-            root.scheduleCenterCurrentTrack();
+        if (visible && !root.initialCenterDone)
+            root.tryInitialCenter();
+    }
+
+    onExpandedChanged: {
+        if (root.expanded && !root.initialCenterDone)
+            root.tryInitialCenter();
+    }
+
+    onCurrentIndexChanged: {
+        if (!root.initialCenterDone)
+            root.tryInitialCenter();
     }
 
     Rectangle {
+        id: queueCard
         anchors.fill: parent
         radius: Appearance.rounding.verylarge
         color: ColorUtils.transparentize(Appearance.colors.colLayer1Base, 0.35)
+
+        layer.enabled: true
+        layer.smooth: true
+        layer.effect: OpacityMask {
+            maskSource: Rectangle {
+                width: queueCard.width
+                height: queueCard.height
+                radius: queueCard.radius
+                antialiasing: true
+            }
+        }
 
         Behavior on color {
             ColorAnimation {
@@ -216,6 +276,30 @@ Item {
                 }
 
                 RippleButton {
+                    visible: root.expanded && root.entries.length > 0
+                    enabled: root.currentIndex >= 0
+                    Layout.alignment: Qt.AlignVCenter
+                    implicitWidth: root.headerButtonSize
+                    implicitHeight: root.headerButtonSize
+                    buttonRadius: Appearance.rounding.full
+                    colBackground: Appearance.colors.colLayer2
+                    colBackgroundHover: Appearance.colors.colLayer2Hover
+                    colBackgroundActive: Appearance.colors.colLayer2Active
+                    onClicked: root.centerCurrentTrack(true)
+
+                    MaterialSymbol {
+                        anchors.centerIn: parent
+                        text: "center_focus_strong"
+                        iconSize: Appearance.font.pixelSize.normal
+                        color: Appearance.colors.colOnLayer2
+                    }
+
+                    PopupToolTip {
+                        text: Translation.tr("Center on current track")
+                    }
+                }
+
+                RippleButton {
                     visible: root.lyricsToggleAvailable
                     Layout.alignment: Qt.AlignVCenter
                     implicitWidth: root.headerButtonSize
@@ -270,35 +354,82 @@ Item {
             anchors.bottom: parent.bottom
             anchors.leftMargin: Appearance.sizes.elevationMargin * 2
             anchors.rightMargin: Appearance.sizes.elevationMargin * 2
-            anchors.bottomMargin: Appearance.sizes.elevationMargin * 2
+            anchors.bottomMargin: 0
             visible: root.expanded
             opacity: visible ? 1 : 0
+            clip: true
 
-                Behavior on opacity {
-                    NumberAnimation {
-                        duration: Appearance.animation.elementMoveFast.duration
-                        easing.type: Appearance.animation.elementMoveFast.type
-                        easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
+            Behavior on opacity {
+                NumberAnimation {
+                    duration: Appearance.animation.elementMoveFast.duration
+                    easing.type: Appearance.animation.elementMoveFast.type
+                    easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
+                }
+            }
+
+            ListView {
+                id: queueList
+                anchors.fill: parent
+                clip: true
+                model: root.entries
+                currentIndex: -1
+                highlightFollowsCurrentItem: false
+                boundsBehavior: Flickable.StopAtBounds
+                reuseItems: true
+                spacing: Appearance.sizes.elevationMargin / 2
+
+                onMovementStarted: root.initialCenterDone = true
+                onContentYChanged: {
+                    if (queueList.dragging || queueList.moving || queueList.flicking)
+                        root.initialCenterDone = true;
+                }
+
+                readonly property real startGap: Math.max(0, (queueList.contentY ?? 0) - ((queueList.originY ?? 0) - (queueList.topMargin ?? 0)))
+                readonly property real endGap: Math.max(0, ((queueList.originY ?? 0) + (queueList.contentHeight ?? 0) + (queueList.bottomMargin ?? 0))
+                    - ((queueList.contentY ?? 0) + (queueList.height ?? 0)))
+                readonly property bool overflowing: (queueList.contentHeight ?? 0) > (queueList.height ?? 0) + 2
+                readonly property real fadeSize: Math.round(Appearance.font.pixelSize.huge * 1.8)
+                readonly property real topFadeProgress: overflowing ? Math.max(0, Math.min(1, startGap / 36)) : 0
+                readonly property real bottomFadeProgress: overflowing ? Math.max(0, Math.min(1, endGap / 36)) : 0
+
+                layer.enabled: root.expanded
+                layer.smooth: true
+                layer.effect: OpacityMask {
+                    maskSource: Rectangle {
+                        width: Math.max(1, queueList.width)
+                        height: Math.max(1, queueList.height)
+                        gradient: Gradient {
+                            GradientStop {
+                                position: 0.0
+                                color: Qt.rgba(1, 1, 1, 1 - queueList.topFadeProgress)
+                            }
+                            GradientStop {
+                                position: queueList.height > 0
+                                    ? Math.min(0.35, queueList.fadeSize / Math.max(1, queueList.height)) : 0
+                                color: "white"
+                            }
+                            GradientStop {
+                                position: queueList.height > 0
+                                    ? Math.max(0.65, 1 - queueList.fadeSize / Math.max(1, queueList.height)) : 1
+                                color: "white"
+                            }
+                            GradientStop {
+                                position: 1.0
+                                color: Qt.rgba(1, 1, 1, 1 - queueList.bottomFadeProgress)
+                            }
+                        }
                     }
                 }
 
-                ListView {
-                    id: queueList
-                    anchors.fill: parent
-                    clip: true
-                    model: root.entries
-                    currentIndex: root.currentIndex
-                    spacing: Appearance.sizes.elevationMargin / 2
+                onHeightChanged: {
+                    if (!root.initialCenterDone && queueList.height > 0)
+                        root.tryInitialCenter();
+                }
 
-                    onCountChanged: {
-                        if (queueList.count > 0 && root.expanded)
-                            root.scheduleCenterCurrentTrack();
-                    }
-
-                    onHeightChanged: {
-                        if (queueList.height > 0 && root.expanded && !queueList.dragging && !queueList.moving)
-                            centerTimer.restart();
-                    }
+                onCountChanged: {
+                    if (!root.initialCenterDone && queueList.count > 0)
+                        root.tryInitialCenter();
+                }
 
                     delegate: Item {
                         id: queueRow
@@ -337,8 +468,7 @@ Item {
                                     : (isLast ? rOuter : rInner)))
 
                         width: queueList.width
-                        height: Math.max(Appearance.sizes.minimumTouchTarget,
-                            queueRowContent.implicitHeight + Appearance.sizes.elevationMargin * 2)
+                        height: root.rowHeight
 
                         Rectangle {
                             id: rowBackground
@@ -460,37 +590,47 @@ Item {
                                 }
                             }
 
-                            ColumnLayout {
+                            Item {
+                                id: trackInfoContainer
                                 Layout.fillWidth: true
-                                spacing: 0
+                                Layout.fillHeight: true
 
-                                StyledText {
-                                    Layout.fillWidth: true
-                                    text: String(queueRow.entry.title ?? Translation.tr("Untitled"))
-                                    elide: Text.ElideRight
-                                    font.pixelSize: Appearance.font.pixelSize.normal
-                                    font.weight: queueRow.current ? Font.Bold : Font.Medium
-                                    color: queueRow.current
-                                        ? (ColorUtils.contrastRatio(root.accentColor, Appearance.colors.colLayer1Base) >= 3.0
-                                            ? root.accentColor
-                                            : ColorUtils.adaptToAccent(Appearance.colors.colOnLayer0, root.accentColor))
-                                        : Appearance.colors.colOnLayer2
-                                }
+                                ColumnLayout {
+                                    anchors.fill: parent
+                                    spacing: 0
 
-                                StyledText {
-                                    Layout.fillWidth: true
-                                    text: String(queueRow.entry.artist ?? "")
-                                        || String(queueRow.entry.album ?? "")
-                                        || Translation.tr("Unknown artist")
-                                    elide: Text.ElideRight
-                                    font.pixelSize: Appearance.font.pixelSize.small
-                                    color: queueRow.current
-                                        ? ColorUtils.mix(root.accentColor, Appearance.colors.colSubtext, 0.4)
-                                        : Appearance.colors.colSubtext
+                                    StyledText {
+                                        Layout.fillWidth: true
+                                        text: String(queueRow.entry.title ?? Translation.tr("Untitled"))
+                                        elide: Text.ElideRight
+                                        font.pixelSize: Appearance.font.pixelSize.normal
+                                        font.weight: queueRow.current ? Font.Bold : Font.Medium
+                                        color: queueRow.current
+                                            ? (ColorUtils.contrastRatio(root.accentColor, Appearance.colors.colLayer1Base) >= 3.0
+                                                ? root.accentColor
+                                                : ColorUtils.adaptToAccent(Appearance.colors.colOnLayer0, root.accentColor))
+                                            : (trackInfoMouseArea.containsMouse
+                                                ? Appearance.colors.colOnLayer1
+                                                : Appearance.colors.colOnLayer2)
+                                    }
+
+                                    StyledText {
+                                        Layout.fillWidth: true
+                                        text: String(queueRow.entry.artist ?? "")
+                                            || String(queueRow.entry.album ?? "")
+                                            || Translation.tr("Unknown artist")
+                                        elide: Text.ElideRight
+                                        font.pixelSize: Appearance.font.pixelSize.small
+                                        color: queueRow.current
+                                            ? ColorUtils.mix(root.accentColor, Appearance.colors.colSubtext, 0.4)
+                                            : Appearance.colors.colSubtext
+                                    }
                                 }
 
                                 MouseArea {
+                                    id: trackInfoMouseArea
                                     anchors.fill: parent
+                                    hoverEnabled: true
                                     cursorShape: Qt.PointingHandCursor
                                     onClicked: LocalMediaService.playQueueEntry(queueRow.entryId)
                                 }
@@ -533,23 +673,6 @@ Item {
                             }
 
                             RippleButton {
-                                implicitWidth: Appearance.sizes.minimumTouchTarget - Appearance.sizes.elevationMargin
-                                implicitHeight: implicitWidth
-                                buttonRadius: Appearance.rounding.full
-                                colBackground: queueRow.current ? root.accentColor : Appearance.colors.colLayer2Hover
-                                colBackgroundHover: Appearance.colors.colLayer2Hover
-                                colBackgroundActive: Appearance.colors.colLayer2Active
-                                onClicked: LocalMediaService.playQueueEntry(queueRow.entryId)
-
-                                MaterialSymbol {
-                                    anchors.centerIn: parent
-                                    text: queueRow.current ? "play_arrow" : "play_circle"
-                                    iconSize: Appearance.font.pixelSize.normal
-                                    color: queueRow.current ? ColorUtils.getContrastingTextColor(root.accentColor) : Appearance.colors.colOnLayer2
-                                }
-                            }
-
-                            RippleButton {
                                 enabled: root.entries.length > 1
                                 implicitWidth: Appearance.sizes.minimumTouchTarget - Appearance.sizes.elevationMargin
                                 implicitHeight: implicitWidth
@@ -571,4 +694,4 @@ Item {
                 }
             }
         }
-}
+    }

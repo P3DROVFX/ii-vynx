@@ -36,6 +36,9 @@ Item { // Fullscreen MediaMode instance
     readonly property string mediaSource: MprisController.effectiveMediaModeSource
     readonly property bool applicationsSource: mediaSource === "applications"
     readonly property bool localSource: mediaSource === "local"
+
+    property string _prevMediaSource: root.mediaSource
+
     readonly property var player: applicationsSource
         ? MprisController.activePlayer
         : (LocalMediaService.hasSession ? LocalMediaService.player : null)
@@ -186,6 +189,14 @@ Item { // Fullscreen MediaMode instance
     onMediaSourceChanged: {
         if (!applicationsSource)
             MusicVideoService.stopVideo();
+        if (_prevMediaSource === "local" && root.mediaSource === "applications") {
+            if (LocalMediaService.player?.isPlaying)
+                LocalMediaService.pause();
+        } else if (_prevMediaSource === "applications" && root.mediaSource === "local") {
+            if (MprisController.activePlayer?.isPlaying)
+                MprisController.activePlayer.pause();
+        }
+        _prevMediaSource = root.mediaSource;
     }
 
     Component.onCompleted: {
@@ -432,6 +443,8 @@ Item { // Fullscreen MediaMode instance
                 colBackgroundHover: Appearance.colors.colLayer2Hover
                 colBackgroundActive: Appearance.colors.colLayer2Active
                 onClicked: {
+                    if (root.localSource && LocalMediaService.player?.isPlaying)
+                        LocalMediaService.pause();
                     LocalMediaService.releaseMprisControl();
                     MprisController.setMediaModeSource("applications");
                 }
@@ -675,6 +688,8 @@ Item { // Fullscreen MediaMode instance
                                     }
 
                                     onClicked: {
+                                        if (root.localSource && LocalMediaService.player?.isPlaying)
+                                            LocalMediaService.pause();
                                         LocalMediaService.releaseMprisControl();
                                         MprisController.selectMediaModeApplicationPlayer(modelData);
                                     }
@@ -698,6 +713,8 @@ Item { // Fullscreen MediaMode instance
                             colBackgroundHover: isActive ? ColorUtils.mix(root.dynamicAccentColor, Appearance.colors.colLayer1Hover, 0.85) : Appearance.colors.colLayer2Hover
                             colBackgroundActive: isActive ? ColorUtils.mix(root.dynamicAccentColor, Appearance.colors.colLayer1Active, 0.7) : Appearance.colors.colLayer2Active
                             onClicked: {
+                                if (root.applicationsSource && MprisController.activePlayer?.isPlaying)
+                                    MprisController.activePlayer.pause();
                                 MprisController.setMediaModeSource("local");
                                 LocalMediaService.claimMprisControl();
                             }
@@ -974,6 +991,33 @@ Item { // Fullscreen MediaMode instance
 
                                 PopupToolTip {
                                     text: Config.options.background.mediaMode.musicVideo.enable ? Translation.tr("Music Video Background: ON (click to disable)") : Translation.tr("Music Video Background: OFF (click to enable)")
+                                }
+                            }
+
+                            // Stop & Terminate Local Music Player Button (Local Player Only)
+                            RippleButton {
+                                visible: root.localSource
+                                implicitWidth: 42
+                                implicitHeight: 42
+                                buttonRadius: Appearance.rounding.full
+                                colBackground: Appearance.colors.colLayer2
+                                colBackgroundHover: Appearance.colors.colErrorContainerHover
+                                colBackgroundActive: Appearance.colors.colErrorContainerActive
+
+                                MaterialSymbol {
+                                    anchors.centerIn: parent
+                                    iconSize: 20
+                                    color: Appearance.colors.colOnLayer2
+                                    text: "power_settings_new"
+                                }
+
+                                onClicked: {
+                                    LocalMediaService.terminateService();
+                                    root.closeRequested(!Config.options.background.mediaMode.togglePerMonitor);
+                                }
+
+                                StyledToolTip {
+                                    text: Translation.tr("Close Media Mode and stop local music service")
                                 }
                             }
 

@@ -47,9 +47,9 @@ Singleton {
     property var session: ({})
 
     readonly property bool hasSession: Boolean(session?.sessionActive ?? false)
-    readonly property string sessionKind: String(session?.queue?.sessionKind ?? "empty")
-    readonly property bool playlistOpen: Boolean(session?.queue?.playlistOpen ?? false)
-    readonly property var queueSnapshot: session?.queue ?? ({})
+    readonly property string sessionKind: String(queueSnapshot?.sessionKind ?? "empty")
+    readonly property bool playlistOpen: Boolean(queueSnapshot?.playlistOpen ?? false)
+    property var queueSnapshot: ({})
     readonly property bool helperRunning: helperProcess.running
     readonly property bool importActive: importRunning || scannerProcessAlive
 
@@ -173,6 +173,19 @@ Singleton {
         localPlayer.canGoNext = Boolean(nextSession.canGoNext ?? false);
         localPlayer.canGoPrevious = Boolean(nextSession.canGoPrevious ?? false);
         localPlayer.canSeek = Boolean(nextSession.canSeek ?? false);
+
+        const nextQueue = nextSession.queue ?? {};
+        if (!nextSession.queue) {
+            if (root.queueSnapshot && root.queueSnapshot.entries && root.queueSnapshot.entries.length > 0)
+                root.queueSnapshot = ({});
+        } else if (root.queueSnapshot.revision !== nextQueue.revision
+            || root.queueSnapshot.currentEntryId !== nextQueue.currentEntryId
+            || root.queueSnapshot.playlistOpen !== nextQueue.playlistOpen
+            || root.queueSnapshot.shuffle !== nextQueue.shuffle
+            || root.queueSnapshot.sessionKind !== nextQueue.sessionKind) {
+            root.queueSnapshot = nextQueue;
+        }
+
         applyingState = false;
         stateChanged();
 
@@ -445,6 +458,36 @@ Singleton {
             _request("removeEntries", { entryIds: normalized });
     }
     function clearFutureQueueEntries(): void { _request("clearFuture"); }
+
+    function terminateService(): void {
+        cancelImport();
+        importRunning = false;
+        releaseMprisControl();
+        _request("shutdown");
+        helperWanted = false;
+        helperReady = false;
+        session = ({});
+        queueSnapshot = ({});
+        applyingState = true;
+        localPlayer.isPlaying = false;
+        localPlayer.identity = "II Music";
+        localPlayer.trackTitle = "";
+        localPlayer.trackArtist = "";
+        localPlayer.trackAlbum = "";
+        localPlayer.trackArtUrl = "";
+        localPlayer.trackLyricsPath = "";
+        localPlayer.position = 0;
+        localPlayer.length = 0;
+        applyingState = false;
+        stateChanged();
+        terminateProcess.running = true;
+    }
+
+    Process {
+        id: terminateProcess
+        command: ["python3", root.helperPath, "--terminate"]
+        running: false
+    }
 
     Connections {
         target: LocalMediaSelection

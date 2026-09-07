@@ -30,6 +30,7 @@ from media.mpris_bridge import DEFAULT_BUS_NAME, MprisBridge
 from media.mpv_client import MpvIpcError, MpvIpcClient, MpvProcess
 from media.protocol import (
     LOCAL_PLAYER_OPERATIONS,
+    PROTOCOL_VERSION,
     ProtocolError,
     decode_request,
     encode,
@@ -805,6 +806,50 @@ class LocalPlayerDaemon:
             self.mpv.stop()
 
 
+def terminate_daemon(daemon_sock_path: Path, socket_path: Path) -> int:
+    sock = try_connect(daemon_sock_path)
+    if sock is not None:
+        try:
+            req = json.dumps({
+                "protocolVersion": PROTOCOL_VERSION,
+                "requestId": "terminate-cli",
+                "op": "shutdown",
+                "payload": {},
+            }) + "\n"
+            sock.sendall(req.encode("utf-8"))
+            sock.shutdown(socket.SHUT_WR)
+            sock.settimeout(1.0)
+            try:
+                sock.recv(1024)
+            except OSError:
+                pass
+        except OSError:
+            pass
+        finally:
+            try:
+                sock.close()
+            except OSError:
+                pass
+
+    deadline = time.monotonic() + 1.0
+    while time.monotonic() < deadline and daemon_sock_path.exists():
+        time.sleep(0.05)
+
+    if daemon_sock_path.exists():
+        try:
+            daemon_sock_path.unlink()
+        except OSError:
+            pass
+
+    if socket_path.exists():
+        try:
+            socket_path.unlink()
+        except OSError:
+            pass
+
+    return 0
+
+
 def probe_daemon(daemon_sock_path: Path) -> bool:
     if not daemon_sock_path.exists():
         return False
@@ -949,11 +994,15 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--daemon-mode", action="store_true", help="run as background daemon server")
     parser.add_argument("--no-daemon", action="store_true", help="run directly in foreground without daemon bridge")
     parser.add_argument("--probe", action="store_true", help="check if daemon is currently running")
+    parser.add_argument("--terminate", action="store_true", help="shut down running daemon and clean up sockets")
     return parser.parse_args(argv)
 
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv or sys.argv[1:])
+
+    if args.terminate:
+        return terminate_daemon(args.daemon_socket, args.socket)
 
     if args.probe:
         return 0 if probe_daemon(args.daemon_socket) else 1
