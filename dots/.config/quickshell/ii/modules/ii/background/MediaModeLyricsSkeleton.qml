@@ -13,10 +13,10 @@ Item {
 
     clip: true
 
-    property real largeFontSize: Appearance.font.pixelSize.hugeass * 1.5
+    property real largeFontSize: Appearance.font.pixelSize.hugeass * 1.3
     property color activeColor: Appearance.colors.colPrimary
-    property real focusedFontSizeMultiplier: 1.42
-    property real rowSpacingFactor: 0.78
+    property real focusedFontSizeMultiplier: 1.0
+    property real rowSpacingFactor: 1.0
     property real nearBlurRadius: 10
     property real farBlurRadius: 32
     property real minimumRowOpacity: 0.24
@@ -27,8 +27,11 @@ Item {
     readonly property int halfVisibleLines: 2
     readonly property int visibleLineCount: halfVisibleLines * 2 + 1
     readonly property real layoutFontSize: largeFontSize * focusedFontSizeMultiplier
-    readonly property real rowHeight: Math.max(layoutFontSize * 1.32,
-        height / visibleLineCount * rowSpacingFactor)
+    readonly property real rowHeight: {
+        if (root.height <= 0) return layoutFontSize * 2.4;
+        const target = (height / visibleLineCount) * (root.height < 460 ? 1.18 : 0.95);
+        return Math.max(layoutFontSize * 2.2, Math.min(layoutFontSize * 3.6, target));
+    }
     readonly property real horizontalPadding: nearBlurRadius + Appearance.font.pixelSize.normal
     readonly property int blurMaximum: Math.max(2, Math.ceil(farBlurRadius))
     // Uneven, like real lyric lines rather than a stack of identical bars.
@@ -122,7 +125,7 @@ Item {
                         anchors.centerIn: parent
                         width: (parent.width - root.horizontalPadding * 2)
                             * root.barWidthFactors[skeletonRow.index % root.barWidthFactors.length]
-                        height: root.layoutFontSize * (skeletonRow.focused ? 0.74 : 0.54)
+                        height: root.layoutFontSize * 0.64
                         radius: height / 2
 
                         // The sweep is the gradient itself, so it follows the

@@ -28,6 +28,7 @@ Singleton {
     property string errorMessage: ""
 
     property string name: ""
+    property var snapshot: ({})
     property int layerCount: 0
     /** Board size in key units, for scaling the preview to the space it has. */
     property real unitWidth: 0
@@ -40,6 +41,7 @@ Singleton {
     property int activeLayer: 0
 
     readonly property bool ready: root.available && root.keys.length > 0
+    signal readFinished(bool success)
 
     function labelsFor(layer: int): var {
         return root.layers[layer] ?? [];
@@ -79,6 +81,7 @@ Singleton {
     }
 
     function applyResult(data): void {
+        root.snapshot = data;
         root.available = data?.available === true;
         root.errorMessage = data?.error ?? "";
         if (!root.available) {
@@ -117,6 +120,7 @@ Singleton {
                     root.available = false;
                     root.errorMessage = "could not read the keyboard";
                 }
+                root.readFinished(root.available);
             }
         }
 

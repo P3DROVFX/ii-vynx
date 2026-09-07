@@ -44,16 +44,21 @@ Item { // Fullscreen MediaMode instance
     readonly property bool queueEligible: localSource
         && LocalMediaService.playlistOpen
         && LocalMediaService.queueSnapshot.entries?.length > 0
-    // `auto` yields the queue to a playlist only after lyric resolution has a
-    // final empty answer. Manual choices stay in effect across track changes.
+    // Automatic lyric expansion / collapse:
+    // When a song has identified lyrics, lyrics expand automatically.
+    // When a song has no identified lyrics, lyrics collapse automatically.
+    // Manual user toggles apply to the current song and reset on track change.
     property string localLyricsPreference: "auto"
-    readonly property bool localLyricsAutoCollapsed: localSource && queueEligible
-        && LyricsService.isInitialized && !LyricsService.searching
-        && !LyricsService.hasAnyLyrics
+    property string currentTrackKey: `${root.player?.trackArtist ?? ""} - ${root.player?.trackTitle ?? ""}`
+    onCurrentTrackKeyChanged: {
+        root.localLyricsPreference = "auto";
+    }
+
+    readonly property bool localLyricsHasIdentifiedLyrics: LyricsService.hasAnyLyrics
     readonly property bool localLyricsExpanded: !queueEligible
         || !localQueueExpanded
-        || localLyricsPreference === "expanded"
-        || (localLyricsPreference === "auto" && !localLyricsAutoCollapsed)
+        || (localLyricsPreference === "expanded")
+        || (localLyricsPreference === "auto" && localLyricsHasIdentifiedLyrics)
     // Recolher Letras preserva o cabeçalho e a ação de reabrir. Só a
     // configuração global pode remover a superfície de letras por completo.
     readonly property bool lyricsPanelVisible: showLyricsPanel
@@ -725,8 +730,8 @@ Item { // Fullscreen MediaMode instance
                             spacing: Appearance.sizes.elevationMargin / 2
 
                             RippleButton {
-                                implicitWidth: 42
-                                implicitHeight: 42
+                                implicitWidth: 36
+                                implicitHeight: 36
                                 buttonRadius: Appearance.rounding.full
                                 colBackground: root.dynamicAccentContainer
                                 colBackgroundHover: ColorUtils.mix(root.dynamicAccentContainer, Appearance.colors.colLayer1Hover, 0.85)
@@ -736,7 +741,7 @@ Item { // Fullscreen MediaMode instance
                                 MaterialSymbol {
                                     anchors.centerIn: parent
                                     text: "audio_file"
-                                    iconSize: 20
+                                    iconSize: 18
                                     color: root.dynamicOnAccentContainer
                                 }
 
@@ -746,8 +751,8 @@ Item { // Fullscreen MediaMode instance
                             }
 
                             RippleButton {
-                                implicitWidth: 42
-                                implicitHeight: 42
+                                implicitWidth: 36
+                                implicitHeight: 36
                                 buttonRadius: Appearance.rounding.full
                                 colBackground: root.dynamicAccentContainer
                                 colBackgroundHover: ColorUtils.mix(root.dynamicAccentContainer, Appearance.colors.colLayer1Hover, 0.85)
@@ -757,7 +762,7 @@ Item { // Fullscreen MediaMode instance
                                 MaterialSymbol {
                                     anchors.centerIn: parent
                                     text: "folder_open"
-                                    iconSize: 20
+                                    iconSize: 18
                                     color: root.dynamicOnAccentContainer
                                 }
 
@@ -768,8 +773,8 @@ Item { // Fullscreen MediaMode instance
 
                             RippleButton {
                                 visible: LocalMediaService.importActive
-                                implicitWidth: 42
-                                implicitHeight: 42
+                                implicitWidth: 36
+                                implicitHeight: 36
                                 buttonRadius: Appearance.rounding.full
                                 colBackground: root.dynamicAccentContainer
                                 colBackgroundHover: ColorUtils.mix(root.dynamicAccentContainer, Appearance.colors.colLayer1Hover, 0.85)
@@ -779,7 +784,7 @@ Item { // Fullscreen MediaMode instance
                                 MaterialSymbol {
                                     anchors.centerIn: parent
                                     text: "cancel"
-                                    iconSize: 20
+                                    iconSize: 18
                                     color: root.dynamicOnAccentContainer
                                 }
 
@@ -1141,7 +1146,9 @@ Item { // Fullscreen MediaMode instance
                                                 }
                                                 font.pixelSize: Appearance.font.pixelSize.smallest
                                                 font.weight: Font.Medium
-                                                color: root.dynamicOnAccentContainer
+                                                color: ColorUtils.contrastRatio(root.dynamicAccentColor, Appearance.colors.colLayer1Base) >= 3.0
+                                                    ? root.dynamicAccentColor
+                                                    : Appearance.colors.colOnLayer0
                                             }
                                         }
 
@@ -1357,7 +1364,7 @@ Item { // Fullscreen MediaMode instance
                                             anchors.fill: parent
                                             sourceComponent: MediaModeLyricsSkeleton {
                                                 anchors.fill: parent
-                                                largeFontSize: Appearance.font.pixelSize.hugeass * 1.5 * root.lyricsScaleMultiplier
+                                                largeFontSize: Appearance.font.pixelSize.hugeass * 1.3 * root.lyricsScaleMultiplier
                                                 activeColor: root.dynamicAccentColor
                                             }
                                         }
@@ -1368,7 +1375,7 @@ Item { // Fullscreen MediaMode instance
                                             sourceComponent: MediaModeLyricsFallback {
                                                 anchors.fill: parent
                                                 mode: lyricsItem.instrumental ? "instrumental" : "notFound"
-                                                largeFontSize: Appearance.font.pixelSize.hugeass * 1.5 * root.lyricsScaleMultiplier
+                                                largeFontSize: Appearance.font.pixelSize.hugeass * 1.3 * root.lyricsScaleMultiplier
                                                 activeColor: root.dynamicAccentColor
                                                 onAccentContainerColor: root.dynamicOnAccentContainer
                                                 artFilePath: root.displayedArtFilePath
@@ -1386,7 +1393,7 @@ Item { // Fullscreen MediaMode instance
                                                 player: root.player
                                                 // Resting size; the centred line renders at
                                                 // focusedFontSizeMultiplier times this.
-                                                largeFontSize: Appearance.font.pixelSize.hugeass * 1.5 * root.lyricsScaleMultiplier
+                                                largeFontSize: Appearance.font.pixelSize.hugeass * 1.3 * root.lyricsScaleMultiplier
                                                 activeColor: root.dynamicAccentColor
                                             }
                                         }

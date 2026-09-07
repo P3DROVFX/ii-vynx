@@ -45,6 +45,52 @@ Item {
     signal expandedToggled()
     signal lyricsExpandedToggled()
 
+    function centerCurrentTrack() {
+        if (root.currentIndex < 0 || root.currentIndex >= root.entries.length)
+            return;
+        if (!root.expanded || !root.visible || queueList.height <= 0 || queueList.count <= 0)
+            return;
+        if (queueList.dragging || queueList.moving)
+            return;
+
+        queueList.positionViewAtIndex(root.currentIndex, ListView.Center);
+    }
+
+    function scheduleCenterCurrentTrack() {
+        if (!root.expanded || root.currentIndex < 0)
+            return;
+
+        Qt.callLater(function() {
+            root.centerCurrentTrack();
+        });
+        centerTimer.restart();
+    }
+
+    Timer {
+        id: centerTimer
+        interval: 120
+        repeat: false
+        onTriggered: root.centerCurrentTrack()
+    }
+
+    Component.onCompleted: {
+        root.scheduleCenterCurrentTrack();
+    }
+
+    onCurrentIndexChanged: {
+        root.scheduleCenterCurrentTrack();
+    }
+
+    onExpandedChanged: {
+        if (root.expanded)
+            root.scheduleCenterCurrentTrack();
+    }
+
+    onVisibleChanged: {
+        if (visible && root.expanded)
+            root.scheduleCenterCurrentTrack();
+    }
+
     Rectangle {
         anchors.fill: parent
         radius: Appearance.rounding.verylarge
@@ -241,7 +287,18 @@ Item {
                     anchors.fill: parent
                     clip: true
                     model: root.entries
+                    currentIndex: root.currentIndex
                     spacing: Appearance.sizes.elevationMargin / 2
+
+                    onCountChanged: {
+                        if (queueList.count > 0 && root.expanded)
+                            root.scheduleCenterCurrentTrack();
+                    }
+
+                    onHeightChanged: {
+                        if (queueList.height > 0 && root.expanded && !queueList.dragging && !queueList.moving)
+                            centerTimer.restart();
+                    }
 
                     delegate: Item {
                         id: queueRow
@@ -331,7 +388,9 @@ Item {
                                 Layout.preferredWidth: Appearance.sizes.minimumTouchTarget - Appearance.sizes.elevationMargin
                                 Layout.preferredHeight: width
 
-                                readonly property real previewRadius: Math.min(width / 2, Math.max(0, Appearance.rounding.scale === 0 ? 0 : (Appearance.rounding.windowRounding - Appearance.sizes.elevationMargin)))
+                                readonly property real previewRadius: queueRow.current
+                                    ? Appearance.rounding.full
+                                    : Math.min(width / 2, Math.max(0, Appearance.rounding.scale === 0 ? 0 : (Appearance.rounding.windowRounding - Appearance.sizes.elevationMargin)))
 
                                 Rectangle {
                                     id: artMask
@@ -411,7 +470,11 @@ Item {
                                     elide: Text.ElideRight
                                     font.pixelSize: Appearance.font.pixelSize.normal
                                     font.weight: queueRow.current ? Font.Bold : Font.Medium
-                                    color: queueRow.current ? Appearance.colors.colOnPrimaryContainer : Appearance.colors.colOnLayer2
+                                    color: queueRow.current
+                                        ? (ColorUtils.contrastRatio(root.accentColor, Appearance.colors.colLayer1Base) >= 3.0
+                                            ? root.accentColor
+                                            : ColorUtils.adaptToAccent(Appearance.colors.colOnLayer0, root.accentColor))
+                                        : Appearance.colors.colOnLayer2
                                 }
 
                                 StyledText {
@@ -421,7 +484,9 @@ Item {
                                         || Translation.tr("Unknown artist")
                                     elide: Text.ElideRight
                                     font.pixelSize: Appearance.font.pixelSize.small
-                                    color: Appearance.colors.colSubtext
+                                    color: queueRow.current
+                                        ? ColorUtils.mix(root.accentColor, Appearance.colors.colSubtext, 0.4)
+                                        : Appearance.colors.colSubtext
                                 }
 
                                 MouseArea {
@@ -471,7 +536,7 @@ Item {
                                 implicitWidth: Appearance.sizes.minimumTouchTarget - Appearance.sizes.elevationMargin
                                 implicitHeight: implicitWidth
                                 buttonRadius: Appearance.rounding.full
-                                colBackground: queueRow.current ? root.accentContainerColor : Appearance.colors.colLayer2Hover
+                                colBackground: queueRow.current ? root.accentColor : Appearance.colors.colLayer2Hover
                                 colBackgroundHover: Appearance.colors.colLayer2Hover
                                 colBackgroundActive: Appearance.colors.colLayer2Active
                                 onClicked: LocalMediaService.playQueueEntry(queueRow.entryId)
@@ -480,7 +545,7 @@ Item {
                                     anchors.centerIn: parent
                                     text: queueRow.current ? "play_arrow" : "play_circle"
                                     iconSize: Appearance.font.pixelSize.normal
-                                    color: queueRow.current ? root.onAccentContainerColor : Appearance.colors.colOnLayer2
+                                    color: queueRow.current ? ColorUtils.getContrastingTextColor(root.accentColor) : Appearance.colors.colOnLayer2
                                 }
                             }
 

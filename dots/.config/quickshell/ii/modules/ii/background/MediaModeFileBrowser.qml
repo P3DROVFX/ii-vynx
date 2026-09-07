@@ -165,7 +165,6 @@ Item {
                 }
 
                 ColumnLayout {
-                    Layout.fillWidth: true
                     spacing: 2
 
                     StyledText {
@@ -180,6 +179,10 @@ Item {
                         font.pixelSize: Appearance.font.pixelSize.smaller
                         color: Appearance.colors.colSubtext
                     }
+                }
+
+                Item {
+                    Layout.fillWidth: true
                 }
 
                 // Toggle: Show Hidden Folders / Files

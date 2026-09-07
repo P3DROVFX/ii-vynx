@@ -17,7 +17,7 @@ Item {
     // Size of a *resting* line. The centred line is this scaled by
     // focusedFontSizeMultiplier, so the gap between the two is the transition.
     property var player: null
-    property real largeFontSize: Appearance.font.pixelSize.hugeass * 1.5
+    property real largeFontSize: Appearance.font.pixelSize.hugeass * 1.3
     property color activeColor: Appearance.colors.colPrimary
     // Upper clamp only: the effective duration is derived per line from the
     // song's own cadence, so fast tracks stop dragging through a fixed 2s scroll.
@@ -27,11 +27,11 @@ Item {
     property real rowTransitionPaceFactor: 0.7
     property real nearBlurRadius: 10
     property real farBlurRadius: 32
-    property real rowSpacingFactor: 0.78
-    property real focusedFontSizeMultiplier: 1.42
+    property real rowSpacingFactor: 1.0
+    property real focusedFontSizeMultiplier: 1.0
     property int maximumLyricLines: 3
-    property real baseFontWeight: 500
-    property real focusedFontWeight: 820
+    property real baseFontWeight: 700
+    property real focusedFontWeight: 700
     property real focusedFontGrade: 100
     property real minimumRowOpacity: 0.24
     property real rowOpacityFalloff: 0.34
@@ -53,13 +53,15 @@ Item {
     readonly property int currentIndex: LyricsService.currentIndex
     readonly property bool hasCurrentLine: currentIndex >= 0
     readonly property real layoutFontSize: largeFontSize * focusedFontSizeMultiplier
-    // A row only decides spacing. Text is laid out inside a taller centred box so
-    // that tightening the spacing can never clip a wrapped line.
+    // A row only decides spacing. Text is laid out inside a centered box so
+    // that rows distribute naturally and never clip or overlap.
     readonly property real rowContentHeight: Math.ceil(layoutFontSize * 1.3) * maximumLyricLines
-    // Tight spacing, but never tighter than one focused line: a short panel must
-    // not stack the rows on top of each other.
-    readonly property real rowHeight: Math.max(layoutFontSize * 1.32,
-        height / visibleLineCount * rowSpacingFactor)
+    // Vertical spacing with compact, elegant rhythm for both single and multi-line lyrics.
+    readonly property real rowHeight: {
+        if (root.height <= 0) return layoutFontSize * 2.4;
+        const target = (height / visibleLineCount) * (root.height < 460 ? 1.18 : 0.95);
+        return Math.max(layoutFontSize * 2.2, Math.min(layoutFontSize * 3.6, target));
+    }
     readonly property real viewportEdgePadding: Math.max(0, height / 2 - rowHeight / 2)
     readonly property real playbackRate: Math.max(0.25, player?.rate ?? 1)
     // Median gap between synced lines, i.e. this track's own lyric cadence.
@@ -361,10 +363,8 @@ Item {
                 + (focusedBlurRadius - root.farBlurRadius) * root.focusReveal
             readonly property real focusFactor: root.focusEasing(1 - distanceInRows)
                 * root.focusReveal
-            // Quantised so the variable-axis font object (and the relayout it
-            // forces) churns a handful of times per row change, not every frame.
-            readonly property int weightAxis: Math.round((root.baseFontWeight
-                + (root.focusedFontWeight - root.baseFontWeight) * focusFactor) / 20) * 20
+            // Fixed font weight ensures glyph advances never shift, locking word wrap permanently.
+            readonly property int weightAxis: root.focusedFontWeight
             readonly property int gradeAxis: Math.round(root.focusedFontGrade * focusFactor / 5) * 5
             readonly property real depthOpacity: Math.max(root.minimumRowOpacity,
                 1 - distanceInRows * root.rowOpacityFalloff)
@@ -381,9 +381,7 @@ Item {
             Item {
                 id: blurLayer
 
-                width: parent.width
-                height: Math.max(parent.height, root.rowContentHeight)
-                anchors.verticalCenter: parent.verticalCenter
+                anchors.fill: parent
                 opacity: lyricRow.depthOpacity
                 transform: Translate {
                     y: lyricRow.parallaxTranslation
@@ -430,8 +428,7 @@ Item {
                         "GRAD": lyricRow.gradeAxis,
                         "ROND": Config.options.appearance.fonts.roundnessFull ? 100 : 0
                     })
-                    scale: (1 + (root.focusedFontSizeMultiplier - 1)
-                        * lyricRow.focusFactor) / root.focusedFontSizeMultiplier
+                    scale: 1.0
                     transformOrigin: Item.Center
                     horizontalAlignment: Text.AlignHCenter
                     verticalAlignment: Text.AlignVCenter

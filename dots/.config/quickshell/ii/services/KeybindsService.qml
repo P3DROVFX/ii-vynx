@@ -7,6 +7,7 @@ import Quickshell
 import Quickshell.Io
 import qs.modules.common
 import qs.modules.common.functions
+import "../modules/common/functions/KeyboardMap.js" as KeyboardMap
 
 /**
  * Single owner of ~/.local/state/quickshell/user/keybinds.json.
@@ -18,7 +19,7 @@ import qs.modules.common.functions
 Singleton {
     id: root
 
-    readonly property int schemaVersion: 2
+    readonly property int schemaVersion: 3
     readonly property int maxPages: 500
     readonly property int maxKeybindsPerPage: 10000
     readonly property string filePath: Directories.keybindsPath
@@ -31,6 +32,7 @@ Singleton {
     property int revision: 0
     property bool ready: false
     property bool writable: false
+    readonly property bool detectingSystemKeyboard: systemKeyboardReader.running
     property bool writing: false
     property bool importing: false
     property bool scanning: false
@@ -135,6 +137,8 @@ Singleton {
             order: Number.isInteger(source.order) ? source.order : 0,
             baseId: root.oneLine(source.baseId, "", 120),
             isUserOverride: Boolean(source.isUserOverride),
+            kind: source.kind === "keyboard" ? "keyboard" : "shortcuts",
+            keyboard: source.kind === "keyboard" ? KeyboardMap.normalized(source.keyboard) : null,
             keybinds: entries
         };
     }
@@ -201,6 +205,8 @@ Singleton {
             const page = value.pages[pageIndex];
             if (!page || typeof page !== "object" || Array.isArray(page))
                 return Translation.tr("Page %1 is not a valid object.").arg(String(pageIndex + 1));
+            if (page.kind === "keyboard" && KeyboardMap.problem(page.keyboard))
+                return Translation.tr("Invalid keyboard map: %1").arg(KeyboardMap.problem(page.keyboard));
             const entries = Array.isArray(page.keybinds)
                 ? page.keybinds
                 : (!strictStore && Array.isArray(page.shortcuts) ? page.shortcuts : null);
@@ -406,6 +412,8 @@ Singleton {
             sourceKind: source.sourceKind ?? "manual",
             sourcePath: source.sourcePath ?? "",
             importNote: source.importNote ?? "",
+            kind: source.kind ?? "shortcuts",
+            keyboard: source.keyboard ?? null,
             keybinds: entries
         }, false);
         pages.push(page);
@@ -414,6 +422,79 @@ Singleton {
         root.lastStatus = Translation.tr("Created %1.").arg(String(page.name));
         root.operationFinished(true, root.lastStatus, page.id);
         return page.id;
+    }
+
+    function createKeyboardPage(board): string {
+        if (KeyboardMap.problem(board)) {
+            root.operationFinished(false, Translation.tr("The keyboard map could not be read."), "");
+            return "";
+        }
+        return root.createPage(board.name || Translation.tr("Keyboard"), "keyboard", "", [], { kind: "keyboard", keyboard: board });
+    }
+
+    function importKeyboardSnapshot(data): string {
+        const board = KeyboardMap.fromVial(data);
+        if (!board) {
+            root.operationFinished(false, Translation.tr("No Vial keyboard could be read. Check the USB connection and permissions, then try again."), "");
+            return "";
+        }
+        const existing = root.pages.find(p => p.kind === "keyboard" && p.keyboard?.source === "vial" && p.keyboard?.deviceUid === board.deviceUid);
+        if (!existing) return root.createKeyboardPage(board);
+        if (!root.setKeyboardMap(existing.id, KeyboardMap.refreshed(existing.keyboard, data))) return "";
+        root.operationFinished(true, Translation.tr("Keyboard refreshed. Unchanged keys kept their custom labels and icons."), existing.id);
+        return existing.id;
+    }
+
+    function detectSystemKeyboard(preset = ""): void {
+        if (!root.writable || systemKeyboardReader.running || !["", "abnt2"].includes(preset)) return;
+        systemKeyboardReader.command = ["python3", Directories.scriptPath + "/typing/system_keyboard.py"].concat(preset ? ["--preset", preset] : []);
+        systemKeyboardReader.running = true;
+    }
+
+    function importSystemKeyboardSnapshot(data): string {
+        const board = data?.available && ["system", "manual"].includes(data.source) ? KeyboardMap.normalized(data) : null;
+        if (!board) {
+            root.operationFinished(false, String(data?.error || Translation.tr("The system keyboard layout could not be read.")), "");
+            return "";
+        }
+        const existing = board.source === "system" && board.deviceUid
+            ? root.pages.find(p => p.kind === "keyboard" && p.keyboard?.source === "system" && p.keyboard?.deviceUid === board.deviceUid) : null;
+        if (!existing) return root.createKeyboardPage(board);
+        if (!root.setKeyboardMap(existing.id, KeyboardMap.refreshed(existing.keyboard, data))) return "";
+        root.operationFinished(true, Translation.tr("System layout refreshed. Unchanged keys kept their custom labels and icons."), existing.id);
+        return existing.id;
+    }
+
+    Process {
+        id: systemKeyboardReader
+        // One read requested by a button. The existing store remains the only
+        // writer, including for this asynchronous result.
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    root.importSystemKeyboardSnapshot(JSON.parse(text));
+                } catch (error) {
+                    root.operationFinished(false, Translation.tr("The system keyboard layout could not be read."), "");
+                }
+            }
+        }
+        stderr: StdioCollector {
+            onStreamFinished: if (text.trim()) console.warn("[SystemKeyboard] " + text.trim());
+        }
+    }
+
+    function setKeyboardMap(pageId, board): bool {
+        if (KeyboardMap.problem(board)) return false;
+        const document = root.currentDocument();
+        const page = document.pages.find(p => p.id === pageId && p.kind === "keyboard");
+        if (!page) return false;
+        page.keyboard = KeyboardMap.normalized(board);
+        return root.schedule(document);
+    }
+
+    function updateKeyboardKey(pageId, layer, index, label, icon, description): bool {
+        const board = KeyboardMap.editKey(root.pageById(pageId)?.keyboard, layer, index, label, icon, description);
+        return board !== null && root.setKeyboardMap(pageId, board);
     }
 
     function updatePage(pageId, name, icon, program, useProgramIcon = false, programId = ""): bool {
