@@ -4,6 +4,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import Quickshell.Hyprland
+import Quickshell.Io
 import Quickshell.Wayland
 import qs
 import qs.modules.common
@@ -61,12 +62,16 @@ Singleton {
     readonly property var punctuationEntries: root.punctuationTable
         .map(pair => ({ "name": `typeToSearch_${pair[0]}`, "keysym": pair[0], "character": pair[1], "shifted": false }))
 
+    /// Every key the service can ever claim, whatever the key set is set to. A sweep has to
+    /// take away what some earlier instance bound, and that instance's key set is not knowable.
+    readonly property var allEntries: root.letterEntries.concat(root.digitEntries, root.punctuationEntries)
+
     readonly property var entries: {
         if (root.keySet === "letters")
             return root.letterEntries;
         if (root.keySet === "alphanumeric")
             return root.letterEntries.concat(root.digitEntries);
-        return root.letterEntries.concat(root.digitEntries, root.punctuationEntries);
+        return root.allEntries;
     }
 
     /// Every shortcut this service owns, so the shortcut browser can drop them from its list.
@@ -253,7 +258,10 @@ Singleton {
         delegate: GlobalShortcut {
             required property var modelData
             name: modelData.name
-            description: Translation.tr("Type-to-search: %1").arg(modelData.character)
+            // Deliberately not Translation.tr: a GlobalShortcut cannot be modified once
+            // created, and a translated binding re-evaluates when the catalogue loads. These
+            // never reach the shortcut browser anyway - HyprlandBinds filters them out.
+            description: `Type-to-search: ${modelData.character}`
             onPressed: root.typeCharacter(modelData.character)
         }
     }
@@ -287,15 +295,48 @@ Singleton {
         Quickshell.execDetached(["hyprctl", "eval", statements]);
     }
 
-    function releaseStatements(): string {
+    function releaseStatementsFor(entries: var): string {
         const lines = [];
-        for (const entry of root.appliedEntries) {
+        for (const entry of entries) {
             const combos = entry.shifted ? [entry.keysym, `SHIFT + ${entry.keysym}`] : [entry.keysym];
             for (const combo of combos)
                 lines.push(`pcall(hl.unbind, "${combo}")`);
         }
         return lines.join(" ");
     }
+
+    function releaseStatements(): string {
+        return root.releaseStatementsFor(root.appliedEntries);
+    }
+
+    /**
+     * A shell that was killed rather than shut down never gets to take its binds away, and a
+     * bare-key bind with no shortcut left behind it still swallows the key: after `qs kill`
+     * while armed, every letter is dead compositor-wide until something arms and disarms
+     * again. So every key this service could ever have claimed is released once at startup,
+     * before the first arm - which is also the only way a stranded set gets cleaned up.
+     *
+     * Only when the feature is on. Sweeping unconditionally would take away a bare-key bind
+     * belonging to someone who never enabled it.
+     */
+    property bool sweepStarted: false
+    property bool sweepDone: false
+
+    Process {
+        id: sweepProc
+        onExited: root.sweepDone = true
+    }
+
+    function sweepStaleBinds(): void {
+        if (!root.enabled || root.sweepStarted)
+            return;
+        root.sweepStarted = true;
+        sweepProc.command = ["hyprctl", "eval", root.releaseStatementsFor(root.allEntries)];
+        sweepProc.running = true;
+    }
+
+    onEnabledChanged: root.sweepStaleBinds()
+    Component.onCompleted: root.sweepStaleBinds()
 
     /**
      * Arming waits: the window list is refreshed asynchronously, so the instant after a
@@ -306,8 +347,15 @@ Singleton {
         id: armTimer
         interval: 250
         onTriggered: {
-            if (root.armed)
-                root.applyBinds(true);
+            if (!root.armed)
+                return;
+            // The sweep is a separate hyprctl call with no ordering against this one. Landing
+            // it second would take away the binds that were just put on.
+            if (!root.sweepDone) {
+                armTimer.restart();
+                return;
+            }
+            root.applyBinds(true);
         }
     }
 
