@@ -22,12 +22,12 @@ Item {
         ? NotesService.assetPath(root.editor.noteId, root.block.asset)
         : ""
 
-    implicitHeight: image.status === Image.Ready ? image.height + 20 : 0
+    implicitHeight: image.status === Image.Ready ? Math.ceil((image.height + 20) / NotesMetrics.paperLineHeight) * NotesMetrics.paperLineHeight : 0
 
     Image {
         id: image
         x: NotesMetrics.readingPadding
-        y: 10
+        y: Math.round((root.implicitHeight - height) / 2)
         readonly property real available: Math.max(80,
             Math.min(NotesMetrics.readingWidth, root.width - NotesMetrics.readingPadding * 2))
         width: Math.min(available, implicitWidth)

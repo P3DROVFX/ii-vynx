@@ -52,7 +52,7 @@ Item {
     property real naturalWidth: 0
     property real naturalHeight: 0
 
-    implicitHeight: image.status === Image.Ready ? frame.height + 22 : 0
+    implicitHeight: image.status === Image.Ready ? Math.ceil((frame.height + 22) / NotesMetrics.paperLineHeight) * NotesMetrics.paperLineHeight : 0
 
     // A rounded container that clips, rather than a mask effect on the image: a
     // `MultiEffect` mask needs a texture provider, and a plain rectangle is not one.
@@ -62,7 +62,7 @@ Item {
         radius: Appearance.rounding.normal
         clip: true
         x: NotesMetrics.readingPadding
-        y: 8
+        y: Math.round((root.implicitHeight - height) / 2)
         // Never wider than the picture actually is. A 320px screenshot stretched to the
         // reading measure is a blurred 320px screenshot, and the fraction is there to make
         // a picture *smaller* than the column, not to inflate it.

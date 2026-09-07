@@ -12,7 +12,7 @@ Item {
     property var block: null
     property int blockIndex: 0
 
-    implicitHeight: 34
+    implicitHeight: NotesMetrics.paperLineHeight
 
     Rectangle {
         anchors.centerIn: parent

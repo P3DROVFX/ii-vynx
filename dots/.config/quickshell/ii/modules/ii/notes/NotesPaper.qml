@@ -1,6 +1,7 @@
 import QtQuick
 
 import qs.modules.common
+import qs.modules.ii.notes
 
 /**
  * The page a note is written on.
@@ -19,10 +20,12 @@ ShaderEffect {
     /// One of `Doc.PAPER_STYLES`: plain, grid, dots, ruled, ruled-margin, isometric, graph.
     property string paperStyle: "plain"
     /// Pixels between lines, and how strongly the pattern shows.
-    property real paperSpacing: 26
+    property real paperSpacing: NotesMetrics.paperLineHeight
     property real paperStrength: 0.5
     /// How far the page has been scrolled, so the pattern travels with the text.
     property real scrollOffset: 0
+    /// Distance from the top of the editor to the first text baseline.
+    property real baselineOffset: 24
 
     readonly property var styleOrder: ["plain", "grid", "dots", "ruled", "ruled-margin", "isometric", "graph"]
 
@@ -35,7 +38,7 @@ ShaderEffect {
     property real lineWidth: 1
     property real paperOpacity: Math.max(0, Math.min(1, root.paperStrength))
     property vector2d paperSize: Qt.vector2d(Math.max(1, root.width), Math.max(1, root.height))
-    property vector2d paperOffset: Qt.vector2d(0, root.scrollOffset)
+    property vector2d paperOffset: Qt.vector2d(0, root.scrollOffset - root.baselineOffset)
     property vector4d lineColor: root.asVector(Appearance.colors.colOutlineVariant)
     property vector4d accentColor: root.asVector(Appearance.m3colors.m3error)
 

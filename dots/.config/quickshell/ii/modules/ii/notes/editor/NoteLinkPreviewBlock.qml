@@ -48,7 +48,7 @@ Item {
         return value.startsWith("/") ? `file://${value}` : "";
     }
 
-    implicitHeight: card.height + 16
+    implicitHeight: Math.ceil((card.height + 16) / NotesMetrics.paperLineHeight) * NotesMetrics.paperLineHeight
 
     function refreshPreview(refresh = false): void {
         if (!root.url || !root.editor || !root.block)
@@ -93,7 +93,7 @@ Item {
     Rectangle {
         id: card
         x: NotesMetrics.readingPadding
-        y: 8
+        y: Math.round((root.implicitHeight - height) / 2)
         width: Math.max(160, Math.min(NotesMetrics.readingWidth,
             root.width - NotesMetrics.readingPadding * 2))
         height: contentLayout.implicitHeight + 24

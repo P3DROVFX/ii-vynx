@@ -24,12 +24,12 @@ Item {
     property var block: null
     property int blockIndex: 0
 
-    implicitHeight: panel.height + 16
+    implicitHeight: Math.ceil((panel.height + 16) / NotesMetrics.paperLineHeight) * NotesMetrics.paperLineHeight
 
     Rectangle {
         id: panel
         x: NotesMetrics.readingPadding
-        y: 8
+        y: Math.round((root.implicitHeight - height) / 2)
         width: Math.max(160, Math.min(NotesMetrics.readingWidth,
             root.width - NotesMetrics.readingPadding * 2))
         height: content.implicitHeight + 20

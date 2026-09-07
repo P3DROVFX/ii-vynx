@@ -59,6 +59,10 @@ Singleton {
     readonly property int rowHeight: 56
     readonly property int iconButtonSize: 44
 
+    /// Vertical rhythm of notebook lines. Single-line blocks, line heights and ruled paper
+    /// align on this unit (28px) so ruled backgrounds match text lines across all blocks.
+    readonly property int paperLineHeight: 28
+
     /// The floating button, and the space a list keeps free underneath itself so the last
     /// card can be read rather than sat on.
     readonly property int fabMargin: 16

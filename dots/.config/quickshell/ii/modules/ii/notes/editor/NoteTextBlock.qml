@@ -37,7 +37,16 @@ Item {
         id: blockHover
     }
 
-    implicitHeight: Math.max(row.implicitHeight, editText.implicitHeight) + verticalPadding * 2
+    /// Rhythm unit from NotesMetrics (28px).
+    readonly property int paperLineHeight: NotesMetrics.paperLineHeight
+    readonly property bool isMajorHeading: root.blockType === "heading" && root.block && (root.block.level === 1 || root.block.level === 2)
+    readonly property int targetLines: root.blockType === "callout" ? 2 : (root.isMajorHeading ? 2 : 1)
+    readonly property int minHeight: root.targetLines * root.paperLineHeight
+
+    implicitHeight: {
+        const raw = Math.max(row.implicitHeight, editText.implicitHeight) + (root.blockType === "callout" ? 24 : root.isMajorHeading ? 20 : 6);
+        return Math.max(root.minHeight, Math.ceil(raw / root.paperLineHeight) * root.paperLineHeight);
+    }
 
     /// A callout carries a container, and a container needs room to sit in.
     readonly property int verticalPadding: root.blockType === "heading" ? 10
@@ -160,9 +169,9 @@ Item {
     /// The container behind a callout, and nothing at all behind everything else.
     Rectangle {
         anchors.fill: row
-        anchors.margins: -10
-        anchors.leftMargin: -14
-        anchors.rightMargin: -14
+        anchors.margins: -8
+        anchors.leftMargin: -12
+        anchors.rightMargin: -12
         visible: root.blockType === "callout"
         radius: Appearance.rounding.normal
         color: root.toneBackground
@@ -172,8 +181,17 @@ Item {
         id: row
         anchors.left: parent.left
         anchors.right: parent.right
-        anchors.top: parent.top
-        anchors.topMargin: root.verticalPadding
+        anchors.top: (root.blockType === "callout" || root.isMajorHeading)
+            ? undefined
+            : parent.top
+        anchors.verticalCenter: root.blockType === "callout"
+            ? parent.verticalCenter
+            : undefined
+        anchors.bottom: root.isMajorHeading
+            ? parent.bottom
+            : undefined
+        anchors.bottomMargin: root.isMajorHeading ? 1 : 0
+        anchors.topMargin: (root.blockType === "callout" || root.isMajorHeading) ? 0 : 4
         anchors.leftMargin: NotesMetrics.readingPadding + root.indent * root.indentStep
         anchors.rightMargin: NotesMetrics.readingPadding
         spacing: 10
@@ -183,7 +201,7 @@ Item {
         Item {
             Layout.alignment: Qt.AlignTop
             Layout.preferredWidth: root.isList || root.blockType === "callout" ? 24 : 0
-            Layout.preferredHeight: root.textSize + 8
+            Layout.preferredHeight: 21
             visible: Layout.preferredWidth > 0
 
             // Bullet
@@ -386,6 +404,8 @@ Item {
                     color: editText.color
                     opacity: root.isChecked ? 0.55 : 1
                     font: editText.font
+                    lineHeight: root.paperLineHeight
+                    lineHeightMode: Text.FixedHeight
                     // Set, and ignored: `linkColor` applies to the StyledText format and
                     // markdown becomes rich text, which takes its link colour from Qt.
                     // Measured — a link here draws in Qt's blue, not the theme's primary.

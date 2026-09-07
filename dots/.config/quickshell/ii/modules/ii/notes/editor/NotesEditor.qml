@@ -719,7 +719,7 @@ Item {
         id: list
         anchors.fill: parent
         model: root.blocks
-        spacing: 2
+        spacing: 0
         clip: true
         // Every block has to exist for the caret to be able to reach it with the keyboard,
         // and a note is a page rather than a feed.

@@ -33,12 +33,12 @@ Item {
     readonly property real available: Math.max(160,
         Math.min(NotesMetrics.readingWidth, root.width - NotesMetrics.readingPadding * 2))
 
-    implicitHeight: frame.height + 22
+    implicitHeight: Math.ceil((frame.height + 22) / NotesMetrics.paperLineHeight) * NotesMetrics.paperLineHeight
 
     Rectangle {
         id: frame
         x: NotesMetrics.readingPadding
-        y: 10
+        y: Math.round((root.implicitHeight - height) / 2)
         width: root.available
         height: root.block && root.block.aspect > 0
             ? width / root.block.aspect

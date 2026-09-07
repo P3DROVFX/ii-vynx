@@ -69,7 +69,7 @@ Item {
         ? root.formatBytes(root.block.size)
         : ""
 
-    implicitHeight: card.height + 16
+    implicitHeight: Math.ceil((card.height + 16) / NotesMetrics.paperLineHeight) * NotesMetrics.paperLineHeight
 
     // Probe to check if file exists and get size if size is 0
     Process {
@@ -151,7 +151,7 @@ Item {
     Rectangle {
         id: card
         x: NotesMetrics.readingPadding
-        y: 8
+        y: Math.round((root.implicitHeight - height) / 2)
         width: Math.max(160, Math.min(NotesMetrics.readingWidth,
             root.width - NotesMetrics.readingPadding * 2))
         height: rowLayout.implicitHeight + 20

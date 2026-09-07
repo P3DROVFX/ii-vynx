@@ -27,7 +27,7 @@ Item {
     readonly property var rows: root.block ? root.block.rows : []
     readonly property bool hasHeader: root.block ? root.block.header : true
 
-    implicitHeight: panel.height + 16
+    implicitHeight: Math.ceil((panel.height + 16) / NotesMetrics.paperLineHeight) * NotesMetrics.paperLineHeight
 
     function cellIndex(row, column): int {
         return row * root.columns + column;
@@ -76,7 +76,7 @@ Item {
     Rectangle {
         id: panel
         x: NotesMetrics.readingPadding
-        y: 8
+        y: Math.round((root.implicitHeight - height) / 2)
         width: Math.max(200, Math.min(NotesMetrics.readingWidth,
             root.width - NotesMetrics.readingPadding * 2))
         height: layout.implicitHeight + 20
