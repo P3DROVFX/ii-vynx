@@ -74,7 +74,8 @@ Singleton {
 
     // ------------------------------------------------------------------ when it arms
 
-    /// Whether the focused workspace holds no windows at all.
+    /// Whether the workspace on the monitor being typed at holds no windows at all. With a
+    /// second screen that is the monitor the cursor is over, not the desktop as a whole.
     readonly property bool workspaceEmpty: {
         const workspaceId = Number(HyprlandData.activeWorkspace?.id ?? NaN);
         if (!isFinite(workspaceId))
@@ -83,9 +84,27 @@ Singleton {
             .some(window => Number(window?.workspace?.id ?? NaN) === workspaceId);
     }
 
-    /// Hyprland clears keyboard focus rather than parking it somewhere, so an absent
-    /// toplevel is the whole of "the keys are going nowhere".
-    readonly property bool noFocusedWindow: !ToplevelManager.activeToplevel
+    /**
+     * Whether the keyboard already belongs to a window on the monitor being typed at.
+     *
+     * Hyprland moves the focused *monitor* under the cursor without moving keyboard focus
+     * with it, so a window on the other screen keeps the keys while the user looks at an
+     * empty desktop here. Asking only "is anything focused anywhere" therefore never came
+     * true with a second monitor plugged in, and the feature did nothing at all there.
+     *
+     * Focusing a window focuses its monitor too, so a window that answers this is genuinely
+     * the one in front of the user - a scratchpad on a special workspace included.
+     */
+    readonly property bool focusedWindowOnActiveMonitor: {
+        if (!ToplevelManager.activeToplevel)
+            return false;
+        const client = HyprlandData.clientForToplevel(ToplevelManager.activeToplevel);
+        const monitorId = Number(Hyprland.focusedMonitor?.id ?? NaN);
+        // A window that cannot be placed is taken to own the keys: not arming is the safe half.
+        if (!client || !isFinite(monitorId))
+            return true;
+        return Number(client.monitor ?? NaN) === monitorId;
+    }
 
     /**
      * Shell surfaces take keyboard focus through layer-shell, which leaves no focused
@@ -101,7 +120,7 @@ Singleton {
         || GlobalStates.scratchpadOpen
 
     readonly property bool armed: root.enabled && !PanelFamily.isTablet
-        && root.noFocusedWindow && !root.shellSurfaceFocused
+        && !root.focusedWindowOnActiveMonitor && !root.shellSurfaceFocused
         && (root.trigger === "noFocusedWindow" || root.workspaceEmpty)
 
     // ------------------------------------------------------------------ typing
