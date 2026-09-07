@@ -187,56 +187,18 @@ Item {
                 color: root.restingText
             }
 
-            Item {
-                id: board
+            KeyboardDiagram {
                 Layout.alignment: Qt.AlignHCenter
                 visible: VialKeyboard.ready
-                implicitWidth: VialKeyboard.unitWidth * root.vialUnit
-                implicitHeight: VialKeyboard.unitHeight * root.vialUnit
-
-                Repeater {
-                    model: VialKeyboard.ready ? VialKeyboard.keys : []
-
-                    delegate: PreviewKey {
-                        id: vialKey
-                        required property int index
-                        required property var modelData
-
-                        readonly property var entry: VialKeyboard.activeLabels[vialKey.index] ?? null
-                        readonly property string keyChar: vialKey.entry?.char ?? ""
-
-                        isNext: root.highlightNext && root.nextChar.length > 0
-                            && vialKey.keyChar === root.nextChar
-                        isPressed: root.pressedChar.length > 0 && vialKey.keyChar === root.pressedChar
-                        key: vialKey.entry?.label ?? ""
-
-                        x: vialKey.modelData.x * root.vialUnit
-                        y: vialKey.modelData.y * root.vialUnit
-                        width: vialKey.modelData.w * root.vialUnit - root.keySpacing
-                        height: vialKey.modelData.h * root.vialUnit - root.keySpacing
-
-                        // These caps are the size the hardware says, not the
-                        // size of what is written on them, so the label is
-                        // fitted to the cap. Guessing from the label's length
-                        // was not enough: "RShift" still hung over the edge.
-                        fitText: true
-                        horizontalPadding: 3
-                        verticalPadding: 2
-                        pixelSize: Appearance.font.pixelSize.small
-                        // A key the layer does not define falls through to the
-                        // one below, which is what will fire — shown, but faded,
-                        // so it never reads as belonging to this layer.
-                        opacity: vialKey.entry?.inherited ? 0.45 : 1
-
-                        // KLE turns a thumb cluster by an angle about a point
-                        // out on the board, not about the key's own centre.
-                        transform: Rotation {
-                            angle: vialKey.modelData.r
-                            origin.x: (vialKey.modelData.rx - vialKey.modelData.x) * root.vialUnit
-                            origin.y: (vialKey.modelData.ry - vialKey.modelData.y) * root.vialUnit
-                        }
-                    }
-                }
+                keys: VialKeyboard.ready ? VialKeyboard.keys : []
+                entries: VialKeyboard.activeLabels
+                unitWidth: VialKeyboard.unitWidth
+                unitHeight: VialKeyboard.unitHeight
+                unit: root.vialUnit
+                keySpacing: root.keySpacing
+                labelSize: Appearance.font.pixelSize.small
+                nextChar: root.highlightNext ? root.nextChar : ""
+                pressedChar: root.pressedChar
             }
 
             RowLayout {

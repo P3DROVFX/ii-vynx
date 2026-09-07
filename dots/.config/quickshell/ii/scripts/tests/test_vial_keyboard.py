@@ -192,6 +192,13 @@ class BoundsTests(unittest.TestCase):
 class LayerTests(unittest.TestCase):
     ROWS, COLS = 1, 2
 
+    def test_selected_layer_does_not_inherit_an_inactive_intermediate_layer(self):
+        keys = [{"row": 0, "col": 0}]
+        entry = vial.build_layers([4, 5, vial.KC_TRANSPARENT], keys, 1, 1, 3)[2][0]
+        self.assertEqual(entry["label"], "a")
+        self.assertEqual(entry["code"], vial.KC_TRANSPARENT)
+        self.assertEqual(entry["resolvedCode"], 4)
+
     def _codes(self, *layers):
         flat = []
         for layer in layers:

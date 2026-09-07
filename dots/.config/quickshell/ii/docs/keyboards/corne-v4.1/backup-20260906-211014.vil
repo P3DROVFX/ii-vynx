@@ -1,0 +1,1290 @@
+{
+  "uid": 5010774632021243529,
+  "vial_protocol": 6,
+  "via_protocol": 9,
+  "layout": [
+    [
+      [
+        41,
+        20,
+        26,
+        8,
+        21,
+        23,
+        101
+      ],
+      [
+        22273,
+        4,
+        22,
+        7,
+        9,
+        10,
+        2384
+      ],
+      [
+        224,
+        29,
+        27,
+        6,
+        25,
+        5,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        225,
+        22272,
+        16684,
+        0
+      ],
+      [
+        42,
+        19,
+        18,
+        12,
+        24,
+        28,
+        21027
+      ],
+      [
+        52,
+        51,
+        15,
+        14,
+        13,
+        11,
+        2383
+      ],
+      [
+        76,
+        56,
+        55,
+        54,
+        16,
+        17,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        226,
+        21028,
+        16936,
+        0
+      ]
+    ],
+    [
+      [
+        1,
+        550,
+        551,
+        566,
+        567,
+        561,
+        74
+      ],
+      [
+        1,
+        559,
+        560,
+        47,
+        48,
+        564,
+        77
+      ],
+      [
+        1,
+        51,
+        563,
+        52,
+        56,
+        49,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        1,
+        1,
+        1,
+        0
+      ],
+      [
+        76,
+        77,
+        78,
+        82,
+        75,
+        74,
+        75
+      ],
+      [
+        42,
+        40,
+        79,
+        81,
+        80,
+        43,
+        78
+      ],
+      [
+        298,
+        70,
+        335,
+        1066,
+        336,
+        73,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        1,
+        21029,
+        1,
+        0
+      ]
+    ],
+    [
+      [
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        169
+      ],
+      [
+        1,
+        30,
+        31,
+        32,
+        33,
+        34,
+        170
+      ],
+      [
+        1085,
+        45,
+        46,
+        549,
+        56,
+        49,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        1,
+        1,
+        1,
+        0
+      ],
+      [
+        69,
+        68,
+        67,
+        66,
+        65,
+        64,
+        189
+      ],
+      [
+        1,
+        39,
+        38,
+        37,
+        36,
+        35,
+        190
+      ],
+      [
+        1,
+        561,
+        548,
+        547,
+        565,
+        53,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        1,
+        1,
+        1,
+        0
+      ]
+    ],
+    [
+      [
+        2099,
+        2078,
+        2079,
+        2080,
+        2081,
+        2082,
+        1
+      ],
+      [
+        2100,
+        2083,
+        2084,
+        2085,
+        2086,
+        2087,
+        1
+      ],
+      [
+        2070,
+        3102,
+        3103,
+        3104,
+        3105,
+        3106,
+        1
+      ],
+      [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    ],
+    [
+      [
+        1,
+        30472,
+        1,
+        5128,
+        1,
+        1,
+        1
+      ],
+      [
+        1,
+        5124,
+        1,
+        30473,
+        1,
+        1,
+        1
+      ],
+      [
+        1,
+        1,
+        30475,
+        5174,
+        1,
+        1,
+        1
+      ],
+      [
+        1,
+        1,
+        1,
+        1,
+        21029,
+        21029,
+        1
+      ],
+      [
+        1,
+        1,
+        5138,
+        5132,
+        5144,
+        1,
+        1
+      ],
+      [
+        1,
+        1,
+        30470,
+        1,
+        1,
+        1,
+        1
+      ],
+      [
+        1,
+        1,
+        30474,
+        1,
+        1,
+        1,
+        1
+      ],
+      [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    ],
+    [
+      [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      [
+        1,
+        557,
+        46,
+        558,
+        45,
+        1,
+        1
+      ],
+      [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    ]
+  ],
+  "layout_options": 0,
+  "tap_dance": [
+    [
+      227,
+      227,
+      21162,
+      0,
+      200
+    ],
+    [
+      43,
+      43,
+      57,
+      0,
+      200
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      200
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      200
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      200
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      200
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      200
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      200
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      200
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      200
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      200
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      200
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      200
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      200
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      200
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      200
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      200
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      200
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      200
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      200
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      200
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      200
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      200
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      200
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      200
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      200
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      200
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      200
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      200
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      200
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      200
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      200
+    ]
+  ],
+  "combo": [
+    [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  ],
+  "version": 1,
+  "encoder_layout": [
+    [],
+    [],
+    [],
+    [],
+    [],
+    []
+  ],
+  "macro": [
+    [
+      [
+        "text",
+        "'a"
+      ]
+    ],
+    [
+      [
+        "text",
+        "'e"
+      ]
+    ],
+    [
+      [
+        "text",
+        "'i"
+      ]
+    ],
+    [
+      [
+        "text",
+        "'o"
+      ]
+    ],
+    [
+      [
+        "text",
+        "'u"
+      ]
+    ],
+    [
+      [
+        "text",
+        "~a"
+      ]
+    ],
+    [
+      [
+        "text",
+        "~o"
+      ]
+    ],
+    [
+      [
+        "down",
+        230
+      ],
+      [
+        "tap",
+        54
+      ],
+      [
+        "up",
+        230
+      ]
+    ],
+    [
+      [
+        "text",
+        "^a"
+      ]
+    ],
+    [
+      [
+        "text",
+        "^e"
+      ]
+    ],
+    [
+      [
+        "text",
+        "^o"
+      ]
+    ],
+    [
+      [
+        "text",
+        "`a"
+      ]
+    ],
+    [],
+    [],
+    [],
+    []
+  ],
+  "settings": {},
+  "key_override": [
+    {
+      "trigger": 0,
+      "replacement": 0,
+      "layers": 65535,
+      "trigger_mods": 0,
+      "negative_mod_mask": 0,
+      "suppressed_mods": 0,
+      "options": 7
+    },
+    {
+      "trigger": 0,
+      "replacement": 0,
+      "layers": 65535,
+      "trigger_mods": 0,
+      "negative_mod_mask": 0,
+      "suppressed_mods": 0,
+      "options": 7
+    },
+    {
+      "trigger": 0,
+      "replacement": 0,
+      "layers": 65535,
+      "trigger_mods": 0,
+      "negative_mod_mask": 0,
+      "suppressed_mods": 0,
+      "options": 7
+    },
+    {
+      "trigger": 0,
+      "replacement": 0,
+      "layers": 65535,
+      "trigger_mods": 0,
+      "negative_mod_mask": 0,
+      "suppressed_mods": 0,
+      "options": 7
+    },
+    {
+      "trigger": 0,
+      "replacement": 0,
+      "layers": 65535,
+      "trigger_mods": 0,
+      "negative_mod_mask": 0,
+      "suppressed_mods": 0,
+      "options": 7
+    },
+    {
+      "trigger": 0,
+      "replacement": 0,
+      "layers": 65535,
+      "trigger_mods": 0,
+      "negative_mod_mask": 0,
+      "suppressed_mods": 0,
+      "options": 7
+    },
+    {
+      "trigger": 0,
+      "replacement": 0,
+      "layers": 65535,
+      "trigger_mods": 0,
+      "negative_mod_mask": 0,
+      "suppressed_mods": 0,
+      "options": 7
+    },
+    {
+      "trigger": 0,
+      "replacement": 0,
+      "layers": 65535,
+      "trigger_mods": 0,
+      "negative_mod_mask": 0,
+      "suppressed_mods": 0,
+      "options": 7
+    },
+    {
+      "trigger": 0,
+      "replacement": 0,
+      "layers": 65535,
+      "trigger_mods": 0,
+      "negative_mod_mask": 0,
+      "suppressed_mods": 0,
+      "options": 7
+    },
+    {
+      "trigger": 0,
+      "replacement": 0,
+      "layers": 65535,
+      "trigger_mods": 0,
+      "negative_mod_mask": 0,
+      "suppressed_mods": 0,
+      "options": 7
+    },
+    {
+      "trigger": 0,
+      "replacement": 0,
+      "layers": 65535,
+      "trigger_mods": 0,
+      "negative_mod_mask": 0,
+      "suppressed_mods": 0,
+      "options": 7
+    },
+    {
+      "trigger": 0,
+      "replacement": 0,
+      "layers": 65535,
+      "trigger_mods": 0,
+      "negative_mod_mask": 0,
+      "suppressed_mods": 0,
+      "options": 7
+    },
+    {
+      "trigger": 0,
+      "replacement": 0,
+      "layers": 65535,
+      "trigger_mods": 0,
+      "negative_mod_mask": 0,
+      "suppressed_mods": 0,
+      "options": 7
+    },
+    {
+      "trigger": 0,
+      "replacement": 0,
+      "layers": 65535,
+      "trigger_mods": 0,
+      "negative_mod_mask": 0,
+      "suppressed_mods": 0,
+      "options": 7
+    },
+    {
+      "trigger": 0,
+      "replacement": 0,
+      "layers": 65535,
+      "trigger_mods": 0,
+      "negative_mod_mask": 0,
+      "suppressed_mods": 0,
+      "options": 7
+    },
+    {
+      "trigger": 0,
+      "replacement": 0,
+      "layers": 65535,
+      "trigger_mods": 0,
+      "negative_mod_mask": 0,
+      "suppressed_mods": 0,
+      "options": 7
+    },
+    {
+      "trigger": 0,
+      "replacement": 0,
+      "layers": 65535,
+      "trigger_mods": 0,
+      "negative_mod_mask": 0,
+      "suppressed_mods": 0,
+      "options": 7
+    },
+    {
+      "trigger": 0,
+      "replacement": 0,
+      "layers": 65535,
+      "trigger_mods": 0,
+      "negative_mod_mask": 0,
+      "suppressed_mods": 0,
+      "options": 7
+    },
+    {
+      "trigger": 0,
+      "replacement": 0,
+      "layers": 65535,
+      "trigger_mods": 0,
+      "negative_mod_mask": 0,
+      "suppressed_mods": 0,
+      "options": 7
+    },
+    {
+      "trigger": 0,
+      "replacement": 0,
+      "layers": 65535,
+      "trigger_mods": 0,
+      "negative_mod_mask": 0,
+      "suppressed_mods": 0,
+      "options": 7
+    },
+    {
+      "trigger": 0,
+      "replacement": 0,
+      "layers": 65535,
+      "trigger_mods": 0,
+      "negative_mod_mask": 0,
+      "suppressed_mods": 0,
+      "options": 7
+    },
+    {
+      "trigger": 0,
+      "replacement": 0,
+      "layers": 65535,
+      "trigger_mods": 0,
+      "negative_mod_mask": 0,
+      "suppressed_mods": 0,
+      "options": 7
+    },
+    {
+      "trigger": 0,
+      "replacement": 0,
+      "layers": 65535,
+      "trigger_mods": 0,
+      "negative_mod_mask": 0,
+      "suppressed_mods": 0,
+      "options": 7
+    },
+    {
+      "trigger": 0,
+      "replacement": 0,
+      "layers": 65535,
+      "trigger_mods": 0,
+      "negative_mod_mask": 0,
+      "suppressed_mods": 0,
+      "options": 7
+    },
+    {
+      "trigger": 0,
+      "replacement": 0,
+      "layers": 65535,
+      "trigger_mods": 0,
+      "negative_mod_mask": 0,
+      "suppressed_mods": 0,
+      "options": 7
+    },
+    {
+      "trigger": 0,
+      "replacement": 0,
+      "layers": 65535,
+      "trigger_mods": 0,
+      "negative_mod_mask": 0,
+      "suppressed_mods": 0,
+      "options": 7
+    },
+    {
+      "trigger": 0,
+      "replacement": 0,
+      "layers": 65535,
+      "trigger_mods": 0,
+      "negative_mod_mask": 0,
+      "suppressed_mods": 0,
+      "options": 7
+    },
+    {
+      "trigger": 0,
+      "replacement": 0,
+      "layers": 65535,
+      "trigger_mods": 0,
+      "negative_mod_mask": 0,
+      "suppressed_mods": 0,
+      "options": 7
+    },
+    {
+      "trigger": 0,
+      "replacement": 0,
+      "layers": 65535,
+      "trigger_mods": 0,
+      "negative_mod_mask": 0,
+      "suppressed_mods": 0,
+      "options": 7
+    },
+    {
+      "trigger": 0,
+      "replacement": 0,
+      "layers": 65535,
+      "trigger_mods": 0,
+      "negative_mod_mask": 0,
+      "suppressed_mods": 0,
+      "options": 7
+    },
+    {
+      "trigger": 0,
+      "replacement": 0,
+      "layers": 65535,
+      "trigger_mods": 0,
+      "negative_mod_mask": 0,
+      "suppressed_mods": 0,
+      "options": 7
+    },
+    {
+      "trigger": 0,
+      "replacement": 0,
+      "layers": 65535,
+      "trigger_mods": 0,
+      "negative_mod_mask": 0,
+      "suppressed_mods": 0,
+      "options": 7
+    }
+  ]
+}

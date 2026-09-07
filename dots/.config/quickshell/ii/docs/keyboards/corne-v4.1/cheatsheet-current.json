@@ -1,0 +1,3315 @@
+{
+  "schemaVersion": 3,
+  "page": {
+    "id": "keyboard-vial-4589d8fac72a3689",
+    "name": "Corne v4",
+    "icon": "keyboard",
+    "program": "",
+    "programId": "",
+    "useProgramIcon": false,
+    "sourceKind": "manual",
+    "sourcePath": "",
+    "importNote": "",
+    "kind": "keyboard",
+    "keyboard": {
+      "source": "vial",
+      "deviceUid": "4589d8fac72a3689",
+      "name": "Corne v4",
+      "preset": "",
+      "width": 15.5,
+      "height": 5.0256,
+      "keys": [
+        {
+          "row": 0,
+          "col": 3,
+          "x": 3,
+          "y": 0,
+          "w": 1,
+          "h": 1,
+          "r": 0,
+          "rx": -0.5,
+          "ry": -1
+        },
+        {
+          "row": 4,
+          "col": 3,
+          "x": 11.5,
+          "y": 0,
+          "w": 1,
+          "h": 1,
+          "r": 0,
+          "rx": -0.5,
+          "ry": -1
+        },
+        {
+          "row": 0,
+          "col": 2,
+          "x": 2,
+          "y": 0.125,
+          "w": 1,
+          "h": 1,
+          "r": 0,
+          "rx": -0.5,
+          "ry": -1
+        },
+        {
+          "row": 0,
+          "col": 4,
+          "x": 4,
+          "y": 0.125,
+          "w": 1,
+          "h": 1,
+          "r": 0,
+          "rx": -0.5,
+          "ry": -1
+        },
+        {
+          "row": 4,
+          "col": 4,
+          "x": 10.5,
+          "y": 0.125,
+          "w": 1,
+          "h": 1,
+          "r": 0,
+          "rx": -0.5,
+          "ry": -1
+        },
+        {
+          "row": 4,
+          "col": 2,
+          "x": 12.5,
+          "y": 0.125,
+          "w": 1,
+          "h": 1,
+          "r": 0,
+          "rx": -0.5,
+          "ry": -1
+        },
+        {
+          "row": 0,
+          "col": 5,
+          "x": 5,
+          "y": 0.25,
+          "w": 1,
+          "h": 1,
+          "r": 0,
+          "rx": -0.5,
+          "ry": -1
+        },
+        {
+          "row": 4,
+          "col": 5,
+          "x": 9.5,
+          "y": 0.25,
+          "w": 1,
+          "h": 1,
+          "r": 0,
+          "rx": -0.5,
+          "ry": -1
+        },
+        {
+          "row": 0,
+          "col": 0,
+          "x": 0,
+          "y": 0.375,
+          "w": 1,
+          "h": 1,
+          "r": 0,
+          "rx": -0.5,
+          "ry": -1
+        },
+        {
+          "row": 0,
+          "col": 1,
+          "x": 1,
+          "y": 0.375,
+          "w": 1,
+          "h": 1,
+          "r": 0,
+          "rx": -0.5,
+          "ry": -1
+        },
+        {
+          "row": 4,
+          "col": 1,
+          "x": 13.5,
+          "y": 0.375,
+          "w": 1,
+          "h": 1,
+          "r": 0,
+          "rx": -0.5,
+          "ry": -1
+        },
+        {
+          "row": 4,
+          "col": 0,
+          "x": 14.5,
+          "y": 0.375,
+          "w": 1,
+          "h": 1,
+          "r": 0,
+          "rx": -0.5,
+          "ry": -1
+        },
+        {
+          "row": 0,
+          "col": 6,
+          "x": 6,
+          "y": 0.75,
+          "w": 1,
+          "h": 1,
+          "r": 0,
+          "rx": -0.5,
+          "ry": -1
+        },
+        {
+          "row": 4,
+          "col": 6,
+          "x": 8.5,
+          "y": 0.75,
+          "w": 1,
+          "h": 1,
+          "r": 0,
+          "rx": -0.5,
+          "ry": -1
+        },
+        {
+          "row": 1,
+          "col": 3,
+          "x": 3,
+          "y": 1,
+          "w": 1,
+          "h": 1,
+          "r": 0,
+          "rx": -0.5,
+          "ry": -1
+        },
+        {
+          "row": 5,
+          "col": 3,
+          "x": 11.5,
+          "y": 1,
+          "w": 1,
+          "h": 1,
+          "r": 0,
+          "rx": -0.5,
+          "ry": -1
+        },
+        {
+          "row": 1,
+          "col": 2,
+          "x": 2,
+          "y": 1.125,
+          "w": 1,
+          "h": 1,
+          "r": 0,
+          "rx": -0.5,
+          "ry": -1
+        },
+        {
+          "row": 1,
+          "col": 4,
+          "x": 4,
+          "y": 1.125,
+          "w": 1,
+          "h": 1,
+          "r": 0,
+          "rx": -0.5,
+          "ry": -1
+        },
+        {
+          "row": 5,
+          "col": 4,
+          "x": 10.5,
+          "y": 1.125,
+          "w": 1,
+          "h": 1,
+          "r": 0,
+          "rx": -0.5,
+          "ry": -1
+        },
+        {
+          "row": 5,
+          "col": 2,
+          "x": 12.5,
+          "y": 1.125,
+          "w": 1,
+          "h": 1,
+          "r": 0,
+          "rx": -0.5,
+          "ry": -1
+        },
+        {
+          "row": 1,
+          "col": 5,
+          "x": 5,
+          "y": 1.25,
+          "w": 1,
+          "h": 1,
+          "r": 0,
+          "rx": -0.5,
+          "ry": -1
+        },
+        {
+          "row": 5,
+          "col": 5,
+          "x": 9.5,
+          "y": 1.25,
+          "w": 1,
+          "h": 1,
+          "r": 0,
+          "rx": -0.5,
+          "ry": -1
+        },
+        {
+          "row": 1,
+          "col": 0,
+          "x": 0,
+          "y": 1.375,
+          "w": 1,
+          "h": 1,
+          "r": 0,
+          "rx": -0.5,
+          "ry": -1
+        },
+        {
+          "row": 1,
+          "col": 1,
+          "x": 1,
+          "y": 1.375,
+          "w": 1,
+          "h": 1,
+          "r": 0,
+          "rx": -0.5,
+          "ry": -1
+        },
+        {
+          "row": 5,
+          "col": 1,
+          "x": 13.5,
+          "y": 1.375,
+          "w": 1,
+          "h": 1,
+          "r": 0,
+          "rx": -0.5,
+          "ry": -1
+        },
+        {
+          "row": 5,
+          "col": 0,
+          "x": 14.5,
+          "y": 1.375,
+          "w": 1,
+          "h": 1,
+          "r": 0,
+          "rx": -0.5,
+          "ry": -1
+        },
+        {
+          "row": 1,
+          "col": 6,
+          "x": 6,
+          "y": 1.75,
+          "w": 1,
+          "h": 1,
+          "r": 0,
+          "rx": -0.5,
+          "ry": -1
+        },
+        {
+          "row": 5,
+          "col": 6,
+          "x": 8.5,
+          "y": 1.75,
+          "w": 1,
+          "h": 1,
+          "r": 0,
+          "rx": -0.5,
+          "ry": -1
+        },
+        {
+          "row": 2,
+          "col": 3,
+          "x": 3,
+          "y": 2,
+          "w": 1,
+          "h": 1,
+          "r": 0,
+          "rx": -0.5,
+          "ry": -1
+        },
+        {
+          "row": 6,
+          "col": 3,
+          "x": 11.5,
+          "y": 2,
+          "w": 1,
+          "h": 1,
+          "r": 0,
+          "rx": -0.5,
+          "ry": -1
+        },
+        {
+          "row": 2,
+          "col": 2,
+          "x": 2,
+          "y": 2.125,
+          "w": 1,
+          "h": 1,
+          "r": 0,
+          "rx": -0.5,
+          "ry": -1
+        },
+        {
+          "row": 2,
+          "col": 4,
+          "x": 4,
+          "y": 2.125,
+          "w": 1,
+          "h": 1,
+          "r": 0,
+          "rx": -0.5,
+          "ry": -1
+        },
+        {
+          "row": 6,
+          "col": 4,
+          "x": 10.5,
+          "y": 2.125,
+          "w": 1,
+          "h": 1,
+          "r": 0,
+          "rx": -0.5,
+          "ry": -1
+        },
+        {
+          "row": 6,
+          "col": 2,
+          "x": 12.5,
+          "y": 2.125,
+          "w": 1,
+          "h": 1,
+          "r": 0,
+          "rx": -0.5,
+          "ry": -1
+        },
+        {
+          "row": 2,
+          "col": 5,
+          "x": 5,
+          "y": 2.25,
+          "w": 1,
+          "h": 1,
+          "r": 0,
+          "rx": -0.5,
+          "ry": -1
+        },
+        {
+          "row": 6,
+          "col": 5,
+          "x": 9.5,
+          "y": 2.25,
+          "w": 1,
+          "h": 1,
+          "r": 0,
+          "rx": -0.5,
+          "ry": -1
+        },
+        {
+          "row": 2,
+          "col": 0,
+          "x": 0,
+          "y": 2.375,
+          "w": 1,
+          "h": 1,
+          "r": 0,
+          "rx": -0.5,
+          "ry": -1
+        },
+        {
+          "row": 2,
+          "col": 1,
+          "x": 1,
+          "y": 2.375,
+          "w": 1,
+          "h": 1,
+          "r": 0,
+          "rx": -0.5,
+          "ry": -1
+        },
+        {
+          "row": 6,
+          "col": 1,
+          "x": 13.5,
+          "y": 2.375,
+          "w": 1,
+          "h": 1,
+          "r": 0,
+          "rx": -0.5,
+          "ry": -1
+        },
+        {
+          "row": 6,
+          "col": 0,
+          "x": 14.5,
+          "y": 2.375,
+          "w": 1,
+          "h": 1,
+          "r": 0,
+          "rx": -0.5,
+          "ry": -1
+        },
+        {
+          "row": 3,
+          "col": 3,
+          "x": 3.5,
+          "y": 3.25,
+          "w": 1,
+          "h": 1,
+          "r": 0,
+          "rx": -0.5,
+          "ry": -1
+        },
+        {
+          "row": 7,
+          "col": 3,
+          "x": 11,
+          "y": 3.25,
+          "w": 1,
+          "h": 1,
+          "r": 0,
+          "rx": -0.5,
+          "ry": -1
+        },
+        {
+          "row": 3,
+          "col": 4,
+          "x": 3.5,
+          "y": 3.25,
+          "w": 1,
+          "h": 1,
+          "r": 15,
+          "rx": 4,
+          "ry": 8.1
+        },
+        {
+          "row": 3,
+          "col": 5,
+          "x": 3.5,
+          "y": 3.25,
+          "w": 1,
+          "h": 1.5,
+          "r": 30,
+          "rx": 4.9,
+          "ry": 8.3
+        },
+        {
+          "row": 7,
+          "col": 5,
+          "x": 11,
+          "y": 3.25,
+          "w": 1,
+          "h": 1.5,
+          "r": -30,
+          "rx": 10.6,
+          "ry": 8.3
+        },
+        {
+          "row": 7,
+          "col": 4,
+          "x": 11,
+          "y": 3.25,
+          "w": 1,
+          "h": 1,
+          "r": -15,
+          "rx": 11.5,
+          "ry": 8.1
+        }
+      ],
+      "layers": [
+        [
+          {
+            "label": "e",
+            "char": "e",
+            "code": 8,
+            "resolvedCode": 8,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "i",
+            "char": "i",
+            "code": 12,
+            "resolvedCode": 12,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "w",
+            "char": "w",
+            "code": 26,
+            "resolvedCode": 26,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "r",
+            "char": "r",
+            "code": 21,
+            "resolvedCode": 21,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "u",
+            "char": "u",
+            "code": 24,
+            "resolvedCode": 24,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "o",
+            "char": "o",
+            "code": 18,
+            "resolvedCode": 18,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "t",
+            "char": "t",
+            "code": 23,
+            "resolvedCode": 23,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "y",
+            "char": "y",
+            "code": 28,
+            "resolvedCode": 28,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Tab",
+            "char": "\t",
+            "code": 43,
+            "resolvedCode": 43,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "q",
+            "char": "q",
+            "code": 20,
+            "resolvedCode": 20,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "p",
+            "char": "p",
+            "code": 19,
+            "resolvedCode": 19,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Bksp",
+            "char": "",
+            "code": 42,
+            "resolvedCode": 42,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Esc",
+            "char": "",
+            "code": 41,
+            "resolvedCode": 41,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Menu",
+            "char": "",
+            "code": 101,
+            "resolvedCode": 101,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "d",
+            "char": "d",
+            "code": 7,
+            "resolvedCode": 7,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "k",
+            "char": "k",
+            "code": 14,
+            "resolvedCode": 14,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "s",
+            "char": "s",
+            "code": 22,
+            "resolvedCode": 22,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "f",
+            "char": "f",
+            "code": 9,
+            "resolvedCode": 9,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "j",
+            "char": "j",
+            "code": 13,
+            "resolvedCode": 13,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "l",
+            "char": "l",
+            "code": 15,
+            "resolvedCode": 15,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "g",
+            "char": "g",
+            "code": 10,
+            "resolvedCode": 10,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "h",
+            "char": "h",
+            "code": 11,
+            "resolvedCode": 11,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Shift",
+            "char": "",
+            "code": 225,
+            "resolvedCode": 225,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "a",
+            "char": "a",
+            "code": 4,
+            "resolvedCode": 4,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": ";",
+            "char": ";",
+            "code": 51,
+            "resolvedCode": 51,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "'",
+            "char": "'",
+            "code": 5172,
+            "resolvedCode": 5172,
+            "inherited": false,
+            "custom": true,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "WS −",
+            "char": "",
+            "code": 2384,
+            "resolvedCode": 2384,
+            "inherited": false,
+            "custom": true,
+            "icon": "none",
+            "description": "Workspace anterior"
+          },
+          {
+            "label": "WS +",
+            "char": "",
+            "code": 2383,
+            "resolvedCode": 2383,
+            "inherited": false,
+            "custom": true,
+            "icon": "none",
+            "description": "Próximo workspace"
+          },
+          {
+            "label": "c",
+            "char": "c",
+            "code": 6,
+            "resolvedCode": 6,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": ",",
+            "char": ",",
+            "code": 54,
+            "resolvedCode": 54,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "x",
+            "char": "x",
+            "code": 27,
+            "resolvedCode": 27,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "v",
+            "char": "v",
+            "code": 25,
+            "resolvedCode": 25,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "m",
+            "char": "m",
+            "code": 16,
+            "resolvedCode": 16,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": ".",
+            "char": ".",
+            "code": 55,
+            "resolvedCode": 55,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "b",
+            "char": "b",
+            "code": 5,
+            "resolvedCode": 5,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "n",
+            "char": "n",
+            "code": 17,
+            "resolvedCode": 17,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Ctrl",
+            "char": "",
+            "code": 224,
+            "resolvedCode": 224,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "z",
+            "char": "z",
+            "code": 29,
+            "resolvedCode": 29,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "/",
+            "char": "/",
+            "code": 56,
+            "resolvedCode": 56,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Alt",
+            "char": "",
+            "code": 226,
+            "resolvedCode": 226,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Layer 1",
+            "char": "",
+            "code": 21025,
+            "resolvedCode": 21025,
+            "inherited": false,
+            "custom": true,
+            "icon": "none",
+            "description": "Segure para acessar a layer 1"
+          },
+          {
+            "label": "Layer 2",
+            "char": "",
+            "code": 21026,
+            "resolvedCode": 21026,
+            "inherited": false,
+            "custom": true,
+            "icon": "none",
+            "description": "Segure para acessar a layer 2"
+          },
+          {
+            "label": "Space",
+            "char": " ",
+            "code": 44,
+            "resolvedCode": 44,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Super",
+            "char": "",
+            "code": 227,
+            "resolvedCode": 227,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Enter",
+            "char": "\n",
+            "code": 40,
+            "resolvedCode": 40,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Shift / L4",
+            "char": "",
+            "code": 22274,
+            "resolvedCode": 22274,
+            "inherited": false,
+            "custom": true,
+            "icon": "shift",
+            "description": "Shift; double tap prepara a layer 4 para a próxima tecla"
+          }
+        ],
+        [
+          {
+            "label": "↑",
+            "char": "",
+            "code": 82,
+            "resolvedCode": 82,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "↑",
+            "char": "",
+            "code": 82,
+            "resolvedCode": 82,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Ratio −",
+            "char": "",
+            "code": 104,
+            "resolvedCode": 104,
+            "inherited": false,
+            "custom": true,
+            "icon": "",
+            "description": "Diminui a divisão em 0,1"
+          },
+          {
+            "label": "Ratio +",
+            "char": "",
+            "code": 105,
+            "resolvedCode": 105,
+            "inherited": false,
+            "custom": true,
+            "icon": "",
+            "description": "Aumenta a divisão em 0,1"
+          },
+          {
+            "label": "Home",
+            "char": "",
+            "code": 74,
+            "resolvedCode": 74,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "End",
+            "char": "",
+            "code": 77,
+            "resolvedCode": 77,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Super\n'",
+            "char": "",
+            "code": 6196,
+            "resolvedCode": 6196,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "PgUp",
+            "char": "",
+            "code": 75,
+            "resolvedCode": 75,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Shift",
+            "char": "",
+            "code": 225,
+            "resolvedCode": 225,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "",
+            "char": "",
+            "code": 0,
+            "resolvedCode": 0,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "",
+            "char": "",
+            "code": 0,
+            "resolvedCode": 0,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Bksp",
+            "char": "",
+            "code": 42,
+            "resolvedCode": 42,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Wheel\n↑",
+            "char": "",
+            "code": 217,
+            "resolvedCode": 217,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Paste",
+            "char": "",
+            "code": 125,
+            "resolvedCode": 125,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "↓",
+            "char": "",
+            "code": 81,
+            "resolvedCode": 81,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "↓",
+            "char": "",
+            "code": 81,
+            "resolvedCode": 81,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "←",
+            "char": "",
+            "code": 80,
+            "resolvedCode": 80,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "→",
+            "char": "",
+            "code": 79,
+            "resolvedCode": 79,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "←",
+            "char": "",
+            "code": 80,
+            "resolvedCode": 80,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "→",
+            "char": "",
+            "code": 79,
+            "resolvedCode": 79,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "FPS",
+            "char": "",
+            "code": 20997,
+            "resolvedCode": 20997,
+            "inherited": false,
+            "custom": true,
+            "icon": "sports_esports",
+            "description": "Entra no modo de jogos até usar a saída"
+          },
+          {
+            "label": "PgDn",
+            "char": "",
+            "code": 78,
+            "resolvedCode": 78,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Shift",
+            "char": "",
+            "code": 225,
+            "resolvedCode": 225,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "",
+            "char": "",
+            "code": 0,
+            "resolvedCode": 0,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "",
+            "char": "",
+            "code": 0,
+            "resolvedCode": 0,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "",
+            "char": "",
+            "code": 0,
+            "resolvedCode": 0,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Wheel\n↓",
+            "char": "",
+            "code": 218,
+            "resolvedCode": 218,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Copy",
+            "char": "",
+            "code": 124,
+            "resolvedCode": 124,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Ctrl+Shift\nc",
+            "char": "",
+            "code": 774,
+            "resolvedCode": 774,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "RGB\nnext",
+            "char": "",
+            "code": 30753,
+            "resolvedCode": 30753,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "",
+            "char": "",
+            "code": 0,
+            "resolvedCode": 0,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Ctrl+Shift\nv",
+            "char": "",
+            "code": 793,
+            "resolvedCode": 793,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "RGB\nprev",
+            "char": "",
+            "code": 30754,
+            "resolvedCode": 30754,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Hue-",
+            "char": "",
+            "code": 30756,
+            "resolvedCode": 30756,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "",
+            "char": "",
+            "code": 0,
+            "resolvedCode": 0,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "RGB\non/off",
+            "char": "",
+            "code": 30752,
+            "resolvedCode": 30752,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Ctrl",
+            "char": "",
+            "code": 224,
+            "resolvedCode": 224,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Undo",
+            "char": "",
+            "code": 122,
+            "resolvedCode": 122,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Hue+",
+            "char": "",
+            "code": 30755,
+            "resolvedCode": 30755,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Alt",
+            "char": "",
+            "code": 226,
+            "resolvedCode": 226,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Layer 1",
+            "char": "",
+            "code": 21025,
+            "resolvedCode": 21025,
+            "inherited": false,
+            "custom": true,
+            "icon": "none",
+            "description": "Segure para acessar a layer 1"
+          },
+          {
+            "label": "Layer 3",
+            "char": "",
+            "code": 21027,
+            "resolvedCode": 21027,
+            "inherited": false,
+            "custom": true,
+            "icon": "none",
+            "description": "Segure para acessar a layer 3"
+          },
+          {
+            "label": "",
+            "char": "",
+            "code": 0,
+            "resolvedCode": 0,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "",
+            "char": "",
+            "code": 0,
+            "resolvedCode": 0,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Shift+Enter",
+            "char": "",
+            "code": 552,
+            "resolvedCode": 552,
+            "inherited": false,
+            "custom": true,
+            "icon": "",
+            "description": "Envia Shift e Enter juntos"
+          },
+          {
+            "label": "Super",
+            "char": "",
+            "code": 227,
+            "resolvedCode": 227,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          }
+        ],
+        [
+          {
+            "label": "é",
+            "char": "é",
+            "code": 5128,
+            "resolvedCode": 5128,
+            "inherited": false,
+            "custom": true,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "í",
+            "char": "í",
+            "code": 5132,
+            "resolvedCode": 5132,
+            "inherited": false,
+            "custom": true,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "w",
+            "char": "w",
+            "code": 1,
+            "resolvedCode": 26,
+            "inherited": true,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "r",
+            "char": "r",
+            "code": 1,
+            "resolvedCode": 21,
+            "inherited": true,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "ú",
+            "char": "ú",
+            "code": 5144,
+            "resolvedCode": 5144,
+            "inherited": false,
+            "custom": true,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "ó",
+            "char": "ó",
+            "code": 5138,
+            "resolvedCode": 5138,
+            "inherited": false,
+            "custom": true,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "t",
+            "char": "t",
+            "code": 1,
+            "resolvedCode": 23,
+            "inherited": true,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "y",
+            "char": "y",
+            "code": 1,
+            "resolvedCode": 28,
+            "inherited": true,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Tab",
+            "char": "\t",
+            "code": 43,
+            "resolvedCode": 43,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "â",
+            "char": "â",
+            "code": 5140,
+            "resolvedCode": 5140,
+            "inherited": false,
+            "custom": true,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "õ",
+            "char": "õ",
+            "code": 5135,
+            "resolvedCode": 5135,
+            "inherited": false,
+            "custom": true,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Bksp",
+            "char": "",
+            "code": 42,
+            "resolvedCode": 42,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Prev",
+            "char": "",
+            "code": 172,
+            "resolvedCode": 172,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Next",
+            "char": "",
+            "code": 171,
+            "resolvedCode": 171,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "ê",
+            "char": "ê",
+            "code": 5129,
+            "resolvedCode": 5129,
+            "inherited": false,
+            "custom": true,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "k",
+            "char": "k",
+            "code": 1,
+            "resolvedCode": 14,
+            "inherited": true,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "ã",
+            "char": "ã",
+            "code": 5142,
+            "resolvedCode": 5142,
+            "inherited": false,
+            "custom": true,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "f",
+            "char": "f",
+            "code": 1,
+            "resolvedCode": 9,
+            "inherited": true,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "j",
+            "char": "j",
+            "code": 1,
+            "resolvedCode": 13,
+            "inherited": true,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "ô",
+            "char": "ô",
+            "code": 5139,
+            "resolvedCode": 5139,
+            "inherited": false,
+            "custom": true,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "g",
+            "char": "g",
+            "code": 1,
+            "resolvedCode": 10,
+            "inherited": true,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "h",
+            "char": "h",
+            "code": 1,
+            "resolvedCode": 11,
+            "inherited": true,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Shift",
+            "char": "",
+            "code": 225,
+            "resolvedCode": 225,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "á",
+            "char": "á",
+            "code": 5124,
+            "resolvedCode": 5124,
+            "inherited": false,
+            "custom": true,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": ";",
+            "char": ";",
+            "code": 1,
+            "resolvedCode": 51,
+            "inherited": true,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "'",
+            "char": "'",
+            "code": 1,
+            "resolvedCode": 5172,
+            "inherited": true,
+            "custom": true,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Stop",
+            "char": "",
+            "code": 173,
+            "resolvedCode": 173,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Play",
+            "char": "",
+            "code": 174,
+            "resolvedCode": 174,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "ç",
+            "char": "ç",
+            "code": 5174,
+            "resolvedCode": 5174,
+            "inherited": false,
+            "custom": true,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": ",",
+            "char": ",",
+            "code": 1,
+            "resolvedCode": 54,
+            "inherited": true,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "x",
+            "char": "x",
+            "code": 1,
+            "resolvedCode": 27,
+            "inherited": true,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "v",
+            "char": "v",
+            "code": 1,
+            "resolvedCode": 25,
+            "inherited": true,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "m",
+            "char": "m",
+            "code": 1,
+            "resolvedCode": 16,
+            "inherited": true,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": ".",
+            "char": ".",
+            "code": 1,
+            "resolvedCode": 55,
+            "inherited": true,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "b",
+            "char": "b",
+            "code": 1,
+            "resolvedCode": 5,
+            "inherited": true,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "n",
+            "char": "n",
+            "code": 1,
+            "resolvedCode": 17,
+            "inherited": true,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Ctrl",
+            "char": "",
+            "code": 224,
+            "resolvedCode": 224,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "à",
+            "char": "à",
+            "code": 5146,
+            "resolvedCode": 5146,
+            "inherited": false,
+            "custom": true,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "/",
+            "char": "/",
+            "code": 1,
+            "resolvedCode": 56,
+            "inherited": true,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Alt",
+            "char": "",
+            "code": 226,
+            "resolvedCode": 226,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Layer 3",
+            "char": "",
+            "code": 21027,
+            "resolvedCode": 21027,
+            "inherited": false,
+            "custom": true,
+            "icon": "none",
+            "description": "Segure para acessar a layer 3"
+          },
+          {
+            "label": "Layer 2",
+            "char": "",
+            "code": 21026,
+            "resolvedCode": 21026,
+            "inherited": false,
+            "custom": true,
+            "icon": "none",
+            "description": "Segure para acessar a layer 2"
+          },
+          {
+            "label": "Layer 4",
+            "char": "",
+            "code": 21028,
+            "resolvedCode": 21028,
+            "inherited": false,
+            "custom": true,
+            "icon": "none",
+            "description": "Segure para acessar a layer 4"
+          },
+          {
+            "label": "",
+            "char": "",
+            "code": 0,
+            "resolvedCode": 0,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Shift+Enter",
+            "char": "",
+            "code": 552,
+            "resolvedCode": 552,
+            "inherited": false,
+            "custom": true,
+            "icon": "",
+            "description": "Envia Shift e Enter juntos"
+          },
+          {
+            "label": "R\nShift",
+            "char": "",
+            "code": 229,
+            "resolvedCode": 229,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          }
+        ],
+        [
+          {
+            "label": "F4",
+            "char": "",
+            "code": 61,
+            "resolvedCode": 61,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "F9",
+            "char": "",
+            "code": 66,
+            "resolvedCode": 66,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "F3",
+            "char": "",
+            "code": 60,
+            "resolvedCode": 60,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "F5",
+            "char": "",
+            "code": 62,
+            "resolvedCode": 62,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "F8",
+            "char": "",
+            "code": 65,
+            "resolvedCode": 65,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "F10",
+            "char": "",
+            "code": 67,
+            "resolvedCode": 67,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "F6",
+            "char": "",
+            "code": 63,
+            "resolvedCode": 63,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "F7",
+            "char": "",
+            "code": 64,
+            "resolvedCode": 64,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "F1",
+            "char": "",
+            "code": 58,
+            "resolvedCode": 58,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "F2",
+            "char": "",
+            "code": 59,
+            "resolvedCode": 59,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "F11",
+            "char": "",
+            "code": 68,
+            "resolvedCode": 68,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "F12",
+            "char": "",
+            "code": 69,
+            "resolvedCode": 69,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Vol+",
+            "char": "",
+            "code": 169,
+            "resolvedCode": 169,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Bri+",
+            "char": "",
+            "code": 189,
+            "resolvedCode": 189,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "3",
+            "char": "3",
+            "code": 32,
+            "resolvedCode": 32,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "8",
+            "char": "8",
+            "code": 37,
+            "resolvedCode": 37,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "2",
+            "char": "2",
+            "code": 31,
+            "resolvedCode": 31,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "4",
+            "char": "4",
+            "code": 33,
+            "resolvedCode": 33,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "7",
+            "char": "7",
+            "code": 36,
+            "resolvedCode": 36,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "9",
+            "char": "9",
+            "code": 38,
+            "resolvedCode": 38,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "5",
+            "char": "5",
+            "code": 34,
+            "resolvedCode": 34,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "6",
+            "char": "6",
+            "code": 35,
+            "resolvedCode": 35,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Shift",
+            "char": "",
+            "code": 225,
+            "resolvedCode": 225,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "1",
+            "char": "1",
+            "code": 30,
+            "resolvedCode": 30,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "0",
+            "char": "0",
+            "code": 39,
+            "resolvedCode": 39,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "",
+            "char": "",
+            "code": 0,
+            "resolvedCode": 0,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Vol-",
+            "char": "",
+            "code": 170,
+            "resolvedCode": 170,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Bri-",
+            "char": "",
+            "code": 190,
+            "resolvedCode": 190,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "",
+            "char": "",
+            "code": 0,
+            "resolvedCode": 0,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "RGB-",
+            "char": "",
+            "code": 30760,
+            "resolvedCode": 30760,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "",
+            "char": "",
+            "code": 0,
+            "resolvedCode": 0,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "",
+            "char": "",
+            "code": 0,
+            "resolvedCode": 0,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "RGB\nnext",
+            "char": "",
+            "code": 30753,
+            "resolvedCode": 30753,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "RGB+",
+            "char": "",
+            "code": 30759,
+            "resolvedCode": 30759,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Super\nF7",
+            "char": "",
+            "code": 2112,
+            "resolvedCode": 2112,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "RGB\non/off",
+            "char": "",
+            "code": 30752,
+            "resolvedCode": 30752,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Ctrl",
+            "char": "",
+            "code": 224,
+            "resolvedCode": 224,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "",
+            "char": "",
+            "code": 0,
+            "resolvedCode": 0,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Hue+",
+            "char": "",
+            "code": 30755,
+            "resolvedCode": 30755,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Alt",
+            "char": "",
+            "code": 226,
+            "resolvedCode": 226,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Layer 1",
+            "char": "",
+            "code": 21025,
+            "resolvedCode": 21025,
+            "inherited": false,
+            "custom": true,
+            "icon": "none",
+            "description": "Segure para acessar a layer 1"
+          },
+          {
+            "label": "Layer 2",
+            "char": "",
+            "code": 21026,
+            "resolvedCode": 21026,
+            "inherited": false,
+            "custom": true,
+            "icon": "none",
+            "description": "Segure para acessar a layer 2"
+          },
+          {
+            "label": "Space",
+            "char": " ",
+            "code": 44,
+            "resolvedCode": 44,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Super",
+            "char": "",
+            "code": 227,
+            "resolvedCode": 227,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Enter",
+            "char": "\n",
+            "code": 40,
+            "resolvedCode": 40,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "R\nShift",
+            "char": "",
+            "code": 229,
+            "resolvedCode": 229,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          }
+        ],
+        [
+          {
+            "label": "#",
+            "char": "#",
+            "code": 544,
+            "resolvedCode": 544,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "*",
+            "char": "*",
+            "code": 549,
+            "resolvedCode": 549,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "@",
+            "char": "@",
+            "code": 543,
+            "resolvedCode": 543,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "$",
+            "char": "$",
+            "code": 545,
+            "resolvedCode": 545,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "&",
+            "char": "&",
+            "code": 548,
+            "resolvedCode": 548,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "",
+            "char": "",
+            "code": 0,
+            "resolvedCode": 0,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "%",
+            "char": "%",
+            "code": 546,
+            "resolvedCode": 546,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "^",
+            "char": "^",
+            "code": 5667,
+            "resolvedCode": 5667,
+            "inherited": false,
+            "custom": true,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Tab",
+            "char": "\t",
+            "code": 43,
+            "resolvedCode": 43,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "!",
+            "char": "!",
+            "code": 542,
+            "resolvedCode": 542,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "",
+            "char": "",
+            "code": 0,
+            "resolvedCode": 0,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Del",
+            "char": "",
+            "code": 76,
+            "resolvedCode": 76,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": ";",
+            "char": ";",
+            "code": 51,
+            "resolvedCode": 51,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "º",
+            "char": "º",
+            "code": 5136,
+            "resolvedCode": 5136,
+            "inherited": false,
+            "custom": true,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "(",
+            "char": "(",
+            "code": 550,
+            "resolvedCode": 550,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "=",
+            "char": "=",
+            "code": 46,
+            "resolvedCode": 46,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "{",
+            "char": "{",
+            "code": 559,
+            "resolvedCode": 559,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": ")",
+            "char": ")",
+            "code": 551,
+            "resolvedCode": 551,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "}",
+            "char": "}",
+            "code": 560,
+            "resolvedCode": 560,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "+",
+            "char": "+",
+            "code": 558,
+            "resolvedCode": 558,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "]",
+            "char": "]",
+            "code": 48,
+            "resolvedCode": 48,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "",
+            "char": "",
+            "code": 0,
+            "resolvedCode": 0,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Shift",
+            "char": "",
+            "code": 225,
+            "resolvedCode": 225,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "[",
+            "char": "[",
+            "code": 47,
+            "resolvedCode": 47,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "-",
+            "char": "-",
+            "code": 45,
+            "resolvedCode": 45,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "_",
+            "char": "_",
+            "code": 557,
+            "resolvedCode": 557,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": ":",
+            "char": ":",
+            "code": 563,
+            "resolvedCode": 563,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "ª",
+            "char": "ª",
+            "code": 5648,
+            "resolvedCode": 5648,
+            "inherited": false,
+            "custom": true,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "°",
+            "char": "°",
+            "code": 5683,
+            "resolvedCode": 5683,
+            "inherited": false,
+            "custom": true,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "<",
+            "char": "<",
+            "code": 566,
+            "resolvedCode": 566,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "~",
+            "char": "~",
+            "code": 5685,
+            "resolvedCode": 5685,
+            "inherited": false,
+            "custom": true,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "\\",
+            "char": "\\",
+            "code": 49,
+            "resolvedCode": 49,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "'",
+            "char": "'",
+            "code": 5172,
+            "resolvedCode": 5172,
+            "inherited": false,
+            "custom": true,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": ">",
+            "char": ">",
+            "code": 567,
+            "resolvedCode": 567,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "|",
+            "char": "|",
+            "code": 561,
+            "resolvedCode": 561,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "\"",
+            "char": "\"",
+            "code": 5684,
+            "resolvedCode": 5684,
+            "inherited": false,
+            "custom": true,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Ctrl",
+            "char": "",
+            "code": 224,
+            "resolvedCode": 224,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "`",
+            "char": "`",
+            "code": 5173,
+            "resolvedCode": 5173,
+            "inherited": false,
+            "custom": true,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "?",
+            "char": "?",
+            "code": 568,
+            "resolvedCode": 568,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Alt",
+            "char": "",
+            "code": 226,
+            "resolvedCode": 226,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Layer 1",
+            "char": "",
+            "code": 21025,
+            "resolvedCode": 21025,
+            "inherited": false,
+            "custom": true,
+            "icon": "none",
+            "description": "Segure para acessar a layer 1"
+          },
+          {
+            "label": "Layer 2",
+            "char": "",
+            "code": 21026,
+            "resolvedCode": 21026,
+            "inherited": false,
+            "custom": true,
+            "icon": "none",
+            "description": "Segure para acessar a layer 2"
+          },
+          {
+            "label": "Space",
+            "char": " ",
+            "code": 44,
+            "resolvedCode": 44,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Super",
+            "char": "",
+            "code": 227,
+            "resolvedCode": 227,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Enter",
+            "char": "\n",
+            "code": 40,
+            "resolvedCode": 40,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "R\nShift",
+            "char": "",
+            "code": 229,
+            "resolvedCode": 229,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          }
+        ],
+        [
+          {
+            "label": "e",
+            "char": "e",
+            "code": 8,
+            "resolvedCode": 8,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "↑",
+            "char": "",
+            "code": 82,
+            "resolvedCode": 82,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "w",
+            "char": "w",
+            "code": 26,
+            "resolvedCode": 26,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "r",
+            "char": "r",
+            "code": 21,
+            "resolvedCode": 21,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "q",
+            "char": "q",
+            "code": 20,
+            "resolvedCode": 20,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "e",
+            "char": "e",
+            "code": 8,
+            "resolvedCode": 8,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "t",
+            "char": "t",
+            "code": 23,
+            "resolvedCode": 23,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Tab",
+            "char": "\t",
+            "code": 43,
+            "resolvedCode": 43,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Tab",
+            "char": "\t",
+            "code": 43,
+            "resolvedCode": 43,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "q",
+            "char": "q",
+            "code": 20,
+            "resolvedCode": 20,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "r",
+            "char": "r",
+            "code": 21,
+            "resolvedCode": 21,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Bksp",
+            "char": "",
+            "code": 42,
+            "resolvedCode": 42,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Esc",
+            "char": "",
+            "code": 41,
+            "resolvedCode": 41,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Esc",
+            "char": "",
+            "code": 41,
+            "resolvedCode": 41,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "d",
+            "char": "d",
+            "code": 7,
+            "resolvedCode": 7,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "↓",
+            "char": "",
+            "code": 81,
+            "resolvedCode": 81,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "s",
+            "char": "s",
+            "code": 22,
+            "resolvedCode": 22,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "f",
+            "char": "f",
+            "code": 9,
+            "resolvedCode": 9,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "←",
+            "char": "",
+            "code": 80,
+            "resolvedCode": 80,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "→",
+            "char": "",
+            "code": 79,
+            "resolvedCode": 79,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "g",
+            "char": "g",
+            "code": 10,
+            "resolvedCode": 10,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "f",
+            "char": "f",
+            "code": 9,
+            "resolvedCode": 9,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Shift",
+            "char": "",
+            "code": 225,
+            "resolvedCode": 225,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "a",
+            "char": "a",
+            "code": 4,
+            "resolvedCode": 4,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "g",
+            "char": "g",
+            "code": 10,
+            "resolvedCode": 10,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "v",
+            "char": "v",
+            "code": 25,
+            "resolvedCode": 25,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "",
+            "char": "",
+            "code": 0,
+            "resolvedCode": 0,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "",
+            "char": "",
+            "code": 0,
+            "resolvedCode": 0,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "c",
+            "char": "c",
+            "code": 6,
+            "resolvedCode": 6,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "3",
+            "char": "3",
+            "code": 32,
+            "resolvedCode": 32,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "x",
+            "char": "x",
+            "code": 27,
+            "resolvedCode": 27,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "v",
+            "char": "v",
+            "code": 25,
+            "resolvedCode": 25,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "2",
+            "char": "2",
+            "code": 31,
+            "resolvedCode": 31,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "4",
+            "char": "4",
+            "code": 33,
+            "resolvedCode": 33,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "b",
+            "char": "b",
+            "code": 5,
+            "resolvedCode": 5,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "1",
+            "char": "1",
+            "code": 30,
+            "resolvedCode": 30,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Ctrl",
+            "char": "",
+            "code": 224,
+            "resolvedCode": 224,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "z",
+            "char": "z",
+            "code": 29,
+            "resolvedCode": 29,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "5",
+            "char": "5",
+            "code": 34,
+            "resolvedCode": 34,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Alt",
+            "char": "",
+            "code": 226,
+            "resolvedCode": 226,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Space",
+            "char": " ",
+            "code": 44,
+            "resolvedCode": 44,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Sair",
+            "char": "",
+            "code": 20992,
+            "resolvedCode": 20992,
+            "inherited": false,
+            "custom": true,
+            "icon": "logout",
+            "description": "Volta para a layer 0"
+          },
+          {
+            "label": "Ctrl",
+            "char": "",
+            "code": 224,
+            "resolvedCode": 224,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Shift",
+            "char": "",
+            "code": 225,
+            "resolvedCode": 225,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "Enter",
+            "char": "\n",
+            "code": 40,
+            "resolvedCode": 40,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          },
+          {
+            "label": "R\nShift",
+            "char": "",
+            "code": 229,
+            "resolvedCode": 229,
+            "inherited": false,
+            "custom": false,
+            "icon": "",
+            "description": ""
+          }
+        ]
+      ],
+      "layerNames": [
+        "",
+        "",
+        "",
+        "",
+        "",
+        ""
+      ],
+      "readAt": "2026-09-07T18:49:13.837Z"
+    },
+    "keybinds": []
+  }
+}

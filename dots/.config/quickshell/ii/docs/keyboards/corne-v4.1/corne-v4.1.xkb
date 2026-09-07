@@ -1,0 +1,19 @@
+// US International plus Brazilian characters used by the Corne Vial layout.
+// Applied only to foostan-corne-v4-keyboard; other keyboards keep their layout.
+// Level 3 = AltGr, level 4 = AltGr+Shift. Ordinary typing/shortcuts stay US.
+xkb_keymap {
+    xkb_keycodes { include "evdev+aliases(qwerty)" };
+    xkb_types { include "complete" };
+    xkb_compatibility { include "complete" };
+    xkb_symbols {
+        include "pc+us(intl)+inet(evdev)"
+        name[Group1] = "Corne II - US International + PT-BR";
+        key <AD01> { [ q, Q, acircumflex, Acircumflex ] };
+        key <AD02> { [ w, W, agrave, Agrave ] };
+        key <AD10> { [ p, P, ocircumflex, Ocircumflex ] };
+        key <AC02> { [ s, S, atilde, Atilde ] };
+        key <AC04> { [ f, F, ecircumflex, Ecircumflex ] };
+        key <AC09> { [ l, L, otilde, Otilde ] };
+        key <AB07> { [ m, M, masculine, ordfeminine ] };
+    };
+};

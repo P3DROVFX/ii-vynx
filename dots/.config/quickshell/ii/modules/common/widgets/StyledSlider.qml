@@ -159,7 +159,8 @@ Slider {
                     lineWidth: Math.max(6, root.trackWidth)
                     amplitudeMultiplier: root.wavy ? 0.6 : 0
                     width: parent.width
-                    height: root.trackWidth * 1.5
+                    anchors.verticalCenter: parent.verticalCenter
+                    height: Math.max(parent.height, root.trackWidth * 2.5)
                     animateWave: root.animateWave
                 }
             }

@@ -9,6 +9,8 @@ import qs.modules.common
 import qs.modules.common.functions
 import qs.modules.common.widgets
 import qs.services
+import qs.modules.ii.overview.typing
+import "../../common/functions/KeyboardMap.js" as KeyboardMap
 
 /**
  * Multipage shortcut library.
@@ -36,6 +38,7 @@ Item {
     property int pageTransitionDirection: 1
     property string toastMessage: ""
     property bool toastError: false
+    property bool keyboardDetectionRequested: false
     readonly property bool sidebarVisible: Persistent.states.cheatsheet.keybindSidebarVisible
     readonly property real sidebarWidth: Math.max(230, Math.min(280, root.width * 0.18))
     readonly property bool pageFormShowing: pageForm.isOpen || pageForm.isAnimating
@@ -47,6 +50,7 @@ Item {
         const appId = String(toplevel.appId ?? "").toLowerCase().trim();
         const title = String(toplevel.title ?? "").toLowerCase().trim();
         for (const page of KeybindsService.pages ?? []) {
+            if (page.kind === "keyboard") continue;
             const pageApp = String(page.programId || page.program || page.name).toLowerCase().trim();
             if (pageApp && (appId.includes(pageApp) || pageApp.includes(appId) || title.includes(pageApp)))
                 return page;
@@ -55,12 +59,29 @@ Item {
     }
     readonly property var appPages: {
         const revision = KeybindsService.revision;
-        return (KeybindsService.pages ?? []).filter(page => Boolean(page.program || page.programId || (page.sourceKind && page.sourceKind !== "manual")));
+        return (KeybindsService.pages ?? []).filter(page => page.kind !== "keyboard" && Boolean(page.program || page.programId || (page.sourceKind && page.sourceKind !== "manual")));
     }
     readonly property var personalPages: {
         const revision = KeybindsService.revision;
-        return (KeybindsService.pages ?? []).filter(page => !page.program && !page.programId && (!page.sourceKind || page.sourceKind === "manual"));
+        return (KeybindsService.pages ?? []).filter(page => page.kind !== "keyboard" && !page.program && !page.programId && (!page.sourceKind || page.sourceKind === "manual"));
     }
+    readonly property var keyboardPages: {
+        const revision = KeybindsService.revision;
+        return (KeybindsService.pages ?? []).filter(page => page.kind === "keyboard");
+    }
+    function createKeyboard(): void {
+        KeybindsService.createKeyboardPage(KeyboardMap.manual(TypingKeyboardLayouts.rowsFor("qwerty"), "qwerty"));
+    }
+
+    Connections {
+        target: VialKeyboard
+        function onReadFinished(success) {
+            if (!root.keyboardDetectionRequested) return;
+            root.keyboardDetectionRequested = false;
+            KeybindsService.importKeyboardSnapshot(success ? VialKeyboard.snapshot : null);
+        }
+    }
+
     readonly property int personalShortcutCount: {
         const revision = KeybindsService.revision;
         return KeybindsService.pages.reduce((total, page) => total + (page.keybinds ?? []).length, 0);
@@ -257,6 +278,7 @@ Item {
         required property string pageIcon
         required property int shortcutCount
         property string pageSubtitle: ""
+        property string countLabel: Translation.tr("shortcuts")
         property string pageProgram: ""
         property string pageProgramId: ""
         property bool pageUseProgramIcon: false
@@ -278,7 +300,7 @@ Item {
         colBackgroundToggled: Appearance.colors.colSecondaryContainer
         colBackgroundToggledHover: Appearance.colors.colSecondaryContainerHover
         colBackgroundToggledActive: Appearance.colors.colSecondaryContainerActive
-        Accessible.name: pageButton.pageName + ", " + String(pageButton.shortcutCount) + " " + Translation.tr("shortcuts")
+        Accessible.name: pageButton.pageName + ", " + String(pageButton.shortcutCount) + " " + pageButton.countLabel
         onClicked: root.selectPage(pageId)
 
         contentItem: RowLayout {
@@ -659,6 +681,58 @@ Item {
                         }
 
                         ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 4
+                            RailSectionHeader {
+                                symbol: "keyboard"
+                                label: Translation.tr("Keyboards")
+                                count: root.keyboardPages.length
+                            }
+                            Repeater {
+                                model: root.keyboardPages
+                                delegate: PageButton {
+                                    required property var modelData
+                                    pageId: modelData.id
+                                    pageName: modelData.name
+                                    pageIcon: "keyboard"
+                                    pageSubtitle: Translation.tr("%1 layers").arg(String(modelData.keyboard.layers.length))
+                                    shortcutCount: modelData.keyboard.keys.length
+                                    countLabel: Translation.tr("keys")
+                                }
+                            }
+                            RippleButtonWithIcon {
+                                Layout.fillWidth: true
+                                implicitHeight: 40
+                                materialIcon: "language"
+                                mainText: KeybindsService.detectingSystemKeyboard ? Translation.tr("Reading…") : Translation.tr("Detect layout")
+                                buttonRadius: Appearance.rounding.full
+                                enabled: KeybindsService.ready && KeybindsService.writable && !KeybindsService.detectingSystemKeyboard
+                                onClicked: KeybindsService.detectSystemKeyboard()
+                            }
+                            RippleButtonWithIcon {
+                                Layout.fillWidth: true
+                                implicitHeight: 40
+                                materialIcon: "usb"
+                                mainText: VialKeyboard.loading ? Translation.tr("Reading…") : Translation.tr("Detect Vial")
+                                buttonRadius: Appearance.rounding.full
+                                enabled: KeybindsService.ready && KeybindsService.writable && !VialKeyboard.loading
+                                onClicked: {
+                                    root.keyboardDetectionRequested = true;
+                                    VialKeyboard.refresh();
+                                }
+                            }
+                            RippleButtonWithIcon {
+                                Layout.fillWidth: true
+                                implicitHeight: 40
+                                materialIcon: "add"
+                                mainText: Translation.tr("New keyboard")
+                                buttonRadius: Appearance.rounding.full
+                                enabled: KeybindsService.ready && KeybindsService.writable
+                                onClicked: root.createKeyboard()
+                            }
+                        }
+
+                        ColumnLayout {
                             visible: root.personalPages.length > 0 || KeybindsService.pages.length === 0
                             Layout.fillWidth: true
                             spacing: 4
@@ -872,7 +946,7 @@ Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
             opacity: root.pageTransitionOpacity
-            sourceComponent: root.hyprlandSelected ? hyprlandPage : customPage
+            sourceComponent: root.hyprlandSelected ? hyprlandPage : root.selectedPage?.kind === "keyboard" ? keyboardPage : customPage
 
             transform: Translate {
                 x: root.pageTransitionShift
@@ -886,6 +960,15 @@ Item {
         CheatsheetHyprlandKeybinds {
             keyNavTarget: root.keyNavTarget
             tabActive: root.isTabActive
+        }
+    }
+
+    Component {
+        id: keyboardPage
+        CheatsheetKeyboardPage {
+            pageId: root.displayedPageId
+            keyNavTarget: root.keyNavTarget
+            tabActive: root.isTabActive && !root.pageFormShowing
         }
     }
 

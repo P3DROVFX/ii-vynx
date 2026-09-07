@@ -33,6 +33,12 @@ Item {
     property bool keepCategory: false
     property bool keepContext: false
     property bool recordingKeys: false
+    property bool keyboardMode: false
+    property int keyboardLayer: 0
+    property int keyboardIndex: -1
+    readonly property var keyboardKeyChoices: ["", "Super", "Ctrl", "Shift", "Alt", "Enter", "Space", "Bksp", "Esc", "Tab", "←", "↓", "↑", "→", "Home", "End", "PgUp", "PgDn", "Del", "Ins", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12", "Play", "Prev", "Next", "Vol+", "Vol-", "Mute"]
+    readonly property var keyboardIconChoices: ["keyboard_command_key", "shift", "keyboard_control_key", "keyboard_option_key", "keyboard_return", "space_bar", "backspace", "keyboard_tab", "arrow_back", "arrow_downward", "arrow_upward", "arrow_forward", "home", "last_page", "layers", "desktop_windows", "content_copy", "content_paste", "undo", "redo", "play_pause", "skip_previous", "skip_next", "volume_up", "volume_down", "volume_off", "brightness_high", "brightness_low", "light_mode", "sports_esports", "code", "terminal"]
+
 
     readonly property var conflicts: KeybindsService.detectConflicts(root.pageId, keysField.text, root.editingKeybindId)
 
@@ -121,6 +127,7 @@ Item {
     }
 
     function openCreate(): void {
+        root.keyboardMode = false;
         root.editingKeybindId = "";
         root.sessionAddCount = 0;
         root.resetFields();
@@ -128,6 +135,7 @@ Item {
     }
 
     function openEdit(entry): void {
+        root.keyboardMode = false;
         if (!entry)
             return;
         root.editingKeybindId = String(entry.id ?? "");
@@ -143,7 +151,34 @@ Item {
         root.isOpen = true;
     }
 
+    function openKeyboardKey(layer, index, entry): void {
+        // A new selection can arrive before the previous layer's close
+        // animation finishes. Its completion must not close this new edit.
+        const reopening = closeAnimation.running;
+        closeAnimation.stop();
+        root.keyboardMode = true;
+        root.keyboardLayer = layer;
+        root.keyboardIndex = index;
+        root.editingKeybindId = "keyboard-key";
+        keyboardLabelField.text = String(entry.label ?? "");
+        keyboardDescriptionField.text = String(entry.description ?? "");
+        root.iconValue = String(entry.icon ?? "");
+        root.confirmingDelete = false;
+        root.isOpen = true;
+        if (reopening) {
+            root.isAnimating = true;
+            openAnimation.restart();
+        }
+        Qt.callLater(() => keyboardLabelField.forceActiveFocus());
+    }
+
     function saveForm(andNext = false): void {
+        if (root.keyboardMode) {
+            if (KeybindsService.updateKeyboardKey(root.pageId, root.keyboardLayer, root.keyboardIndex,
+                    keyboardLabelField.text, root.iconValue, keyboardDescriptionField.text))
+                root.close();
+            return;
+        }
         const keys = keysField.text.trim();
         const description = descriptionField.text.trim();
         keysField.error = !keys;
@@ -207,7 +242,7 @@ Item {
         root.pageShift = 28;
         root.pageOpacity = 0;
         openAnimation.restart();
-        Qt.callLater(() => keysField.forceActiveFocus());
+        Qt.callLater(() => root.keyboardMode ? keyboardLabelField.forceActiveFocus() : keysField.forceActiveFocus());
     }
 
     Timer {
@@ -311,7 +346,7 @@ Item {
 
                     StyledText {
                         Layout.fillWidth: true
-                        text: root.editingKeybindId ? Translation.tr("Edit shortcut") : Translation.tr("New shortcut")
+                        text: root.keyboardMode ? Translation.tr("Edit key") : root.editingKeybindId ? Translation.tr("Edit shortcut") : Translation.tr("New shortcut")
                         font.pixelSize: Appearance.font.pixelSize.large
                         font.weight: Font.Bold
                         color: Appearance.colors.colOnSurface
@@ -328,7 +363,7 @@ Item {
                 }
 
                 RippleButton {
-                    visible: Boolean(root.editingKeybindId)
+                    visible: Boolean(root.editingKeybindId) && !root.keyboardMode
                     implicitWidth: 38
                     implicitHeight: 38
                     buttonRadius: Appearance.rounding.full
@@ -380,7 +415,92 @@ Item {
                 }
 
                 StyledFlickable {
+                    id: keyboardFlick
+                    anchors.fill: parent
+                    visible: root.keyboardMode
+                    clip: true
+                    contentWidth: width
+                    contentHeight: keyboardFields.implicitHeight
+                    ColumnLayout {
+                        id: keyboardFields
+                        width: keyboardFlick.width
+                        spacing: 12
+                        StyledText {
+                            Layout.fillWidth: true
+                            text: Translation.tr("Layer %1 · visual mapping").arg(String(root.keyboardLayer))
+                            color: Appearance.colors.colPrimary
+                            font.pixelSize: Appearance.font.pixelSize.small
+                        }
+                        StyledText {
+                            Layout.fillWidth: true
+                            text: Translation.tr("Choose a key or type your own label.")
+                            wrapMode: Text.Wrap
+                            color: Appearance.colors.colOnSurfaceVariant
+                        }
+                        StyledComboBox {
+                            Layout.fillWidth: true
+                            model: root.keyboardKeyChoices
+                            onActivated: index => {
+                                keyboardLabelField.text = root.keyboardKeyChoices[index];
+                                root.iconValue = "";
+                            }
+                        }
+                        FilledTextField {
+                            id: keyboardLabelField
+                            Layout.fillWidth: true
+                            accessibleName: Translation.tr("Key label")
+                            placeholderText: Translation.tr("Key label")
+                            navigationTarget: root.keyNavTarget
+                            onAccepted: root.saveForm()
+                        }
+                        StyledText {
+                            text: Translation.tr("Key icon")
+                            font.weight: Font.Bold
+                        }
+                        RowLayout {
+                            Layout.fillWidth: true
+                            ChoiceChip {
+                                label: Translation.tr("Automatic")
+                                symbol: "auto_awesome"
+                                selected: root.iconValue === ""
+                                onTriggered: root.iconValue = ""
+                            }
+                            ChoiceChip {
+                                label: Translation.tr("Text only")
+                                symbol: "text_fields"
+                                selected: root.iconValue === "none"
+                                onTriggered: root.iconValue = "none"
+                            }
+                        }
+                        Flow {
+                            Layout.fillWidth: true
+                            spacing: 6
+                            Repeater {
+                                model: root.keyboardIconChoices
+                                delegate: IconChoice {
+                                    required property string modelData
+                                    symbol: modelData
+                                    choiceValue: modelData
+                                    label: modelData.replace(/_/g, " ")
+                                    selected: root.iconValue === modelData
+                                    onTriggered: root.iconValue = choiceValue
+                                }
+                            }
+                        }
+                        FilledTextField {
+                            id: keyboardDescriptionField
+                            Layout.fillWidth: true
+                            accessibleName: Translation.tr("What this key does")
+                            placeholderText: Translation.tr("What this key does (optional)")
+                            navigationTarget: root.keyNavTarget
+                            onAccepted: root.saveForm()
+                        }
+                    }
+                }
+
+                StyledFlickable {
                     id: editorFlick
+                    visible: !root.keyboardMode
                     anchors.fill: parent
                     clip: true
                     contentWidth: width
@@ -816,7 +936,7 @@ Item {
                     Layout.preferredWidth: 1.35
                     label: root.editingKeybindId ? Translation.tr("Save") : Translation.tr("Add & next")
                     symbol: root.editingKeybindId ? "check" : "add"
-                    enabled: keysField.text.trim().length > 0 && descriptionField.text.trim().length > 0
+                    enabled: KeybindsService.writable && (root.keyboardMode || (keysField.text.trim().length > 0 && descriptionField.text.trim().length > 0))
                     onTriggered: root.saveForm(!root.editingKeybindId)
                 }
             }

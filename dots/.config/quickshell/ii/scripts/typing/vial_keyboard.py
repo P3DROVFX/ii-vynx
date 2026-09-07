@@ -295,6 +295,8 @@ def layout_groups(definition):
 # the character the key actually types, which is what lets the typing test keep
 # pointing at the next key on a keymap it has never seen before.
 _BASIC = {
+    0x7A: ("Undo", ""), 0x7B: ("Cut", ""), 0x7C: ("Copy", ""), 0x7D: ("Paste", ""),
+    0xAD: ("Stop", ""), 0xD9: ("Wheel\n↑", ""), 0xDA: ("Wheel\n↓", ""),
     0xA8: ("Mute", ""), 0xA9: ("Vol+", ""), 0xAA: ("Vol-", ""),
     0xAB: ("Next", ""), 0xAC: ("Prev", ""), 0xAE: ("Play", ""),
     0xBD: ("Bri+", ""), 0xBE: ("Bri-", ""),
@@ -323,6 +325,8 @@ _SHIFTED = {
 }
 
 _QUANTUM = {
+    0x7820: "RGB\non/off", 0x7821: "RGB\nnext", 0x7822: "RGB\nprev",
+    0x7823: "Hue+", 0x7824: "Hue-", 0x7827: "RGB+", 0x7828: "RGB-",
     0x7C00: "Boot", 0x7C01: "Reboot", 0x7C02: "Debug", 0x7C03: "EEPROM",
     # QMK's tri layer pair, which Vial labels exactly like this.
     0x7C77: "Fn1\n(Fn3)", 0x7C78: "Fn2\n(Fn3)",
@@ -350,7 +354,7 @@ def _basic(code):
         return "F%d" % (code - 0x3A + 1), ""
     if 0x68 <= code <= 0x73:
         return "F%d" % (code - 0x68 + 13), ""
-    return _BASIC.get(code, ("", ""))
+    return _BASIC.get(code, ("0x%04X" % code, ""))
 
 
 def _mod_label(bits):
@@ -403,9 +407,9 @@ def describe(code, macros=None):
 def build_layers(codes, keys, rows, cols, layer_count, macros=None):
     """Per-layer labels for each key, with transparency already resolved.
 
-    A transparent key is not blank on screen: it falls through to the layer
-    below, which is the key that will actually fire. It is reported as such so
-    the preview can show what it does while making clear it is inherited.
+    The preview selects one layer over layer 0; it does not know the device's
+    live layer stack. Transparent positions therefore resolve against layer 0,
+    never against inactive intermediate layers.
     """
     layers = []
     for layer in range(layer_count):
@@ -413,15 +417,15 @@ def build_layers(codes, keys, rows, cols, layer_count, macros=None):
         for key in keys:
             index = layer * rows * cols + key["row"] * cols + key["col"]
             code = codes[index] if index < len(codes) else KC_NO
+            assigned_code = code
             inherited = False
-            probe = layer
-            while code == KC_TRANSPARENT and probe > 0:
-                probe -= 1
-                index = probe * rows * cols + key["row"] * cols + key["col"]
+            if code == KC_TRANSPARENT and layer > 0:
+                index = key["row"] * cols + key["col"]
                 code = codes[index] if index < len(codes) else KC_NO
                 inherited = True
             label, char = describe(code, macros)
-            entries.append({"label": label, "char": char, "inherited": inherited})
+            entries.append({"label": label, "char": char, "inherited": inherited,
+                            "code": assigned_code, "resolvedCode": code})
         layers.append(entries)
     return layers
 
@@ -430,7 +434,7 @@ def read_keyboard():
     node, name = find_device()
     if node is None:
         return {"available": False,
-                "error": "no unlocked Vial raw HID interface this user can open"}
+                "error": "no readable Vial raw HID interface; check the connection and device permissions"}
     board = Keyboard(node)
     try:
         definition = board.definition()
@@ -447,9 +451,12 @@ def read_keyboard():
         keys = [key for key in keys if not key["encoder"]]
         codes = board.keymap(rows, cols, layer_count)
         width, height = normalise(keys)
+        identity = board.send([CMD_VIAL_PREFIX, VIAL_GET_KEYBOARD_ID])
+        uid = struct.unpack("<Q", identity[4:12])[0]
         return {
             "available": True,
             "name": definition.get("name") or name,
+            "deviceUid": f"{uid:016x}",
             "layerCount": layer_count,
             "width": width,
             "height": height,
