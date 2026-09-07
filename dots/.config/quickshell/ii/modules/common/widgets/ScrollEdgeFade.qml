@@ -15,6 +15,7 @@ import qs.modules.common.functions
 Item {
     id: root
     z: 99
+    enabled: false
     required property Item target
     property real fadeSize: Appearance.m3colors.darkmode ? 40 : 20
     property color color: Appearance.colors.colLayer1Base

@@ -20,10 +20,18 @@ Item {
     property int selectedKey: -1
     property string nextChar: ""
     property string pressedChar: ""
+    property Item hoveredKeyButton: null
     signal keyClicked(int keyIndex)
 
     implicitWidth: root.unitWidth * root.unit
     implicitHeight: root.unitHeight * root.unit
+
+    // One tooltip for the whole keyboard, instead of one popup tree per cap.
+    StyledToolTip {
+        parent: root.hoveredKeyButton ?? root
+        extraVisibleCondition: root.interactive && root.visible && root.hoveredKeyButton !== null
+        text: root.hoveredKeyButton?.keyDescription ?? ""
+    }
 
     Repeater {
         model: root.keys
@@ -69,35 +77,51 @@ Item {
                     ColorAnimation { duration: Appearance.animation.elementMoveFast.duration }
                 }
             }
-            MaterialSymbol {
-                anchors.centerIn: parent
-                visible: cap.symbol.length > 0
-                text: cap.symbol
-                iconSize: Math.min(root.labelSize * 1.35, cap.height * 0.55)
-                color: cap.foreground
-            }
-            StyledText {
+            Loader {
                 anchors.fill: parent
-                anchors.margins: 4
-                visible: cap.superGlyph.length > 0
-                text: cap.superGlyph
-                font.family: Appearance.font.family.iconNerd
-                font.pixelSize: root.labelSize * 1.35
-                fontSizeMode: Text.Fit
-                horizontalAlignment: Text.AlignHCenter
-                verticalAlignment: Text.AlignVCenter
-                color: cap.foreground
+                active: cap.symbol.length > 0 || cap.superGlyph.length > 0
+                sourceComponent: cap.superGlyph ? superLabel : materialLabel
+                Component {
+                    id: materialLabel
+                    MaterialSymbol {
+                        verticalAlignment: Text.AlignVCenter
+                        text: cap.symbol
+                        iconSize: Math.min(root.labelSize * 1.35, cap.height * 0.55)
+                        color: cap.foreground
+                    }
+                }
+                Component {
+                    id: superLabel
+                    StyledText {
+                        padding: 4
+                        text: cap.superGlyph
+                        font.family: Appearance.font.family.iconNerd
+                        font.pixelSize: root.labelSize * 1.35
+                        fontSizeMode: Text.Fit
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                        color: cap.foreground
+                    }
+                }
             }
             RippleButton {
+                id: keyButton
                 anchors.fill: parent
                 visible: root.interactive
+                readonly property string keyDescription: cap.entry.description || cap.entry.label || Translation.tr("Unassigned key")
+                onHoveredChanged: {
+                    if (hovered) root.hoveredKeyButton = keyButton;
+                    else if (root.hoveredKeyButton === keyButton) root.hoveredKeyButton = null;
+                }
+                Component.onDestruction: {
+                    if (root && root.hoveredKeyButton === keyButton) root.hoveredKeyButton = null;
+                }
                 scale: 1
                 buttonRadius: Appearance.rounding.verysmall
                 colBackground: "transparent"
                 colBackgroundHover: ColorUtils.transparentize(Appearance.colors.colPrimary, 0.82)
                 Accessible.name: (cap.entry.label || Translation.tr("Unassigned key")) + (cap.entry.description ? ": " + cap.entry.description : "")
                 onClicked: root.keyClicked(cap.index)
-                StyledToolTip { text: cap.entry.description || cap.entry.label || Translation.tr("Unassigned key") }
             }
         }
     }

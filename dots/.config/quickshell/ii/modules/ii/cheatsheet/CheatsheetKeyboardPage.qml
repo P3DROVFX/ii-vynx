@@ -27,6 +27,8 @@ Item {
     readonly property var board: root.page?.keyboard ?? null
     readonly property var layerEntries: root.board?.layers?.[root.activeLayer] ?? []
     readonly property bool editorVisible: editor.isOpen || editor.isAnimating
+    readonly property bool navigationLocked: root.editorVisible || keyboardName.activeFocus
+        || presetPicker.activeFocus || presetPicker.popup.visible
     readonly property var presets: ["qwerty", "qwertz", "azerty", "dvorak", "colemak"]
     readonly property bool layerShortcutsEnabled: root.visible && root.tabActive && !root.editorVisible
         && !keyboardName.activeFocus && !presetPicker.activeFocus && !presetPicker.popup.visible
@@ -300,9 +302,9 @@ Item {
             visible: Layout.preferredWidth > 1
             clip: true
             Behavior on Layout.preferredWidth { animation: Appearance.animation.elementMove.numberAnimation.createObject(editorSlot) }
-            CheatsheetKeybindEditorSidebar {
+            DeferredKeybindEditor {
                 id: editor
-                objectName: "keyboardEditor"
+                editorObjectName: "keyboardEditor"
                 anchors.fill: parent
                 pageId: root.pageId
                 keyNavTarget: root.keyNavTarget

@@ -823,7 +823,7 @@ Singleton {
     //
     // Bump `currentConfigVersion` and add a matching block to `migrateRaw()`
     // whenever an existing key changes type or meaning.
-    readonly property int currentConfigVersion: 18
+    readonly property int currentConfigVersion: 19
     // Defaults have to be captured before the file lands, because deserializing
     // is what destroys them. FileView loads asynchronously, so at component
     // completion the adapter still holds nothing but the QML defaults.
@@ -1260,6 +1260,16 @@ Singleton {
                 actions.unshift("liveDraw");
                 console.log("[Config] Added liveDraw to the tablet bubble's actions");
             }
+        }
+
+        // v18 -> v19: cache follows the last cheatsheet tab, not only Keybinds.
+        // Preserve an explicit opt-out and prefer an already configured new key.
+        if (from < 19 && raw.cheatsheet && typeof raw.cheatsheet === "object"
+                && !Array.isArray(raw.cheatsheet)) {
+            const cheatsheet = raw.cheatsheet;
+            if (cheatsheet.keepLastTabLoaded === undefined && typeof cheatsheet.keepKeybindsLoaded === "boolean")
+                cheatsheet.keepLastTabLoaded = cheatsheet.keepKeybindsLoaded;
+            delete cheatsheet.keepKeybindsLoaded;
         }
 
         raw.configVersion = root.currentConfigVersion;
@@ -4037,6 +4047,8 @@ Singleton {
             }
 
             property JsonObject cheatsheet: JsonObject {
+                // Retain only the last selected tab for immediate reopening.
+                property bool keepLastTabLoaded: false
                 // Use a nerdfont to see the icons
                 // 0: 󰖳  | 1: 󰌽 | 2: 󰘳 | 3:  | 4: 󰨡
                 // 5:  | 6:  | 7: 󰣇 | 8:  | 9: 

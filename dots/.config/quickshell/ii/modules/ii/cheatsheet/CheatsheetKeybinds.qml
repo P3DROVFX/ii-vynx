@@ -33,15 +33,13 @@ Item {
     readonly property bool isTabActive: root.visible && root.isCurrentTab
     property string selectedPageId: Persistent.states.cheatsheet.keybindPageId
     property string displayedPageId: Persistent.states.cheatsheet.keybindPageId
-    property real pageTransitionOpacity: 1
-    property real pageTransitionShift: 0
-    property int pageTransitionDirection: 1
     property string toastMessage: ""
     property bool toastError: false
     property bool keyboardDetectionRequested: false
     readonly property bool sidebarVisible: Persistent.states.cheatsheet.keybindSidebarVisible
     readonly property real sidebarWidth: Math.max(230, Math.min(280, root.width * 0.18))
     readonly property bool pageFormShowing: pageForm.isOpen || pageForm.isAnimating
+    readonly property bool lookupReady: contentLoader.status === Loader.Ready
     readonly property bool hyprlandSelected: root.displayedPageId === "" || !KeybindsService.ready
     readonly property var activeAppPage: {
         const toplevel = ToplevelManager.activeToplevel;
@@ -105,27 +103,32 @@ Item {
         return root.hyprlandSelected ? null : KeybindsService.pageById(root.displayedPageId);
     }
 
-    function pageOrder(pageId): int {
-        const value = String(pageId ?? "");
-        if (!value)
-            return 0;
-        const pages = KeybindsService.pages;
-        for (let index = 0; index < pages.length; index++) {
-            if (String(pages[index]?.id ?? "") === value)
-                return index + 1;
-        }
-        return pages.length + 1;
+    readonly property var orderedPages: root.appPages.concat(root.keyboardPages, root.personalPages)
+
+    KeybindPageNavigation {
+        enabled: root.isTabActive && KeybindsService.ready && !root.pageFormShowing
+            && !(contentLoader.item?.navigationLocked ?? false)
+        groups: [[""], root.appPages.map(page => page.id), root.keyboardPages.map(page => page.id), root.personalPages.map(page => page.id)]
+        currentPageId: root.selectedPageId
+        onPageRequested: pageId => root.selectPage(pageId)
+    }
+
+    function focusSelectedPage(): void {
+        if (root.isTabActive && !root.pageFormShowing && contentLoader.item)
+            contentLoader.item.forceActiveFocus();
     }
 
     function selectPage(pageId): void {
         const next = String(pageId ?? "");
-        if (next === root.selectedPageId && next === root.displayedPageId)
-            return;
-        root.pageTransitionDirection = root.pageOrder(next) >= root.pageOrder(root.displayedPageId) ? 1 : -1;
+        if (next && !KeybindsService.pageById(next)) return;
+        if (next === root.selectedPageId && next === root.displayedPageId) return;
+        // Update immediately. Repeated key presses never queue exit animations.
         root.selectedPageId = next;
+        root.displayedPageId = next;
         Persistent.states.cheatsheet.keybindPageId = next;
-        pageEnterAnimation.stop();
-        pageExitAnimation.restart();
+        Qt.callLater(root.focusSelectedPage);
+        if (!root.sidebarVisible)
+            collapsedPagesList.positionViewAtIndex(root.orderedPages.findIndex(page => page.id === next), ListView.Contain);
     }
 
     function ensureValidSelection(): void {
@@ -216,61 +219,6 @@ Item {
         onTriggered: root.toastMessage = ""
     }
 
-    ParallelAnimation {
-        id: pageExitAnimation
-
-        NumberAnimation {
-            target: root
-            property: "pageTransitionOpacity"
-            to: 0
-            duration: Appearance.animation.elementMoveFast.duration
-            easing.type: Appearance.animation.elementMoveFast.type
-            easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
-        }
-
-        NumberAnimation {
-            target: root
-            property: "pageTransitionShift"
-            to: -root.pageTransitionDirection * Appearance.font.pixelSize.huge
-            duration: Appearance.animation.elementMoveExit.duration
-            easing.type: Appearance.animation.elementMoveExit.type
-            easing.bezierCurve: Appearance.animation.elementMoveExit.bezierCurve
-        }
-
-        onFinished: {
-            root.displayedPageId = root.selectedPageId;
-            root.pageTransitionShift = root.pageTransitionDirection * Appearance.font.pixelSize.huge;
-            Qt.callLater(() => pageEnterAnimation.restart());
-        }
-    }
-
-    ParallelAnimation {
-        id: pageEnterAnimation
-
-        NumberAnimation {
-            target: root
-            property: "pageTransitionOpacity"
-            to: 1
-            duration: Appearance.animation.elementMoveFast.duration
-            easing.type: Appearance.animation.elementMoveFast.type
-            easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
-        }
-
-        NumberAnimation {
-            target: root
-            property: "pageTransitionShift"
-            to: 0
-            duration: Appearance.animation.elementMoveEnter.duration
-            easing.type: Appearance.animation.elementMoveEnter.type
-            easing.bezierCurve: Appearance.animation.elementMoveEnter.bezierCurve
-        }
-
-        onFinished: {
-            if (contentLoader.item)
-                contentLoader.item.forceActiveFocus();
-        }
-    }
-
     component PageButton: RippleButton {
         id: pageButton
         required property string pageId
@@ -286,6 +234,18 @@ Item {
             ? root.pageProgramIcon(pageProgram, pageProgramId)
             : ""
         property bool pageSelected: root.selectedPageId === pageId
+        property bool revealSelection: true
+        onPageSelectedChanged: {
+            if (!pageSelected || !revealSelection) return;
+            Qt.callLater(() => {
+                if (!root.sidebarVisible || !pageButton.visible) return;
+                const top = pageButton.mapToItem(railContentColumn, 0, 0).y;
+                const bottom = top + pageButton.height;
+                if (top < railFlickable.contentY) railFlickable.contentY = top;
+                else if (bottom > railFlickable.contentY + railFlickable.height)
+                    railFlickable.contentY = Math.min(bottom - railFlickable.height, Math.max(0, railFlickable.contentHeight - railFlickable.height));
+            });
+        }
 
         Layout.fillWidth: true
         implicitHeight: 62
@@ -602,6 +562,14 @@ Item {
                     }
                 }
 
+                StyledText {
+                    Layout.fillWidth: true
+                    text: Translation.tr("↑ / ↓  Pages · Ctrl + ↑ / ↓  Groups")
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    color: Appearance.colors.colOnSurfaceVariant
+                    wrapMode: Text.Wrap
+                }
+
                 StyledFlickable {
                     id: railFlickable
                     Layout.fillWidth: true
@@ -626,6 +594,7 @@ Item {
                             }
 
                             PageButton {
+                                revealSelection: false
                                 visible: root.activeAppPage !== null
                                 pageId: String(root.activeAppPage?.id ?? "")
                                 pageName: String(root.activeAppPage?.name ?? Translation.tr("Active App"))
@@ -899,10 +868,7 @@ Item {
                     Layout.fillHeight: true
                     clip: true
                     spacing: 4
-                    model: {
-                        const revision = KeybindsService.revision;
-                        return KeybindsService.pages;
-                    }
+                    model: root.orderedPages
 
                     delegate: CollapsedPageButton {
                         required property var modelData
@@ -943,14 +909,14 @@ Item {
 
         Loader {
             id: contentLoader
+            // Avoid constructing a transient Hyprland page before saved maps load.
+            active: KeybindsService.ready
             Layout.fillWidth: true
             Layout.fillHeight: true
-            opacity: root.pageTransitionOpacity
+            asynchronous: true
+            onLoaded: Qt.callLater(root.focusSelectedPage)
             sourceComponent: root.hyprlandSelected ? hyprlandPage : root.selectedPage?.kind === "keyboard" ? keyboardPage : customPage
 
-            transform: Translate {
-                x: root.pageTransitionShift
-            }
         }
         }
     }
@@ -982,11 +948,30 @@ Item {
         }
     }
 
-    CheatsheetKeybindsPageForm {
+    Loader {
         id: pageForm
         anchors.fill: parent
         z: 20
-        onPageChosen: pageId => root.selectPage(pageId)
+        active: false
+        readonly property bool isOpen: item?.isOpen ?? false
+        readonly property bool isAnimating: item?.isAnimating ?? false
+        function ensureForm() {
+            if (!item) {
+                active = true;
+                setSource(Qt.resolvedUrl("CheatsheetKeybindsPageForm.qml"));
+            }
+            return item;
+        }
+        function openCreate() { ensureForm()?.openCreate(); }
+        function openEdit(pageId) { ensureForm()?.openEdit(pageId); }
+        function releaseClosedForm() {
+            if (!isOpen && !isAnimating) active = false;
+        }
+        Connections {
+            target: pageForm.item
+            function onPageChosen(pageId) { root.selectPage(pageId); }
+            function onCloseRequested() { Qt.callLater(pageForm.releaseClosedForm); }
+        }
     }
 
     Rectangle {

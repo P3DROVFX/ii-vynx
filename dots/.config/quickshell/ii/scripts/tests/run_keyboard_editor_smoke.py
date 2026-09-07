@@ -12,7 +12,10 @@ def put(rel,text):
  p=out/rel;p.parent.mkdir(parents=True,exist_ok=True);p.write_text(text)
 actual=['modules/ii/cheatsheet/CheatsheetKeyboardPage.qml','modules/ii/cheatsheet/CheatsheetKeybindEditorSidebar.qml','modules/common/widgets/KeyboardDiagram.qml','modules/common/widgets/KeyboardKey.qml','modules/common/functions/KeyboardMap.js']
 alltext='\n'.join((root/p).read_text() for p in actual)
-for p in actual:put('qs/'+p,(root/p).read_text().replace('MaterialShape.Shape.Cookie9Sided', '0'))
+actual += ['modules/ii/cheatsheet/DeferredKeybindEditor.qml', 'modules/ii/cheatsheet/KeybindPageNavigation.qml', 'modules/common/widgets/RetainedLoader.qml']
+for p in actual:
+ content=(Path(os.environ['II_KEYBOARD_PAGE_SOURCE']).read_text() if p.endswith('/CheatsheetKeyboardPage.qml') and os.environ.get('II_KEYBOARD_PAGE_SOURCE') else (root/p).read_text())
+ put('qs/'+p,content.replace('MaterialShape.Shape.Cookie9Sided', '0'))
 s=(root/'modules/ii/overview/typing/TypingKeyboardLayouts.qml').read_text().replace('import Quickshell','').replace('Singleton {','QtObject {')
 put('qs/modules/ii/overview/typing/TypingKeyboardLayouts.qml',s)
 put('qs/modules/common/widgets/StyledText.qml','import QtQuick\nText { font.pixelSize: 16; color: "white" }')
@@ -102,14 +105,95 @@ for folder in out.rglob('*'):
 put('tests/tst_keyboard.qml','''import QtQuick
 import QtTest
 import qs.modules.ii.cheatsheet
+import qs.modules.common.widgets
 import qs.services
 import qs.modules.ii.overview.typing
 import "../qs/modules/common/functions/KeyboardMap.js" as KeyboardMap
 Item {
  width: 1200; height: 700
  Component { id: pageComponent; CheatsheetKeyboardPage { width:1200; height:700; pageId:"test" } }
+ Component { id: navigationComponent; KeybindPageNavigation {} }
+ Component {
+  id: retainedComponent
+  RetainedLoader {
+   retainFor: 60
+   property int constructions: 0
+   sourceComponent: Item { Component.onCompleted: parent.constructions++ }
+  }
+ }
  TestCase {
   name: "KeyboardEditor"; when: windowShown
+  function countVisualItems(item) {
+   let count=1;
+   for(const child of item.children ?? []) count+=countVisualItems(child);
+   return count;
+  }
+  function test_editor_is_deferred_until_requested() {
+   KeybindsService.pages=[{id:"test",name:"QWERTY",kind:"keyboard",keyboard:KeyboardMap.manual(TypingKeyboardLayouts.rowsFor("qwerty"),"qwerty")}];
+   const start=Date.now();
+   const page=createTemporaryObject(pageComponent,parent); verify(page !== null);
+   warn("Keyboard consultation: "+countVisualItems(page)+" visual objects, "+(Date.now()-start)+" ms construction (offscreen/stub styles)");
+   verify(findChild(page,"keyboardEditor") === null,"The editor must not be constructed during consultation");
+   findChild(page,"keyboardDiagram").keyClicked(0); wait(10);
+   verify(findChild(page,"keyboardEditor") !== null);
+   findChild(page,"keyboardEditor").close();
+   tryVerify(()=>findChild(page,"keyboardEditor") === null,1000,"A closed editor must leave the permanent cache");
+   findChild(page,"keyboardDiagram").keyClicked(1); wait(10);
+   verify(findChild(page,"keyboardEditor") !== null);
+   compare(findChild(page,"keyboardEditor").keyboardIndex,1);
+  }
+  function test_reopen_reuses_tree_and_idle_expiry_releases_it() {
+   const cache=createTemporaryObject(retainedComponent,parent); verify(cache !== null);
+   compare(cache.item,null); compare(cache.constructions,0);
+   cache.requested=true; tryCompare(cache,"status",Loader.Ready);
+   const first=cache.item; compare(cache.constructions,1);
+   for(let i=0;i<30;i++) {
+    cache.requested=false; cache.requested=true;
+    wait(1);
+    compare(cache.item,first); compare(cache.constructions,1);
+   }
+   wait(80); compare(cache.item,first); // A cancelled expiry cannot destroy an open page.
+   cache.requested=false; tryCompare(cache,"item",null,500);
+   cache.requested=true; tryCompare(cache,"status",Loader.Ready);
+   compare(cache.constructions,2);
+  }
+  function test_initial_open_is_retained_too() {
+   const cache=createTemporaryObject(retainedComponent,parent,{requested:true});
+   tryCompare(cache,"status",Loader.Ready);
+   const first=cache.item; cache.requested=false; wait(10);
+   compare(cache.item,first); cache.requested=true;
+   compare(cache.constructions,1);
+  }
+  function test_page_and_group_shortcuts_follow_rail_order() {
+   const nav=createTemporaryObject(navigationComponent,parent,{
+    groups:[[""],["kitty","vscode"],["corne","abnt2"],[]],currentPageId:"kitty"
+   });
+   nav.pageRequested.connect(function(id) { nav.currentPageId=id; });
+   nav.forceActiveFocus(); keyClick(Qt.Key_Down); compare(nav.currentPageId,"vscode");
+   keyClick(Qt.Key_Down); compare(nav.currentPageId,"corne");
+   keyClick(Qt.Key_Down,Qt.ControlModifier); compare(nav.currentPageId,"");
+   keyClick(Qt.Key_Up,Qt.ControlModifier); compare(nav.currentPageId,"corne");
+   keyClick(Qt.Key_Up); compare(nav.currentPageId,"vscode");
+   nav.enabled=false; keyClick(Qt.Key_Down); compare(nav.currentPageId,"vscode");
+   nav.enabled=true; nav.groups=[[""],[],["corne"]]; nav.currentPageId="";
+   keyClick(Qt.Key_Down,Qt.ControlModifier); compare(nav.currentPageId,"corne");
+   nav.visible=false; keyClick(Qt.Key_Up); compare(nav.currentPageId,"corne");
+  }
+  function test_page_navigation_does_not_conflict_with_layers_or_editing() {
+   const board=KeyboardMap.manual(TypingKeyboardLayouts.rowsFor("qwerty"),"qwerty");
+   board.layers.push(KeyboardMap.copy(board.layers[0]));
+   KeybindsService.pages=[{id:"test",name:"Keyboard",kind:"keyboard",keyboard:board}];
+   const page=createTemporaryObject(pageComponent,parent);
+   const nav=createTemporaryObject(navigationComponent,page,{groups:[[""],["app"],["test"]],currentPageId:"test"});
+   nav.enabled=Qt.binding(()=>!page.navigationLocked);
+   nav.pageRequested.connect(function(id) { nav.currentPageId=id; });
+   page.forceActiveFocus(); keyClick(Qt.Key_Right); compare(page.activeLayer,1); compare(nav.currentPageId,"test");
+   keyClick(Qt.Key_Up); compare(nav.currentPageId,"app"); compare(page.activeLayer,1);
+   findChild(page,"keyboardDiagram").keyClicked(0); wait(10);
+   verify(!nav.enabled); keyClick(Qt.Key_Down); compare(nav.currentPageId,"app");
+   findChild(page,"keyboardEditor").close(); wait(20);
+   findChild(page,"keyboardName").forceActiveFocus(); verify(!nav.enabled);
+  }
   function test_layer_shortcuts_and_text_focus() {
    const board=KeyboardMap.manual(TypingKeyboardLayouts.rowsFor("qwerty"),"qwerty");
    for(let i=1;i<6;i++)board.layers.push(KeyboardMap.copy(board.layers[0]));
@@ -144,9 +228,9 @@ Item {
    KeybindsService.pages=[{id:"test",name:"Keyboard",kind:"keyboard",keyboard:board}];
    const page=createTemporaryObject(pageComponent,parent); verify(page !== null); wait(20);
    const diagram=findChild(page,"keyboardDiagram");
-   const editor=findChild(page,"keyboardEditor");
    for(let layer=0;layer<6;layer++) {
     page.selectLayer(layer); diagram.keyClicked(1); wait(5);
+    const editor=findChild(page,"keyboardEditor");
     compare(editor.keyboardLayer,layer); verify(editor.isOpen);
     editor.close(); wait(5);
    }

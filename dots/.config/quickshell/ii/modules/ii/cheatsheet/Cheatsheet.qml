@@ -5,13 +5,9 @@ import qs.modules.common.widgets
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import Qt.labs.synchronizer
-import Qt5Compat.GraphicalEffects
-import Quickshell.Io
 import Quickshell
 import Quickshell.Wayland
 import Quickshell.Hyprland
-import "commands"
 import "timetable"
 
 Scope {
@@ -106,6 +102,29 @@ Scope {
     }
 
     property bool activeState: false
+    property bool cachePrepared: false
+    // Opt-in diagnostic; normal sessions have no sampler or diagnostic timers.
+    readonly property bool cacheProbeEnabled: Quickshell.env("II_CHEATSHEET_CACHE_PROBE") === "1"
+    readonly property bool cacheWanted: Config.ready && Persistent.ready
+        && Config.options.cheatsheet.keepLastTabLoaded
+    function prepareCache() { root.cachePrepared = true; }
+    readonly property bool cacheReady: cheatsheetLoader.item?.pageReady ?? false
+
+    Timer {
+        // Let configuration and startup services settle before hidden incubation.
+        interval: 1500
+        running: root.cacheWanted && !root.cachePrepared && !root.cacheProbeEnabled
+        onTriggered: root.prepareCache()
+    }
+    onCacheWantedChanged: if (!cacheWanted) cachePrepared = false
+
+    Loader {
+        active: root.cacheProbeEnabled && Config.ready && Persistent.ready
+        sourceComponent: CheatsheetCacheProbe {
+            controller: root
+            cacheReady: root.cacheReady
+        }
+    }
 
     Timer {
         id: closeTimer
@@ -148,37 +167,38 @@ Scope {
         root.requestOpen();
     }
 
-    Loader {
+    RetainedLoader {
         id: cheatsheetLoader
-        // The Cheatsheet is a burst-use surface. Keep it alive while open, but
-        // release its complete window tree after the close animation instead
-        // of retaining every tab for the lifetime of the shell.
-        active: root.activeState
+        // Keep the window chrome and only the last selected tab.
+        // With caching disabled, closing releases the window immediately.
+        requested: root.activeState || root.cachePrepared
+        retainFor: 0
 
         sourceComponent: PanelWindow {
             id: cheatsheetRoot
             visible: root.activeState
-            property int selectedTab: Persistent.states.cheatsheet.tabIndex
+            property int selectedTab: Math.max(0, Math.min(root.tabButtonList.length - 1, Persistent.states.cheatsheet.tabIndex))
+            readonly property bool pageReady: swipeView.selectionReady
+                && swipeView.currentItem?.isCurrent === true
+                && swipeView.currentItem?.status === Loader.Ready
+                && (swipeView.currentItem.item?.lookupReady ?? true)
 
-            onSelectedTabChanged: {
-                if (Persistent.states.cheatsheet.tabIndex !== selectedTab)
-                    Persistent.states.cheatsheet.tabIndex = selectedTab;
+            // Persistence is changed only by a navigation request. SwipeView
+            // adjusts its index while Repeater inserts children asynchronously;
+            // those intermediate indices are not a user selection.
+            function selectTab(index) {
+                if (index < 0 || index >= root.tabButtonList.length) return;
+                if (Persistent.states.cheatsheet.tabIndex !== index)
+                    Persistent.states.cheatsheet.tabIndex = index;
+                swipeView.restoreSelection();
             }
+            onSelectedTabChanged: Qt.callLater(swipeView.restoreSelection)
 
             Connections {
                 target: root
                 function onTabButtonListChanged() {
-                    if (cheatsheetRoot.selectedTab >= root.tabButtonList.length)
-                        cheatsheetRoot.selectedTab = 0;
-                }
-            }
-
-            Connections {
-                target: Persistent.states.cheatsheet
-                function onTabIndexChanged() {
-                    const next = Persistent.states.cheatsheet.tabIndex;
-                    if (cheatsheetRoot.selectedTab !== next)
-                        cheatsheetRoot.selectedTab = next;
+                    swipeView.selectionReady = false;
+                    Qt.callLater(swipeView.restoreSelection);
                 }
             }
 
@@ -206,7 +226,7 @@ Scope {
 
             Timer {
                 id: registerGrabTimer
-                interval: 150
+                interval: 0
                 repeat: false
                 onTriggered: {
                     GlobalFocusGrab.addDismissable(cheatsheetRoot);
@@ -228,7 +248,7 @@ Scope {
 
             Timer {
                 id: initialFocusTimer
-                interval: 50
+                interval: 0
                 repeat: false
                 onTriggered: {
                     if (swipeView.currentItem && swipeView.currentItem.status === Loader.Ready && swipeView.currentItem.item) {
@@ -268,23 +288,11 @@ Scope {
             Item {
                 id: dialogWrap
                 anchors.fill: parent
-                transformOrigin: Item.Center
-                scale: cheatsheetBackground.animateIn && GlobalStates.cheatsheetOpen ? 1.0 : 0.94
-                opacity: cheatsheetBackground.animateIn && GlobalStates.cheatsheetOpen ? 1.0 : 0.0
-
-                Behavior on scale {
-                    NumberAnimation {
-                        duration: 250
-                        easing.type: Easing.BezierSpline
-                        easing.bezierCurve: Appearance.animationCurves.emphasized
-                    }
-                }
+                // A reference sheet must be readable on its first frame.
+                opacity: GlobalStates.cheatsheetOpen ? 1.0 : 0.0
                 Behavior on opacity {
-                    NumberAnimation {
-                        duration: 220
-                        easing.type: Easing.BezierSpline
-                        easing.bezierCurve: Appearance.animationCurves.emphasized
-                    }
+                    enabled: !GlobalStates.cheatsheetOpen
+                    animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(dialogWrap)
                 }
 
                 StyledRectangularShadow {
@@ -299,7 +307,6 @@ Scope {
                     border.color: Appearance.colors.colLayer0Border
                     radius: Appearance.rounding.windowRounding
                     property real padding: 20
-                    property int prevIndex: Persistent.states.cheatsheet.tabIndex
                     property bool animateIn: false
 
                     Timer {
@@ -463,9 +470,9 @@ Scope {
                                 tabButtonList: root.tabButtonList
                                 showShortcutHints: cheatsheetBackground.ctrlPressed
 
-                                Synchronizer on currentIndex {
-                                    property alias source: swipeView.currentIndex
-                                }
+                                requestOnly: true
+                                currentIndex: cheatsheetRoot.selectedTab
+                                onIndexSelected: index => cheatsheetRoot.selectTab(index)
                             }
                         }
 
@@ -474,10 +481,20 @@ Scope {
                             Layout.topMargin: 5
                             Layout.fillWidth: true
                             Layout.fillHeight: true
+                            property bool selectionReady: false
+                            function restoreSelection() {
+                                if (count !== root.tabButtonList.length) return;
+                                selectionReady = false;
+                                setCurrentIndex(cheatsheetRoot.selectedTab);
+                                selectionReady = true;
+                            }
+                            onCountChanged: {
+                                selectionReady = false;
+                                Qt.callLater(restoreSelection);
+                            }
                             Component.onCompleted: {
-                                if (contentItem) {
-                                    contentItem.highlightMoveDuration = 0;
-                                }
+                                if (contentItem) contentItem.highlightMoveDuration = 0;
+                                Qt.callLater(restoreSelection);
                             }
 
                             property real calculatedWidth: cheatsheetRoot.screen ? cheatsheetRoot.screen.width * 0.92 : 1700
@@ -493,104 +510,49 @@ Scope {
                                 && currentItem.item.timetableDragActive === true
                             interactive: !swipeView.currentPageLocksHorizontalSwipe
                             onCurrentIndexChanged: {
-                                if (cheatsheetRoot.selectedTab !== currentIndex)
-                                    cheatsheetRoot.selectedTab = currentIndex;
-                                if (currentItem && currentItem.status === Loader.Ready && currentItem.item) {
+                                if (selectionReady && count === root.tabButtonList.length && cheatsheetRoot.selectedTab !== currentIndex)
+                                    cheatsheetRoot.selectTab(currentIndex);
+                                if (root.activeState && currentItem && currentItem.status === Loader.Ready && currentItem.item) {
                                     currentItem.item.forceActiveFocus();
                                 }
-                                Qt.callLater(() => {
-                                    cheatsheetBackground.prevIndex = currentIndex;
-                                });
                             }
 
                             implicitWidth: Math.max.apply(null, contentChildren.map(child => child.implicitWidth || 0))
                             implicitHeight: Math.max.apply(null, contentChildren.map(child => child.implicitHeight || 0))
 
                             clip: true
-                            // Disable expensive layer compositing while animating to prevent lag
-                            layer.enabled: !swipeView.moving
-                            layer.effect: OpacityMask {
-                                maskSource: Rectangle {
-                                    width: swipeView.width
-                                    height: swipeView.height
-                                    radius: Appearance.rounding.small
-                                }
-                            }
 
                             Repeater {
+                                id: tabs
                                 model: root.tabButtonList
                                 delegate: Loader {
                                     id: tabDelegate
                                     required property var modelData
                                     required property int index
 
-                                    transform: Translate {
-                                        id: trans
-                                        x: 0
-                                    }
-
                                     Keys.forwardTo: [cheatsheetBackground]
 
-                                    readonly property bool isCurrent: swipeView.currentIndex === index
-                                    onIsCurrentChanged: {
-                                        if (isCurrent) {
-                                            const diff = index - cheatsheetBackground.prevIndex;
-                                            if (diff !== 0) {
-                                                bounceAnim.stop();
-                                                opacityAnim.stop();
-                                                trans.x = diff > 0 ? 150 : -150;
-                                                tabDelegate.opacity = 0;
-                                                bounceAnim.start();
-                                                opacityAnim.start();
-                                            }
-                                        } else {
-                                            tabDelegate.opacity = 1;
-                                            trans.x = 0;
-                                        }
-                                    }
-
-                                    NumberAnimation {
-                                        id: bounceAnim
-                                        target: trans
-                                        property: "x"
-                                        to: 0
-                                        duration: 400
-                                        easing.type: Easing.OutBack
-                                        easing.overshoot: 1.5
-                                    }
-
-                                    NumberAnimation {
-                                        id: opacityAnim
-                                        target: tabDelegate
-                                        property: "opacity"
-                                        from: 0
-                                        to: 1
-                                        duration: 250
-                                        easing.type: Easing.OutCubic
-                                    }
-
-                                    // Only the visible tab owns a component tree. The
-                                    // old _wasSeen/preloadIndex feedback loop kept all
-                                    // tabs resident and made Loader.active unstable.
-                                    active: swipeView.currentIndex === index
-
-                                    // The timetable is substantially heavier than the
-                                    // text-first tabs. Incubating it lets the overlay
-                                    // paint its first frame before the calendar tree is
-                                    // completed; its own repeaters then continue the
-                                    // progressive materialization item by item.
-                                    asynchronous: modelData.icon === "calendar_month"
+                                    // The saved selection is stable while SwipeView
+                                    // inserts children and adjusts its own index.
+                                    readonly property bool isCurrent: cheatsheetRoot.selectedTab === index
+                                    // Selection replaces the cache; closing preserves it.
+                                    active: isCurrent && (root.activeState || root.cachePrepared)
+                                    visible: isCurrent && root.activeState
+                                    enabled: isCurrent && root.activeState && GlobalStates.cheatsheetOpen
+                                    asynchronous: true
 
                                     onStatusChanged: {
                                         if (status === Loader.Ready) {
-                                            // Inject the key nav target so TextFields in each
-                                            // module can hand focus back to cheatsheetBackground
-                                            // when Ctrl is pressed (Ctrl+N tab switching).
-                                            if (item.hasOwnProperty('keyNavTarget'))
-                                                item.keyNavTarget = cheatsheetBackground;
                                             if (swipeView.currentIndex === index && cheatsheetRoot.visible)
                                                 item.forceActiveFocus();
                                         }
+                                    }
+
+                                    Binding {
+                                        target: tabDelegate.item
+                                        property: "keyNavTarget"
+                                        value: cheatsheetBackground
+                                        when: tabDelegate.status === Loader.Ready && tabDelegate.item.hasOwnProperty("keyNavTarget")
                                     }
 
                                     source: {

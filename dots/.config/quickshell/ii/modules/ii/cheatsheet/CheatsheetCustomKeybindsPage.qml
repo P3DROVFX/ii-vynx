@@ -16,6 +16,8 @@ Item {
     property bool tabActive: true
     property string searchText: ""
     property bool confirmingDelete: false
+    property Item inlineEditor: null
+    readonly property bool navigationLocked: editorSidebar.isOpen || editorSidebar.isAnimating || root.inlineEditor !== null
     readonly property var page: {
         const revision = KeybindsService.revision;
         return KeybindsService.pageById(root.pageId);
@@ -414,6 +416,10 @@ Item {
 
                     TextInput {
                         id: inlineEditField
+                        onActiveFocusChanged: {
+                            if (activeFocus) root.inlineEditor = inlineEditField;
+                            else if (root.inlineEditor === inlineEditField) root.inlineEditor = null;
+                        }
                         anchors.fill: parent
                         anchors.leftMargin: 8
                         anchors.rightMargin: 8
@@ -1234,7 +1240,8 @@ Item {
             animation: Appearance.animation.elementMove.numberAnimation.createObject(editorSlot)
         }
 
-        CheatsheetKeybindEditorSidebar {
+        // Defers CheatsheetKeybindEditorSidebar until the first editing action.
+        DeferredKeybindEditor {
             id: editorSidebar
             width: editorSlot.width
             height: editorSlot.height

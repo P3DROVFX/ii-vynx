@@ -134,8 +134,11 @@ class KeybindFeatureContractTests(unittest.TestCase):
         self.assertNotIn("groupsFlow", custom)
         self.assertIn("tabActive: root.isTabActive", host)
         self.assertIn('mainText: Translation.tr("New page")', host)
-        self.assertIn("id: pageExitAnimation", host)
-        self.assertIn("id: pageEnterAnimation", host)
+        # Keyboard navigation must not wait for an exit animation before
+        # selecting the requested page.
+        self.assertNotIn("id: pageExitAnimation", host)
+        self.assertIn("root.displayedPageId = next;", host)
+        self.assertIn("KeybindPageNavigation", host)
         self.assertIn("displayedPageId", host)
         self.assertIn("minimumCardWidth", custom)
         self.assertIn("emptyColumnHeights", custom)
@@ -281,4 +284,3 @@ class KeybindFeatureContractTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

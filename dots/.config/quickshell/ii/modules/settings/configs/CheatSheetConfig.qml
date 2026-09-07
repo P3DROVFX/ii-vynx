@@ -63,6 +63,19 @@ Item {
                 spacing: Appearance.sizes.elevationMargin / 2
 
                 ConfigSwitch {
+                    buttonIcon: "bolt"
+                    text: Translation.tr("Keep last tab ready")
+                    checked: Config.options.cheatsheet.keepLastTabLoaded
+                    onCheckedChanged: {
+                        if (Config.ready && checked !== Config.options.cheatsheet.keepLastTabLoaded)
+                            Config.options.cheatsheet.keepLastTabLoaded = checked;
+                    }
+                    StyledToolTip {
+                        text: Translation.tr("Keep only the last opened tab in memory for quick reopening. Switching tabs releases the previous one.")
+                    }
+                }
+
+                ConfigSwitch {
                     buttonIcon: "calendar_month"
                     text: Translation.tr("Enable Timetable")
                     checked: Config.options.cheatsheet.enableTimetable
