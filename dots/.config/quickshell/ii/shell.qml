@@ -61,6 +61,7 @@ ShellRoot {
                             // for a migration to finish mid-interaction.
         Modes.ready; // Touch singleton: the modes engine must watch triggers whether or not its overlay is open
         TilingAssistant.enabled; // Touch singleton: watches for window drags, does nothing while disabled
+        TypeToSearch.armed; // Touch singleton: registers the type-to-search binds, does nothing while disabled
         TouchGestureService.enabled; // Touch singleton: starts passive touch input helper daemon
         WorkspaceCompactor.enabled; // Touch singleton: auto-compacts workspace gaps, does nothing while disabled
         IconThemes.availableThemes; // Touch singleton: arms the DynamicTheme watcher for live icon refresh

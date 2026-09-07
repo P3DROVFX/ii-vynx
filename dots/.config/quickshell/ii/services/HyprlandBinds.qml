@@ -608,6 +608,8 @@ Singleton {
      * list below rather than shown as one.
      */
     readonly property string captureSubmap: "__quickshell_key_capture"
+    /// Name prefix of the type-to-search shortcuts, which are generated rather than configured.
+    readonly property string typeToSearchPrefix: "typeToSearch_"
     /// Whether that submap exists right now. Defining it again would stack another copy of its
     /// bind onto the last, and a reload takes the whole thing away.
     property bool captureSubmapDefined: false
@@ -958,7 +960,13 @@ Singleton {
         stdout: StdioCollector {
             onStreamFinished: {
                 try {
-                    const globals = JSON.parse(text);
+                    // Type-to-search owns one shortcut per printable character. They are
+                    // not shortcuts anybody set, so they are dropped here rather than
+                    // listed as sixty rows nobody can act on.
+                    const parsed = JSON.parse(text);
+                    const globals = parsed.filter(function (entry) {
+                        return !String(entry && entry.name || "").startsWith(root.typeToSearchPrefix);
+                    });
                     if (ObjectUtils.canon(globals) !== ObjectUtils.canon(root.globals))
                         root.globals = globals;
                 } catch (error) {

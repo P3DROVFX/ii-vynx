@@ -4306,6 +4306,23 @@ Singleton {
 
             property JsonObject launcher: JsonObject {
                 property list<string> pinnedApps: ["org.kde.dolphin", "kitty", "cmake-gui"]
+
+                /**
+                 * KRunner-style typing: with nothing on screen to type into, the first
+                 * printable key opens the launcher and lands in its search field.
+                 *
+                 * Off by default. While it is armed the shell registers real Hyprland
+                 * binds for those keys, so they stop reaching anything else — which is
+                 * only acceptable because it arms exclusively when nothing has focus.
+                 */
+                property JsonObject typeToSearch: JsonObject {
+                    property bool enable: false
+                    // "emptyWorkspace": only when the focused workspace holds no windows at all.
+                    // "noFocusedWindow": also after clicking the desktop next to an open window.
+                    property string trigger: "emptyWorkspace"
+                    // "letters" | "alphanumeric" | "all"
+                    property string keys: "all"
+                }
             }
 
             property JsonObject light: JsonObject {

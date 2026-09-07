@@ -100,6 +100,14 @@ Item {
                 }
 
                 ConfigSubpageRow {
+                    buttonIcon: "keyboard_alt"
+                    title: Translation.tr("Type to search")
+                    description: Translation.tr("Start typing on an empty desktop to open the launcher")
+                    summary: Config.options.launcher.typeToSearch.enable ? Translation.tr("On") : Translation.tr("Off")
+                    onClicked: subPageOverlay.open(Qt.resolvedUrl("widgets/LauncherTypeToSearchConfig.qml"))
+                }
+
+                ConfigSubpageRow {
                     buttonIcon: "privacy_tip"
                     title: Translation.tr("Data & privacy")
                     description: Translation.tr("Frequency, histories, favorites and recent content")
