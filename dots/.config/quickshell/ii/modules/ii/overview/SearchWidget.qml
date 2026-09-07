@@ -336,31 +336,41 @@ Item {
         }
     }
 
-    // A prefix is a route trigger, not part of the hosted panel's local
-    // search. Latch its target before clearing the trigger, otherwise the
-    // panel would immediately resolve back to ordinary Search. The AI route
-    // has its own draft lifecycle and intentionally stays outside this path.
-    function consumePanelPrefix(): bool {
-        if (root.requestedPanelId.length > 0)
-            return false;
+    /// Which panel the prefix in the field currently routes to, so a route's one-time setup
+    /// runs when it is entered rather than again on every keystroke inside it.
+    property string prefixRoutedPanelId: ""
+
+    /**
+     * A prefix is a route trigger and it stays in the field.
+     *
+     * Taking it out left a panel on screen whose trigger was invisible, and the rest of the
+     * search reads the query the other way round: both `activePanelQuery` here and
+     * `SearchPanelHost.queryFor` take the prefix off themselves before handing the text to a
+     * panel as its filter. A field that had already lost it was therefore stripped twice, so
+     * typing the prefix again inside its own panel filtered on nothing - and the character
+     * could not be deleted either, because the filter behind it read as empty and Backspace
+     * follows the filter.
+     *
+     * `requestedPanelId` is not latched from here for the same reason: the visible prefix is
+     * what keeps the panel resolved, so there is nothing to hold on its behalf. It stays for
+     * panels opened without one, from the suggestion list or over IPC.
+     *
+     * The AI route has its own draft lifecycle and intentionally stays outside this path.
+     */
+    function routePanelPrefix(): void {
         const panel = SearchPanelRegistry.resolve(root.searchingText);
-        if (!panel?.hosted)
-            return false;
-        const prefix = SearchPanelRegistry.prefixOf(panel);
-        if (prefix.length === 0)
-            return false;
-        root.requestedPanelId = panel.id;
-        if (panel.id === "fileBrowser")
+        const routed = (panel?.hosted && SearchPanelRegistry.prefixOf(panel).length > 0) ? panel.id : "";
+        if (routed === root.prefixRoutedPanelId)
+            return;
+        root.prefixRoutedPanelId = routed;
+        if (routed === "fileBrowser")
             GlobalStates.clearFileBrowserSearchResults();
-        root.setSearchingText(root.searchingText.slice(prefix.length));
-        return true;
     }
 
     onSearchingTextChanged: {
         if (!root.applyingSearchHistory)
             root.searchHistoryIndex = -1;
-        if (root.consumePanelPrefix())
-            return;
+        root.routePanelPrefix();
         // Typing the prefix is one of the ways in, so it latches here rather
         // than as a reaction to the mode changing.
         if (Ai.enabled && root.searchingText.startsWith(Config.options.search.prefix.ai))
@@ -771,6 +781,15 @@ Item {
         return true;
     }
 
+    /**
+     * Backspace on an empty query is "go back one level". A panel with somewhere of its own
+     * to go implements `navigateBack()` and returns true to claim the key; everything else
+     * leaves it unimplemented and the panel is left entirely.
+     *
+     * Returning true unconditionally makes a panel impossible to leave by keyboard: every
+     * Backspace is swallowed by a panel claiming it went back somewhere, so the only way out
+     * is Escape.
+     */
     function handlePanelBackspace(): bool {
         if (!root.isAnySpecialMode)
             return false;

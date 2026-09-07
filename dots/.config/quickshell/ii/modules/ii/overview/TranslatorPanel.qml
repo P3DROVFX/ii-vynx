@@ -229,10 +229,6 @@ Item {
     // SearchWidget.exitActivePanel() and kicks the user back to plain Search,
     // so clearing the text to retype something silently exits the panel and
     // the "@" prefix has to be typed again to get back in.
-    function navigateBack(): bool {
-        return true;
-    }
-
     // Translation logic
     onSearchQueryChanged: {
         translateTimer.restart();
