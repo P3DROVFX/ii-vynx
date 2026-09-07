@@ -1,8 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
 import Qt5Compat.GraphicalEffects
-import Quickshell.Services.Mpris
-import qs.services
 import qs.modules.common
 import qs.modules.common.utils
 import qs.modules.common.functions
@@ -11,6 +9,12 @@ import qs.modules.common.widgets
 Item {
     id: coverArt
 
+    // Inputs are explicit so this view can render a local-player proxy in a
+    // later phase without reaching into the parent MediaMode's implementation.
+    property var player: null
+    property bool localSource: false
+    property string artFilePath: ""
+    property var refreshArtworkAction: null
     property string backgroundShapeString: Config.options.background.mediaMode.backgroundShape
     property bool showLoadingIndicator: false
     property bool effectiveShowLoadingIndicator: false
@@ -70,12 +74,6 @@ Item {
                     id: artContainer
                     anchors.fill: parent
 
-                    // Soft pulse breathing animation when music plays
-                    scale: root.player?.isPlaying ? 1.025 : 1.0
-                    Behavior on scale {
-                        NumberAnimation { duration: 800; easing.type: Easing.OutBack }
-                    }
-
                     MaterialShape {
                         id: artBackground
                         anchors.fill: parent
@@ -94,7 +92,7 @@ Item {
                         TransitionImage {
                             id: mediaArt
                             anchors.fill: parent
-                            imageSource: root.displayedArtFilePath
+                            imageSource: coverArt.artFilePath
                             sourceSize: Qt.size(Math.max(400, width), Math.max(400, height))
                         }
 
@@ -129,8 +127,8 @@ Item {
                                     let next = availableShapes[(idx + 1) % availableShapes.length];
                                     Config.options.background.mediaMode.backgroundShape = next;
                                 } else if (mouse.button === Qt.MiddleButton) {
-                                    root.displayedArtFilePath = "";
-                                    root.updateArt();
+                                    if (typeof coverArt.refreshArtworkAction === "function")
+                                        coverArt.refreshArtworkAction();
                                 }
                             }
                         }
@@ -150,7 +148,7 @@ Item {
                 Layout.alignment: Qt.AlignHCenter
                 implicitWidth: badgeRow.implicitWidth + 24
                 implicitHeight: 28
-                visible: (root.player?.trackAlbum || root.player?.identity || "").length > 0
+                visible: (coverArt.player?.trackAlbum || coverArt.player?.identity || "").length > 0
 
                 Rectangle {
                     anchors.fill: parent
@@ -170,7 +168,7 @@ Item {
                     }
 
                     StyledText {
-                        text: root.player?.trackAlbum || root.player?.identity || ""
+                        text: coverArt.player?.trackAlbum || coverArt.player?.identity || ""
                         font.pixelSize: Appearance.font.pixelSize.smaller
                         font.weight: Font.Medium
                         color: coverArt.onAccentContainerColor
@@ -184,7 +182,7 @@ Item {
             // Track Title
             StyledText {
                 Layout.fillWidth: true
-                text: root.player?.trackTitle || Translation.tr("Unknown Title")
+                text: coverArt.player?.trackTitle || Translation.tr("Unknown Title")
                 font.pixelSize: Appearance.font.pixelSize.hugeass * 1.35
                 font.weight: Font.Bold
                 font.family: Appearance.font.family.expressive || Appearance.font.family.title
@@ -202,7 +200,7 @@ Item {
             // Artist Name
             StyledText {
                 Layout.fillWidth: true
-                text: root.player?.trackArtist || Translation.tr("Unknown Artist")
+                text: coverArt.player?.trackArtist || Translation.tr("Unknown Artist")
                 color: coverArt.onAccentContainerColor
                 opacity: 0.85
                 font.pixelSize: Appearance.font.pixelSize.large
@@ -230,12 +228,12 @@ Item {
                 Layout.maximumWidth: 540
                 Layout.alignment: Qt.AlignHCenter
 
-                readonly property real trackLength: root.player?.length ?? 0
+                readonly property real trackLength: coverArt.player?.length ?? 0
                 // MPRIS players can briefly report a position past the end of the
                 // track (most visibly right after a seek). Clamping here keeps a
                 // 3 minute song from ever displaying as 15 minutes.
                 readonly property real reportedPosition: Math.max(0,
-                    Math.min(trackLength, root.player?.position ?? 0))
+                    Math.min(trackLength, coverArt.player?.position ?? 0))
                 // While a drag is in flight, and until the player confirms the new
                 // position, the slider owns its own value.
                 property real pendingSeekPosition: -1
@@ -251,7 +249,7 @@ Item {
                 // position the player has not caught up to yet, so they compound
                 // and run the track far past its own length.
                 function commitSeek() {
-                    if (positionSlider.trackLength <= 0 || !(root.player?.canSeek ?? false))
+                    if (positionSlider.trackLength <= 0 || !(coverArt.player?.canSeek ?? false))
                         return;
 
                     const target = Math.max(0, Math.min(positionSlider.trackLength,
@@ -259,7 +257,11 @@ Item {
                     positionSlider.seekDirty = false;
                     positionSlider.pendingSeekPosition = target;
                     positionSlider.value = target / positionSlider.trackLength;
-                    root.player.position = target;
+                    if (typeof coverArt.player.seek === "function") {
+                        coverArt.player.seek(target);
+                    } else {
+                        coverArt.player.position = target;
+                    }
                     seekSettleTimer.restart();
                 }
 
@@ -307,13 +309,16 @@ Item {
                     onTriggered: positionSlider.pendingSeekPosition = -1
                 }
 
+                // Most external MPRIS players do not emit continuous position signals.
+                // Poll at ~4 Hz while playing so the slider tracks smoothly.
+                // Local player streams position updates continuously, so avoid redundant polling.
                 Timer {
                     interval: 250
-                    running: (root.player?.isPlaying ?? false) && !positionSlider.pressed
+                    running: (coverArt.player?.isPlaying ?? false) && !positionSlider.pressed && !coverArt.localSource
                     repeat: true
                     onTriggered: {
-                        if (root.player) {
-                            root.player.positionChanged();
+                        if (coverArt.player && !coverArt.localSource) {
+                            coverArt.player.positionChanged();
                         }
                     }
                 }
@@ -322,7 +327,7 @@ Item {
                 // Media Mode is the foreground experience itself. The desktop
                 // widget pauses this animation behind application windows, but
                 // that optimization must not apply to this dedicated surface.
-                animateWave: root.player?.isPlaying ?? false
+                animateWave: coverArt.player?.isPlaying ?? false
                 trackWidth: 14 // Increased thickness for prominent M3 wavy track!
                 highlightColor: coverArt.accentColor
                 trackColor: ColorUtils.transparentize(coverArt.accentColor, 0.25)
@@ -344,7 +349,7 @@ Item {
                 Item { Layout.fillWidth: true }
 
                 StyledText {
-                    text: coverArt.formatTime(root.player?.length || 0)
+                    text: coverArt.formatTime(coverArt.player?.length || 0)
                     font.pixelSize: Appearance.font.pixelSize.smaller
                     color: coverArt.onAccentContainerColor
                     opacity: 0.8
@@ -362,7 +367,7 @@ Item {
                 implicitWidth: 44
                 implicitHeight: 44
                 buttonRadius: Appearance.rounding.full
-                colBackground: (root.player?.shuffle ?? false) ? coverArt.accentColor : ColorUtils.transparentize(coverArt.accentColor, 0.2)
+                colBackground: (coverArt.player?.shuffle ?? false) ? coverArt.accentColor : ColorUtils.transparentize(coverArt.accentColor, 0.2)
                 colBackgroundHover: ColorUtils.mix(coverArt.accentColor, Appearance.colors.colLayer1Hover, 0.85)
                 colBackgroundActive: ColorUtils.mix(coverArt.accentColor, Appearance.colors.colLayer1Active, 0.7)
 
@@ -373,7 +378,7 @@ Item {
                     text: "shuffle"
                 }
                 onClicked: {
-                    if (root.player) root.player.shuffle = !root.player.shuffle;
+                    if (coverArt.player) coverArt.player.shuffle = !coverArt.player.shuffle;
                 }
             }
 
@@ -393,7 +398,7 @@ Item {
                     color: coverArt.onAccentContainerColor
                     text: "skip_previous"
                 }
-                onClicked: root.player?.previous()
+                onClicked: coverArt.player?.previous()
             }
 
             // Play / Pause Main Hero Button
@@ -410,9 +415,9 @@ Item {
                     iconSize: 38
                     fill: 1
                     color: coverArt.onAccentContainerColor
-                    text: root.player?.isPlaying ? "pause" : "play_arrow"
+                    text: coverArt.player?.isPlaying ? "pause" : "play_arrow"
                 }
-                onClicked: root.player?.togglePlaying()
+                onClicked: coverArt.player?.togglePlaying()
             }
 
             // Next Button
@@ -431,7 +436,7 @@ Item {
                     color: coverArt.onAccentContainerColor
                     text: "skip_next"
                 }
-                onClicked: root.player?.next()
+                onClicked: coverArt.player?.next()
             }
 
             // Loop Button
@@ -439,7 +444,7 @@ Item {
                 implicitWidth: 44
                 implicitHeight: 44
                 buttonRadius: Appearance.rounding.full
-                colBackground: (root.player?.loopState ?? 0) !== 0 ? coverArt.accentColor : ColorUtils.transparentize(coverArt.accentColor, 0.2)
+                colBackground: (coverArt.player?.loopState ?? 0) !== 0 ? coverArt.accentColor : ColorUtils.transparentize(coverArt.accentColor, 0.2)
                 colBackgroundHover: ColorUtils.mix(coverArt.accentColor, Appearance.colors.colLayer1Hover, 0.85)
                 colBackgroundActive: ColorUtils.mix(coverArt.accentColor, Appearance.colors.colLayer1Active, 0.7)
 
@@ -447,11 +452,11 @@ Item {
                     anchors.centerIn: parent
                     iconSize: 20
                     color: coverArt.onAccentContainerColor
-                    text: (root.player?.loopState === 2) ? "repeat_one" : "repeat"
+                    text: (coverArt.player?.loopState === 2) ? "repeat_one" : "repeat"
                 }
                 onClicked: {
-                    if (root.player) {
-                        root.player.loopState = ((root.player.loopState ?? 0) + 1) % 3;
+                    if (coverArt.player) {
+                        coverArt.player.loopState = ((coverArt.player.loopState ?? 0) + 1) % 3;
                     }
                 }
             }
@@ -469,7 +474,7 @@ Item {
                 iconSize: 20
                 color: coverArt.onAccentContainerColor
                 text: {
-                    const vol = root.player?.volume ?? 1.0;
+                    const vol = coverArt.player?.volume ?? 1.0;
                     if (vol <= 0) return "volume_off";
                     if (vol < 0.5) return "volume_down";
                     return "volume_up";
@@ -482,9 +487,9 @@ Item {
                 highlightColor: coverArt.accentColor
                 trackColor: ColorUtils.transparentize(coverArt.accentColor, 0.25)
                 handleColor: coverArt.accentColor
-                value: root.player?.volume ?? 1.0
+                value: coverArt.player?.volume ?? 1.0
                 onMoved: {
-                    if (root.player) root.player.volume = value;
+                    if (coverArt.player) coverArt.player.volume = value;
                 }
             }
         }

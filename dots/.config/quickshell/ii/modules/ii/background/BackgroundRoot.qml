@@ -200,7 +200,7 @@ PanelWindow {
 
     // Workspaces calculations
     property HyprlandMonitor monitor: Hyprland.monitorFor(modelData)
-    readonly property bool isMonitorFocused: (Hyprland.focusedMonitor ? Hyprland.focusedMonitor.name : "") == (monitor ? monitor.name : "")
+    readonly property bool isMonitorFocused: Quickshell.screens.length <= 1 || ((Hyprland.focusedMonitor ? Hyprland.focusedMonitor.name : "") == (monitor ? monitor.name : ""))
     readonly property bool loopEnabled: !wallpaperIsVideo && Config.options.background.parallax.loop
     readonly property var intensitySpans: [20, 15, 12, 10, 8, 7, 5, 4, 3, 2]
     readonly property int chunkSize: {
@@ -404,6 +404,8 @@ PanelWindow {
     property bool mediaModeOpen: mediaModeLoader.active
     property bool mediaModeRegistered: false
     property string registeredMediaModeScreenName: ""
+    property int _lastCloseAllTrigger: 0
+    property int _lastMediaModeRequestSerial: 0
 
     function registerMediaMode() {
         if (bgRoot.mediaModeRegistered)
@@ -430,9 +432,18 @@ PanelWindow {
     }
 
     function openMediaMode() {
-        if (mediaModeLoader.active || !MprisController.activePlayer)
+        if (mediaModeLoader.active)
             return;
         mediaModeLoader.active = true;
+    }
+
+    function toggleMediaMode() {
+        if (!bgRoot.isMonitorFocused && Config.options.background.mediaMode.togglePerMonitor)
+            return;
+        if (mediaModeLoader.active)
+            bgRoot.closeMediaMode();
+        else
+            bgRoot.openMediaMode();
     }
 
     // The media mode surface takes keyboard focus on demand, and it is a
@@ -504,14 +515,6 @@ PanelWindow {
                 LyricsService.shellColorChanged = false;
                 bgRoot.restoreWallpaperColors();
             }
-        }
-    }
-
-    Connections {
-        target: MprisController
-        function onActivePlayerChanged() {
-            if (!MprisController.activePlayer)
-                bgRoot.closeMediaMode();
         }
     }
 
@@ -688,19 +691,30 @@ PanelWindow {
             description: "Toggles media mode on press"
 
             onPressed: {
-                if (!monitor.focused && Config.options.background.mediaMode.togglePerMonitor)
-                    return;
-                if (mediaModeLoader.active)
-                    bgRoot.closeMediaMode();
-                else
-                    bgRoot.openMediaMode();
+                // The global shortcut exists once per BackgroundRoot and has
+                // always owned the monitor-aware toggle directly. Keep this
+                // proven route independent from the cross-surface intent used
+                // by future quick toggles and MPRIS Raise.
+                bgRoot.toggleMediaMode();
             }
         }
 
-        property int _lastCloseAllTrigger: 0
-
         Connections {
             target: GlobalStates
+            function onMediaModeRequestSerialChanged() {
+                if (GlobalStates.mediaModeRequestSerial <= bgRoot._lastMediaModeRequestSerial)
+                    return;
+                bgRoot._lastMediaModeRequestSerial = GlobalStates.mediaModeRequestSerial;
+                if (GlobalStates.mediaModeRequestedAction === "open") {
+                    if (!bgRoot.mediaModeOpen && (bgRoot.isMonitorFocused || !Config.options.background.mediaMode.togglePerMonitor))
+                        bgRoot.openMediaMode();
+                } else if (GlobalStates.mediaModeRequestedAction === "close") {
+                    bgRoot.closeMediaMode();
+                } else {
+                    bgRoot.toggleMediaMode();
+                }
+            }
+
             function onMediaModeCloseAllTriggerChanged() {
                 if (GlobalStates.mediaModeCloseAllTrigger <= bgRoot._lastCloseAllTrigger)
                     return;
@@ -723,10 +737,6 @@ PanelWindow {
                 active: false
                 onActiveChanged: {
                     if (active) {
-                        if (!MprisController.activePlayer) {
-                            active = false;
-                            return;
-                        }
                         bgRoot.registerMediaMode();
                     } else {
                         bgRoot.releaseMediaModeRegistration();

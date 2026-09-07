@@ -22,7 +22,20 @@ Singleton {
     readonly property bool mediaModeActive: mediaModeCount > 0
     property var mediaModeMonitors: []
     property int mediaModeCloseAllTrigger: 0
+    // A serial keeps repeated requests observable, including two quick-toggle
+    // presses while the same Media Mode window is already open. BackgroundRoot
+    // remains the per-screen lifecycle owner; this singleton only carries the
+    // intent so shortcuts, future quick toggles and MPRIS Raise share a route.
+    property int mediaModeRequestSerial: 0
+    property string mediaModeRequestedAction: ""
     property int widgetReStackTrigger: 0
+
+    function requestMediaMode(action = "toggle") {
+        if (action !== "toggle" && action !== "open" && action !== "close")
+            return;
+        root.mediaModeRequestedAction = action;
+        root.mediaModeRequestSerial++;
+    }
 
     readonly property bool activeWorkspaceHasWindows: {
         const activeWsId = Hyprland.focusedMonitor?.activeWorkspace?.id ?? HyprlandData.activeWorkspace?.id;
@@ -2396,5 +2409,30 @@ Singleton {
         name: "editModeToggle"
         description: "Toggles the desktop layout editor"
         onPressed: root.toggleEditMode()
+    }
+
+    // Media Mode entry points: `qs -c ii ipc call mediaMode toggle|open|close`
+    IpcHandler {
+        target: "mediaMode"
+
+        function toggle(): void {
+            root.requestMediaMode("toggle");
+        }
+
+        function open(): void {
+            root.requestMediaMode("open");
+        }
+
+        function close(): void {
+            root.requestMediaMode("close");
+        }
+
+        function chooseFiles(): void {
+            LocalMediaSelection.chooseMusicFiles();
+        }
+
+        function chooseFolder(): void {
+            LocalMediaSelection.chooseMusicFolder();
+        }
     }
 }

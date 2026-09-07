@@ -26,11 +26,33 @@ Singleton {
     
     property bool isInitialized: false
     readonly property MprisPlayer activePlayer: MprisController.activePlayer
-    readonly property string currentTrackId: root.activePlayer?.trackTitle ?? ""
+    // The helper's MPRIS metadata intentionally stays standards-compliant, so
+    // the local sidecar path travels through LocalMediaService instead. It is
+    // used only while that exported player is selected.
+    readonly property bool localSessionActive: MprisController.isLocalPlayer(root.activePlayer)
+        && LocalMediaService.hasSession
+    // Queue entry IDs distinguish duplicate filenames and titles, ensuring a
+    // local track change always resets lyric-provider state.
+    readonly property string currentTrackId: localSessionActive
+        ? String(LocalMediaService.queueSnapshot.currentEntryId ?? "")
+            + "||" + String(root.activePlayer?.trackTitle ?? "")
+        : (root.activePlayer?.trackTitle ?? "")
+    readonly property string localLyricsPath: localSessionActive
+        ? LocalMediaService.player.trackLyricsPath : ""
+    readonly property bool localLyricsLoading: localSessionActive && LocalLyrics.loading
+    readonly property string localLyricsText: localSessionActive ? LocalLyrics.lyricsText : ""
+    readonly property bool hasLocalLyricsFile: localLyricsText.trim().length > 0
+    readonly property string customLyricsText: CustomLyricsStore.get(root.activePlayer?.trackTitle ?? "",
+        root.activePlayer?.trackArtist ?? "")
+    readonly property string effectiveOverrideLyrics: customLyricsText.length > 0
+        ? customLyricsText : localLyricsText
 
-    readonly property bool effectiveLrclibEnabled: lyricsEnabled && lrclibEnabled && isInitialized && (root.activePlayer?.trackTitle?.length > 0)
+    readonly property bool effectiveLrclibEnabled: lyricsEnabled && lrclibEnabled && isInitialized
+        && (root.activePlayer?.trackTitle?.length > 0) && !localLyricsLoading && !hasLocalLyricsFile
     readonly property bool effectiveGeniusEnabled: lyricsEnabled && geniusEnabled && isInitialized
-    readonly property bool effectiveYtmusicEnabled: lyricsEnabled && ytmusicEnabled && isInitialized && (root.activePlayer?.trackTitle?.length > 0)
+        && !localLyricsLoading && !hasLocalLyricsFile
+    readonly property bool effectiveYtmusicEnabled: lyricsEnabled && ytmusicEnabled && isInitialized
+        && (root.activePlayer?.trackTitle?.length > 0) && !localLyricsLoading && !hasLocalLyricsFile
 
     readonly property alias syncedLines: lrclib.lines
     readonly property alias currentIndex: lrclib.currentIndex
@@ -46,10 +68,11 @@ Singleton {
 
     // LRCLib flags a track as instrumental. That is a real answer, not a
     // failure, and deserves its own UI state instead of "no lyrics found".
-    readonly property bool instrumental: lrclib.instrumental && !root.hasSyncedLines
+    readonly property bool instrumental: !root.usingLocalLyrics && lrclib.instrumental && !root.hasSyncedLines
     readonly property bool hasPlainLyrics: root.plainLyrics.trim().length > 0
     readonly property bool hasAnyLyrics: root.hasSyncedLines || root.hasPlainLyrics
-    readonly property bool usingCustomLyrics: lrclib.hasOverride
+    readonly property bool usingCustomLyrics: customLyricsText.length > 0 && lrclib.hasOverride
+    readonly property bool usingLocalLyrics: !usingCustomLyrics && hasLocalLyricsFile
 
     // True while any provider still has a request in flight, plus a grace
     // window after a track change so the UI never flashes "not found" during
@@ -57,8 +80,14 @@ Singleton {
     property bool searchGraceElapsed: false
     readonly property bool searching: root.isInitialized
         && (root.activePlayer?.trackTitle?.length > 0)
-        && !root.usingCustomLyrics
-        && (!root.searchGraceElapsed || lrclib.loading || genius.fetching || ytmusic.fetching)
+        && !root.usingCustomLyrics && !root.usingLocalLyrics
+        && (root.localLyricsLoading || !root.searchGraceElapsed || lrclib.loading || genius.fetching || ytmusic.fetching)
+
+    Binding {
+        target: LocalLyrics
+        property: "lyricsPath"
+        value: root.localLyricsPath
+    }
 
     // Per-provider outcome, for the "nothing found" state to show what was tried.
     readonly property var providerStates: [
@@ -128,6 +157,11 @@ Singleton {
     // "ytmusic"→ ytmusic only
     // "genius" → genius only
     readonly property string plainLyrics: {
+        // A local TXT is intentionally shown before online providers. An LRC
+        // is represented by lrclib.overrideLines and therefore bypasses this
+        // branch through `hasSyncedLines`.
+        if (root.usingLocalLyrics && !lrclib.hasOverride)
+            return root.localLyricsText.trim();
         const provider = root.lyricsProvider;
         if (provider === "lrclib") return lrclib.plainLyricsText;
         if (provider === "ytmusic") return ytmusic.lyricsString;
@@ -216,8 +250,7 @@ Singleton {
         artist: root.activePlayer?.trackArtist ?? ""
         duration: root.activePlayer?.length ?? 0
         position: root.syncPosition
-        overrideLyrics: CustomLyricsStore.get(root.activePlayer?.trackTitle ?? "",
-            root.activePlayer?.trackArtist ?? "")
+        overrideLyrics: root.effectiveOverrideLyrics
     }
 
     GeniusLyrics {
@@ -267,6 +300,7 @@ Singleton {
     
     onCurrentTrackIdChanged: {
         shellColorChanged = false // reseting at each track change
+        lastAppliedShellColor = ""
         root.beginSearchGrace();
 
         if (!currentTrackId) {
@@ -281,13 +315,23 @@ Singleton {
             ytmusic.fetchLyrics(root.activePlayer?.trackArtist ?? "", root.activePlayer?.trackTitle ?? "")
     }
 
-    // I dont know if this is the correct place for this, but we only call this from MediaMode so it should be fine
+    property string lastAppliedShellColor: ""
+
+    onMediaModeOpenCountChanged: {
+        if (mediaModeOpenCount <= 0) {
+            lastAppliedShellColor = "";
+            shellColorChanged = false;
+        }
+    }
+
+    // Called from MediaMode to sync shell theme colors with the album artwork
     function changeShellColor(color, force = false) {
-        // console.log("[Lyrics Service] Color change requested, is it changed: ", shellColorChanged)
-        // console.log("[Lyrics Service] Is media mode open :  ", mediaModeOpenCount > 0)
-        if (!mediaModeOpenCount > 0 || shellColorChanged && !force) return;
-        // console.log("[Lyrics Service] Changing the shell color with color:   ", color)
-        Quickshell.execDetached([`${Directories.wallpaperSwitchScriptPath}`, "--noswitch", "--color", color])
-        shellColorChanged = true
+        if (mediaModeOpenCount <= 0) return;
+        const colorStr = String(color ?? "").trim();
+        if (!colorStr || (colorStr === lastAppliedShellColor && !force)) return;
+        Quickshell.execDetached([`${Directories.wallpaperSwitchScriptPath}`, "--noswitch", "--color", colorStr]);
+        lastAppliedShellColor = colorStr;
+        shellColorChanged = true;
     }
 }
+

@@ -72,6 +72,8 @@ ShellRoot {
             PhoneContactsService.available;
             PhoneScrcpyService.available;
         }
+        LocalMediaService.hasSession; // Touch singleton: local media player service
+        LocalMediaSelection.lastSelectionDescription; // Touch singleton: local media picker
         root.applyOpenRgbIfEnabled();
     }
 

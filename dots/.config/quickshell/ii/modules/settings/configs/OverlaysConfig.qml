@@ -67,7 +67,7 @@ Item {
             KeyboardShortcutBox {
                 Layout.fillWidth: true
                 text: Translation.tr("Toggle Notes app")
-                keys: ["Super", "Shift", "N"]
+                keys: ["Super", "Alt", "N"]
             }
 
             NoticeBox {

@@ -16,6 +16,7 @@ Item {
 
     // Size of a *resting* line. The centred line is this scaled by
     // focusedFontSizeMultiplier, so the gap between the two is the transition.
+    property var player: null
     property real largeFontSize: Appearance.font.pixelSize.hugeass * 1.5
     property color activeColor: Appearance.colors.colPrimary
     // Upper clamp only: the effective duration is derived per line from the
@@ -60,7 +61,7 @@ Item {
     readonly property real rowHeight: Math.max(layoutFontSize * 1.32,
         height / visibleLineCount * rowSpacingFactor)
     readonly property real viewportEdgePadding: Math.max(0, height / 2 - rowHeight / 2)
-    readonly property real playbackRate: Math.max(0.25, MprisController.activePlayer?.rate ?? 1)
+    readonly property real playbackRate: Math.max(0.25, player?.rate ?? 1)
     // Median gap between synced lines, i.e. this track's own lyric cadence.
     readonly property real songPaceMs: {
         const lines = LyricsService.syncedLines;

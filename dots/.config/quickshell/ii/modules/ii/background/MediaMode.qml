@@ -13,11 +13,14 @@ import qs.modules.common.widgets
 import qs.modules.common.utils
 import qs.services
 import qs.modules.common.functions
+import "MediaModePanelLayout.js" as MediaModePanelLayout
 
 Item { // Fullscreen MediaMode instance
     id: root
 
     signal closeRequested(bool allMonitors)
+    signal localMusicFilesRequested()
+    signal localMusicFolderRequested()
 
     opacity: 0
     Behavior on opacity {
@@ -27,18 +30,68 @@ Item { // Fullscreen MediaMode instance
         }
     }
 
-    property MprisPlayer player: MprisController.activePlayer
-    property var artUrl: MprisController.artUrl
+    // The visual tree receives its playback context explicitly. In Phase 1 an
+    // application source wraps MprisPlayer; Phase 2 can supply the local proxy
+    // without making cover art, lyrics or controls reach into MprisController.
+    readonly property string mediaSource: MprisController.effectiveMediaModeSource
+    readonly property bool applicationsSource: mediaSource === "applications"
+    readonly property bool localSource: mediaSource === "local"
+    readonly property var player: applicationsSource
+        ? MprisController.activePlayer
+        : (LocalMediaService.hasSession ? LocalMediaService.player : null)
+    readonly property bool hasPlaybackContext: player !== null
+    readonly property bool showLocalEmptyState: localSource && !hasPlaybackContext
+    readonly property bool queueEligible: localSource
+        && LocalMediaService.playlistOpen
+        && LocalMediaService.queueSnapshot.entries?.length > 0
+    // `auto` yields the queue to a playlist only after lyric resolution has a
+    // final empty answer. Manual choices stay in effect across track changes.
+    property string localLyricsPreference: "auto"
+    readonly property bool localLyricsAutoCollapsed: localSource && queueEligible
+        && LyricsService.isInitialized && !LyricsService.searching
+        && !LyricsService.hasAnyLyrics
+    readonly property bool localLyricsExpanded: !queueEligible
+        || !localQueueExpanded
+        || localLyricsPreference === "expanded"
+        || (localLyricsPreference === "auto" && !localLyricsAutoCollapsed)
+    // Recolher Letras preserva o cabeçalho e a ação de reabrir. Só a
+    // configuração global pode remover a superfície de letras por completo.
+    readonly property bool lyricsPanelVisible: showLyricsPanel
+    readonly property bool lyricsContentVisible: lyricsPanelVisible
+        && (!queueEligible || localLyricsExpanded)
+    readonly property bool rightPanelVisible: lyricsPanelVisible || queueEligible
+    readonly property real panelGap: Appearance.sizes.elevationMargin * 2
+    readonly property real lyricsHeaderHeight: Appearance.sizes.minimumTouchTarget
+        + Appearance.sizes.elevationMargin * 4
+    readonly property real queueHeaderHeight: Appearance.sizes.minimumTouchTarget
+        + Appearance.sizes.elevationMargin * 2
+    property real rightPanelHeight: 0
+    readonly property var rightPanelLayout: MediaModePanelLayout.resolve(
+        rightPanelHeight, panelGap, lyricsPanelVisible, queueEligible,
+        lyricsContentVisible, localQueueExpanded, lyricsHeaderHeight, queueHeaderHeight)
+    property bool localQueueExpanded: true
+    property string artUrl: applicationsSource
+        ? MprisController.artUrl
+        : (LocalMediaService.player?.trackArtUrl ?? "")
     property string artDownloadLocation: Directories.coverArt
     property string artFileName: Qt.md5(artUrl)
     property string artFilePath: `${artDownloadLocation}/${artFileName}`
     property bool downloaded: false
     property string displayedArtFilePath: ""
+    property bool fileBrowserOpen: false
+
+    function openFileBrowser(audioOnly: bool): void {
+        fileBrowser.audioOnly = audioOnly;
+        root.fileBrowserOpen = true;
+        fileBrowser.open();
+    }
 
     readonly property string trackTitle: root.player?.trackTitle || ""
 
     // Music video mode state
-    readonly property bool videoActive: Config.options.background.mediaMode.musicVideo.enable && MusicVideoService.videoPlaying
+    readonly property bool videoActive: applicationsSource
+        && Config.options.background.mediaMode.musicVideo.enable
+        && MusicVideoService.videoPlaying
 
     // Dynamic Color Palette Logic
     property bool dynamicColorEnabled: Config.options.background.mediaMode.changeShellColor
@@ -125,6 +178,11 @@ Item { // Fullscreen MediaMode instance
         }
     }
 
+    onMediaSourceChanged: {
+        if (!applicationsSource)
+            MusicVideoService.stopVideo();
+    }
+
     Component.onCompleted: {
         Persistent.states.background.mediaMode.userScrollOffset = 0;
         root.opacity = 1.0;
@@ -139,6 +197,11 @@ Item { // Fullscreen MediaMode instance
     onTrackTitleChanged: Persistent.states.background.mediaMode.userScrollOffset = 0
 
     function updateArt() {
+        if (!root.artUrl) {
+            root.displayedArtFilePath = "";
+            root.downloaded = false;
+            return;
+        }
         if (root.artUrl && root.artUrl.startsWith("file://")) {
             root.displayedArtFilePath = root.artUrl;
             root.downloaded = true;
@@ -149,6 +212,11 @@ Item { // Fullscreen MediaMode instance
         coverArtDownloader.artFilePath = root.artFilePath;
         root.downloaded = false;
         coverArtDownloader.running = true;
+    }
+
+    function refreshArtwork() {
+        root.displayedArtFilePath = "";
+        root.updateArt();
     }
 
     onArtFilePathChanged: {
@@ -185,16 +253,220 @@ Item { // Fullscreen MediaMode instance
         }
     }
 
+    Item {
+        id: localEmptyState
+        anchors.fill: parent
+        visible: root.showLocalEmptyState
+        opacity: visible ? 1 : 0
+
+        Behavior on opacity {
+            NumberAnimation {
+                duration: Appearance.animation.elementMoveFast.duration
+                easing.type: Appearance.animation.elementMoveFast.type
+                easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
+            }
+        }
+
+        Rectangle {
+            anchors.fill: parent
+            color: Appearance.colors.colLayer0
+        }
+
+        ColumnLayout {
+            anchors.centerIn: parent
+            width: Math.min(parent.width - Appearance.sizes.editModeMargin * 2,
+                Appearance.sizes.mediaControlsWidth * 2)
+            spacing: Appearance.sizes.elevationMargin * 2
+
+            MaterialSymbol {
+                Layout.alignment: Qt.AlignHCenter
+                text: "library_music"
+                iconSize: Appearance.font.pixelSize.hugeass * 2
+                color: Appearance.colors.colPrimary
+            }
+
+            StyledText {
+                Layout.fillWidth: true
+                text: Translation.tr("Start a local music session")
+                horizontalAlignment: Text.AlignHCenter
+                wrapMode: Text.Wrap
+                font.pixelSize: Appearance.font.pixelSize.huge
+                font.family: Appearance.font.family.title
+                font.weight: Font.Bold
+                color: Appearance.colors.colOnLayer0
+            }
+
+            StyledText {
+                Layout.fillWidth: true
+                text: Translation.tr("Choose a song or a folder. Playback stays separate from this window.")
+                horizontalAlignment: Text.AlignHCenter
+                wrapMode: Text.Wrap
+                font.pixelSize: Appearance.font.pixelSize.normal
+                color: Appearance.colors.colSubtext
+            }
+
+            RowLayout {
+                Layout.alignment: Qt.AlignHCenter
+                spacing: Appearance.sizes.elevationMargin
+
+                RippleButton {
+                    implicitWidth: musicFileButtonContent.implicitWidth + Appearance.sizes.elevationMargin * 3
+                    implicitHeight: Appearance.sizes.minimumTouchTarget
+                    buttonRadius: Appearance.rounding.full
+                    colBackground: Appearance.colors.colPrimary
+                    colBackgroundHover: Appearance.colors.colPrimaryHover
+                    colBackgroundActive: Appearance.colors.colPrimaryActive
+                    onClicked: {
+                        root.localMusicFilesRequested();
+                        root.openFileBrowser(true);
+                    }
+
+                    RowLayout {
+                        id: musicFileButtonContent
+                        anchors.centerIn: parent
+                        spacing: Appearance.sizes.elevationMargin / 2
+
+                        MaterialSymbol {
+                            text: "audio_file"
+                            iconSize: Appearance.font.pixelSize.normal
+                            color: Appearance.colors.colOnPrimary
+                        }
+
+                        StyledText {
+                            text: Translation.tr("Open music")
+                            font.pixelSize: Appearance.font.pixelSize.normal
+                            font.weight: Font.DemiBold
+                            color: Appearance.colors.colOnPrimary
+                        }
+                    }
+                }
+
+                RippleButton {
+                    implicitWidth: musicFolderButtonContent.implicitWidth + Appearance.sizes.elevationMargin * 3
+                    implicitHeight: Appearance.sizes.minimumTouchTarget
+                    buttonRadius: Appearance.rounding.full
+                    colBackground: Appearance.colors.colPrimaryContainer
+                    colBackgroundHover: Appearance.colors.colPrimaryContainerHover
+                    colBackgroundActive: Appearance.colors.colPrimaryContainerActive
+                    onClicked: {
+                        root.localMusicFolderRequested();
+                        root.openFileBrowser(false);
+                    }
+
+                    RowLayout {
+                        id: musicFolderButtonContent
+                        anchors.centerIn: parent
+                        spacing: Appearance.sizes.elevationMargin / 2
+
+                        MaterialSymbol {
+                            text: "folder_open"
+                            iconSize: Appearance.font.pixelSize.normal
+                            color: Appearance.colors.colOnPrimaryContainer
+                        }
+
+                        StyledText {
+                            text: Translation.tr("Open folder")
+                            font.pixelSize: Appearance.font.pixelSize.normal
+                            font.weight: Font.DemiBold
+                            color: Appearance.colors.colOnPrimaryContainer
+                        }
+                    }
+                }
+            }
+
+            StyledText {
+                Layout.fillWidth: true
+                visible: LocalMediaService.importStatus.length > 0
+                    || LocalMediaSelection.lastSelectionDescription.length > 0
+                text: LocalMediaService.importStatus.length > 0
+                    ? LocalMediaService.importStatus
+                    : LocalMediaSelection.lastSelectionDescription
+                horizontalAlignment: Text.AlignHCenter
+                font.pixelSize: Appearance.font.pixelSize.small
+                color: Appearance.colors.colSubtext
+            }
+
+            RippleButton {
+                Layout.alignment: Qt.AlignHCenter
+                visible: LocalMediaService.importActive
+                implicitWidth: cancelImportContent.implicitWidth + Appearance.sizes.elevationMargin * 3
+                implicitHeight: Appearance.sizes.minimumTouchTarget
+                buttonRadius: Appearance.rounding.full
+                colBackground: Appearance.colors.colLayer2
+                colBackgroundHover: Appearance.colors.colLayer2Hover
+                colBackgroundActive: Appearance.colors.colLayer2Active
+                onClicked: LocalMediaService.cancelImport()
+
+                RowLayout {
+                    id: cancelImportContent
+                    anchors.centerIn: parent
+                    spacing: Appearance.sizes.elevationMargin / 2
+
+                    MaterialSymbol {
+                        text: "cancel"
+                        iconSize: Appearance.font.pixelSize.normal
+                        color: Appearance.colors.colOnLayer2
+                    }
+
+                    StyledText {
+                        text: Translation.tr("Cancel import")
+                        font.pixelSize: Appearance.font.pixelSize.normal
+                        font.weight: Font.DemiBold
+                        color: Appearance.colors.colOnLayer2
+                    }
+                }
+            }
+
+            RippleButton {
+                Layout.alignment: Qt.AlignHCenter
+                visible: MprisController.applicationPlayers.length > 0
+                implicitWidth: useApplicationPlayerContent.implicitWidth + Appearance.sizes.elevationMargin * 3
+                implicitHeight: Appearance.sizes.minimumTouchTarget
+                buttonRadius: Appearance.rounding.full
+                colBackground: Appearance.colors.colLayer2
+                colBackgroundHover: Appearance.colors.colLayer2Hover
+                colBackgroundActive: Appearance.colors.colLayer2Active
+                onClicked: {
+                    LocalMediaService.releaseMprisControl();
+                    MprisController.setMediaModeSource("applications");
+                }
+
+                RowLayout {
+                    id: useApplicationPlayerContent
+                    anchors.centerIn: parent
+                    spacing: Appearance.sizes.elevationMargin / 2
+
+                    MaterialSymbol {
+                        text: "apps"
+                        iconSize: Appearance.font.pixelSize.normal
+                        color: Appearance.colors.colOnLayer2
+                    }
+
+                    StyledText {
+                        text: Translation.tr("Use app player")
+                        font.pixelSize: Appearance.font.pixelSize.normal
+                        font.weight: Font.DemiBold
+                        color: Appearance.colors.colOnLayer2
+                    }
+                }
+            }
+        }
+    }
+
     Loader {
         id: loader
         anchors.fill: parent
-        active: true
+        active: root.hasPlaybackContext
         sourceComponent: Item {
             anchors.fill: parent
 
             // Music video mode state
-            readonly property bool videoActive: Config.options.background.mediaMode.musicVideo.enable && MusicVideoService.videoPlaying
-            readonly property bool videoSearching: Config.options.background.mediaMode.musicVideo.enable && MusicVideoService.searchFailed === false && !MusicVideoService.videoPlaying && MusicVideoService.lastSearchQuery !== ""
+            readonly property bool videoActive: root.videoActive
+            readonly property bool videoSearching: root.applicationsSource
+                && Config.options.background.mediaMode.musicVideo.enable
+                && MusicVideoService.searchFailed === false
+                && !MusicVideoService.videoPlaying
+                && MusicVideoService.lastSearchQuery !== ""
 
             // Fullscreen Background Base
             Rectangle {
@@ -365,7 +637,7 @@ Item { // Fullscreen MediaMode instance
                             }
 
                             Repeater {
-                                model: MprisController.players
+                                model: MprisController.applicationPlayers
                                 delegate: RippleButton {
                                     id: playerChip
                                     required property MprisPlayer modelData
@@ -398,12 +670,123 @@ Item { // Fullscreen MediaMode instance
                                     }
 
                                     onClicked: {
-                                        MprisController.trackedPlayer = modelData;
+                                        LocalMediaService.releaseMprisControl();
+                                        MprisController.selectMediaModeApplicationPlayer(modelData);
                                     }
 
                                     StyledToolTip {
                                         text: Translation.tr("Switch active player to ") + (modelData.identity || modelData.desktopEntry || Translation.tr("Player"))
                                     }
+                                }
+
+                            }
+                        }
+
+                        RippleButton {
+                            id: localChip
+                            readonly property bool isActive: root.localSource
+
+                            implicitHeight: 36
+                            implicitWidth: localSourceContent.implicitWidth + 24
+                            buttonRadius: Appearance.rounding.full
+                            colBackground: isActive ? root.dynamicAccentColor : ColorUtils.transparentize(Appearance.colors.colLayer2, 0.4)
+                            colBackgroundHover: isActive ? ColorUtils.mix(root.dynamicAccentColor, Appearance.colors.colLayer1Hover, 0.85) : Appearance.colors.colLayer2Hover
+                            colBackgroundActive: isActive ? ColorUtils.mix(root.dynamicAccentColor, Appearance.colors.colLayer1Active, 0.7) : Appearance.colors.colLayer2Active
+                            onClicked: {
+                                MprisController.setMediaModeSource("local");
+                                LocalMediaService.claimMprisControl();
+                            }
+
+                            RowLayout {
+                                id: localSourceContent
+                                anchors.centerIn: parent
+                                spacing: 6
+
+                                MaterialSymbol {
+                                    iconSize: 16
+                                    color: localChip.isActive ? Appearance.colors.colOnPrimary : Appearance.colors.colOnLayer2
+                                    text: "library_music"
+                                }
+
+                                StyledText {
+                                    text: Translation.tr("Local music")
+                                    font.pixelSize: Appearance.font.pixelSize.small
+                                    font.weight: localChip.isActive ? Font.Bold : Font.Medium
+                                    color: localChip.isActive ? Appearance.colors.colOnPrimary : Appearance.colors.colOnLayer2
+                                }
+                            }
+
+                            StyledToolTip {
+                                text: Translation.tr("Switch to local music player")
+                            }
+                        }
+
+                        RowLayout {
+                            spacing: Appearance.sizes.elevationMargin / 2
+
+                            RippleButton {
+                                implicitWidth: 42
+                                implicitHeight: 42
+                                buttonRadius: Appearance.rounding.full
+                                colBackground: root.dynamicAccentContainer
+                                colBackgroundHover: ColorUtils.mix(root.dynamicAccentContainer, Appearance.colors.colLayer1Hover, 0.85)
+                                colBackgroundActive: ColorUtils.mix(root.dynamicAccentContainer, Appearance.colors.colLayer1Active, 0.7)
+                                onClicked: root.openFileBrowser(true)
+
+                                MaterialSymbol {
+                                    anchors.centerIn: parent
+                                    text: "audio_file"
+                                    iconSize: 20
+                                    color: root.dynamicOnAccentContainer
+                                }
+
+                                PopupToolTip {
+                                    text: Translation.tr("Open music files")
+                                }
+                            }
+
+                            RippleButton {
+                                implicitWidth: 42
+                                implicitHeight: 42
+                                buttonRadius: Appearance.rounding.full
+                                colBackground: root.dynamicAccentContainer
+                                colBackgroundHover: ColorUtils.mix(root.dynamicAccentContainer, Appearance.colors.colLayer1Hover, 0.85)
+                                colBackgroundActive: ColorUtils.mix(root.dynamicAccentContainer, Appearance.colors.colLayer1Active, 0.7)
+                                onClicked: root.openFileBrowser(false)
+
+                                MaterialSymbol {
+                                    anchors.centerIn: parent
+                                    text: "folder_open"
+                                    iconSize: 20
+                                    color: root.dynamicOnAccentContainer
+                                }
+
+                                PopupToolTip {
+                                    text: Translation.tr("Open music folder")
+                                }
+                            }
+
+                            RippleButton {
+                                visible: LocalMediaService.importActive
+                                implicitWidth: 42
+                                implicitHeight: 42
+                                buttonRadius: Appearance.rounding.full
+                                colBackground: root.dynamicAccentContainer
+                                colBackgroundHover: ColorUtils.mix(root.dynamicAccentContainer, Appearance.colors.colLayer1Hover, 0.85)
+                                colBackgroundActive: ColorUtils.mix(root.dynamicAccentContainer, Appearance.colors.colLayer1Active, 0.7)
+                                onClicked: LocalMediaService.cancelImport()
+
+                                MaterialSymbol {
+                                    anchors.centerIn: parent
+                                    text: "cancel"
+                                    iconSize: 20
+                                    color: root.dynamicOnAccentContainer
+                                }
+
+                                PopupToolTip {
+                                    text: LocalMediaService.importStatus.length > 0
+                                        ? LocalMediaService.importStatus
+                                        : Translation.tr("Cancel import")
                                 }
                             }
                         }
@@ -626,7 +1009,7 @@ Item { // Fullscreen MediaMode instance
                         Item {
                             Layout.fillWidth: true
                             Layout.fillHeight: true
-                            Layout.preferredWidth: root.showLyricsPanel ? parent.width * 0.44 : parent.width
+                            Layout.preferredWidth: root.rightPanelVisible ? parent.width * 0.44 : parent.width
 
                             Rectangle {
                                 anchors.fill: parent
@@ -639,6 +1022,10 @@ Item { // Fullscreen MediaMode instance
 
                                 MediaModeCoverArt {
                                     anchors.fill: parent
+                                    player: root.player
+                                    localSource: root.localSource
+                                    artFilePath: root.displayedArtFilePath
+                                    refreshArtworkAction: root.refreshArtwork
                                     showLoadingIndicator: !root.downloaded
                                     accentColor: root.dynamicAccentColor
                                     accentContainerColor: root.dynamicAccentContainer
@@ -647,22 +1034,51 @@ Item { // Fullscreen MediaMode instance
                             }
                         }
 
-                        // Right Column (~56%): Synchronized Lyrics Studio Panel
+                        // Right Column (~56%): Lyrics and a local-only queue are
+                        // sibling surfaces. Application players never reserve
+                        // this area for queue controls.
                         Item {
+                            id: rightColumn
                             Layout.fillWidth: true
                             Layout.fillHeight: true
                             Layout.preferredWidth: parent.width * 0.56
-                            visible: root.showLyricsPanel
+                            visible: root.rightPanelVisible
 
-                            Rectangle {
-                                id: lyricsContainer
+                            Binding {
+                                target: root
+                                property: "rightPanelHeight"
+                                value: rightColumn.height
+                            }
+
+                            ColumnLayout {
                                 anchors.fill: parent
-                                radius: Appearance.rounding.verylarge
-                                color: videoActive ? ColorUtils.transparentize(Appearance.colors.colLayer1Base, 0.72) : ColorUtils.transparentize(Appearance.colors.colLayer1Base, 0.35)
+                                spacing: root.rightPanelLayout.gap
 
-                                Behavior on color {
-                                    ColorAnimation { duration: 400; easing.type: Easing.InOutQuad }
-                                }
+                                Item {
+                                    id: lyricsPanel
+                                    Layout.fillWidth: true
+                                    Layout.fillHeight: false
+                                    property real targetHeight: root.rightPanelLayout.lyricsHeight
+                                    Layout.preferredHeight: targetHeight
+                                    visible: root.lyricsPanelVisible
+
+                                    Behavior on targetHeight {
+                                        NumberAnimation {
+                                            duration: Appearance.animation.elementMove.duration
+                                            easing.type: Appearance.animation.elementMove.type
+                                            easing.bezierCurve: Appearance.animation.elementMove.bezierCurve
+                                        }
+                                    }
+
+                                    Rectangle {
+                                        id: lyricsContainer
+                                        anchors.fill: parent
+                                        radius: Appearance.rounding.verylarge
+                                        color: videoActive ? ColorUtils.transparentize(Appearance.colors.colLayer1Base, 0.72) : ColorUtils.transparentize(Appearance.colors.colLayer1Base, 0.35)
+
+                                        Behavior on color {
+                                            ColorAnimation { duration: 400; easing.type: Easing.InOutQuad }
+                                        }
 
                                 ColumnLayout {
                                     anchors.fill: parent
@@ -702,7 +1118,11 @@ Item { // Fullscreen MediaMode instance
                                                     if (lyricsItem.hasSyncedLines)
                                                         return LyricsService.usingCustomLyrics
                                                             ? Translation.tr("Custom LRC")
-                                                            : Translation.tr("Synced LRC");
+                                                            : (LyricsService.usingLocalLyrics
+                                                                ? Translation.tr("Local LRC")
+                                                                : Translation.tr("Synced LRC"));
+                                                    if (LyricsService.usingLocalLyrics)
+                                                        return Translation.tr("Local text");
                                                     if (LyricsService.plainLyrics && LyricsService.plainLyrics.trim().length > 0) {
                                                         const p = Config.options.lyricsService.lyricsProvider;
                                                         if (p === "ytmusic")
@@ -727,6 +1147,37 @@ Item { // Fullscreen MediaMode instance
 
                                         Item {
                                             Layout.fillWidth: true
+                                        }
+
+                                        RippleButton {
+                                            visible: root.queueEligible
+                                            implicitWidth: Appearance.sizes.minimumTouchTarget - Appearance.sizes.elevationMargin
+                                            implicitHeight: implicitWidth
+                                            buttonRadius: Appearance.rounding.full
+                                            colBackground: Appearance.colors.colLayer2
+                                            colBackgroundHover: Appearance.colors.colLayer2Hover
+                                            colBackgroundActive: Appearance.colors.colLayer2Active
+                                            onClicked: {
+                                                if (root.localLyricsExpanded) {
+                                                    root.localLyricsPreference = "collapsed";
+                                                    root.localQueueExpanded = true;
+                                                } else {
+                                                    root.localLyricsPreference = "expanded";
+                                                }
+                                            }
+
+                                            MaterialSymbol {
+                                                anchors.centerIn: parent
+                                                text: root.localLyricsExpanded ? "keyboard_arrow_up" : "keyboard_arrow_down"
+                                                iconSize: Appearance.font.pixelSize.normal
+                                                color: Appearance.colors.colOnLayer2
+                                            }
+
+                                            PopupToolTip {
+                                                text: root.localLyricsExpanded
+                                                    ? Translation.tr("Collapse lyrics")
+                                                    : Translation.tr("Expand lyrics")
+                                            }
                                         }
 
                                         // Provider Selector Buttons
@@ -852,10 +1303,22 @@ Item { // Fullscreen MediaMode instance
                                     Item {
                                         id: lyricsItem
                                         Layout.fillWidth: true
-                                        Layout.fillHeight: true
+                                        Layout.fillHeight: root.lyricsContentVisible
+                                        visible: root.lyricsContentVisible || opacity > 0
+                                        opacity: root.lyricsContentVisible ? 1 : 0
+
+                                        Behavior on opacity {
+                                            NumberAnimation {
+                                                duration: Appearance.animation.elementMoveFast.duration
+                                                easing.type: Appearance.animation.elementMoveFast.type
+                                                easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
+                                            }
+                                        }
 
                                         readonly property bool providerAllowsSynced: Config.options.lyricsService.lyricsProvider === "auto" || Config.options.lyricsService.lyricsProvider === "lrclib"
-                                        readonly property bool hasSyncedLines: LyricsService.syncedLines.length > 0 && !root.forcePlainLyrics && providerAllowsSynced
+                                        readonly property bool hasSyncedLines: LyricsService.syncedLines.length > 0
+                                            && !root.forcePlainLyrics
+                                            && (LyricsService.usingLocalLyrics || providerAllowsSynced)
                                         readonly property bool geniusEnabled: Config.options.lyricsService.enableGenius
                                         readonly property bool lrclibEnabled: Config.options.lyricsService.enableLrclib
                                         readonly property bool ytmusicEnabled: Config.options.lyricsService.enableYtmusic
@@ -867,14 +1330,16 @@ Item { // Fullscreen MediaMode instance
                                         readonly property bool instrumental: !hasSyncedLines && !hasPlainLyrics
                                             && LyricsService.instrumental
                                         readonly property bool searching: !hasSyncedLines && !hasPlainLyrics
-                                            && !instrumental && anyProviderEnabled && LyricsService.searching
+                                            && !instrumental && (LyricsService.localLyricsLoading
+                                                || (anyProviderEnabled && LyricsService.searching))
                                         readonly property bool notFound: !hasSyncedLines && !hasPlainLyrics
                                             && !instrumental && !searching
 
                                         Component.onCompleted: {
-                                            if (!geniusEnabled && !lrclibEnabled && !ytmusicEnabled)
-                                                return;
-                                            LyricsService.initiliazeLyrics();
+                                            // Local sidecars use the same parser and state surface as
+                                            // online lyrics, even if every remote provider is disabled.
+                                            if (root.localSource || geniusEnabled || lrclibEnabled || ytmusicEnabled)
+                                                LyricsService.initiliazeLyrics();
                                         }
 
                                         FadeLoader {
@@ -918,6 +1383,7 @@ Item { // Fullscreen MediaMode instance
                                             anchors.fill: parent
                                             sourceComponent: MediaModeLyrics {
                                                 anchors.fill: parent
+                                                player: root.player
                                                 // Resting size; the centred line renders at
                                                 // focusedFontSizeMultiplier times this.
                                                 largeFontSize: Appearance.font.pixelSize.hugeass * 1.5 * root.lyricsScaleMultiplier
@@ -927,10 +1393,65 @@ Item { // Fullscreen MediaMode instance
                                     }
                                 }
                             }
+
+                                }
+
+                            MediaModeQueue {
+                                id: queuePanel
+                                property real targetHeight: root.rightPanelLayout.queueHeight
+                                Layout.fillWidth: true
+                                Layout.fillHeight: false
+                                Layout.preferredHeight: targetHeight
+                                visible: root.queueEligible
+                                expanded: root.localQueueExpanded
+                                lyricsExpanded: root.localLyricsExpanded
+                                lyricsToggleAvailable: root.showLyricsPanel
+                                queueSnapshot: LocalMediaService.queueSnapshot
+                                accentColor: root.dynamicAccentColor
+                                accentContainerColor: root.dynamicAccentContainer
+                                onAccentContainerColor: root.dynamicOnAccentContainer
+                                onExpandedToggled: {
+                                    if (root.localQueueExpanded) {
+                                        root.localQueueExpanded = false;
+                                        root.localLyricsPreference = "expanded";
+                                    } else {
+                                        root.localQueueExpanded = true;
+                                    }
+                                }
+                                onLyricsExpandedToggled: {
+                                    if (root.localLyricsExpanded) {
+                                        root.localLyricsPreference = "collapsed";
+                                        root.localQueueExpanded = true;
+                                    } else {
+                                        root.localLyricsPreference = "expanded";
+                                    }
+                                }
+
+                                Behavior on targetHeight {
+                                    NumberAnimation {
+                                        duration: Appearance.animation.elementMove.duration
+                                        easing.type: Appearance.animation.elementMove.type
+                                        easing.bezierCurve: Appearance.animation.elementMove.bezierCurve
+                                    }
+                                }
+                            }
                         }
                     }
                 }
             }
         }
+    }
+}
+
+    MediaModeFileBrowser {
+        id: fileBrowser
+        anchors.fill: parent
+        z: 100
+        accentColor: root.dynamicAccentColor
+        accentContainerColor: root.dynamicAccentContainer
+        onAccentContainerColor: root.dynamicOnAccentContainer
+        onCloseRequested: root.fileBrowserOpen = false
+        onTrackPlayed: root.fileBrowserOpen = false
+        onFolderPlayed: root.fileBrowserOpen = false
     }
 }

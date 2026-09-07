@@ -20,6 +20,7 @@ Singleton {
     readonly property string pictures: StandardPaths.standardLocations(StandardPaths.PicturesLocation)[0] || ""
     readonly property string music: StandardPaths.standardLocations(StandardPaths.MusicLocation)[0] || ""
     readonly property string videos: StandardPaths.standardLocations(StandardPaths.MoviesLocation)[0] || ""
+    readonly property string runtime: FileUtils.trimFileProtocol(StandardPaths.standardLocations(StandardPaths.RuntimeLocation)[0] || "/run/user/1000")
 
     readonly property string losslessCutDesktopPath: FileUtils.trimFileProtocol(`${Directories.home}/.local/share/applications/losslesscut.desktop`)
 
@@ -40,6 +41,10 @@ Singleton {
     property string scriptPath: FileUtils.trimFileProtocol(Quickshell.shellPath("scripts"))
     property string favicons: FileUtils.trimFileProtocol(`${Directories.cache}/media/favicons`)
     property string coverArt: FileUtils.trimFileProtocol(`${Directories.cache}/media/coverart`)
+    // Reconstructible artwork extracted from files selected by the local
+    // player. It must not share the remote-cover directory that is cleared at
+    // startup, otherwise reopening an offline local session loses its art.
+    property string localMediaCoverCache: FileUtils.trimFileProtocol(`${Directories.cache}/media/local-media/covers`)
     property string tempImages: `/tmp/quickshell-${SystemInfo.username}/media/images`
     property string booruPreviews: FileUtils.trimFileProtocol(`${Directories.cache}/media/boorus`)
     property string booruDownloads: FileUtils.trimFileProtocol(Directories.pictures + "/homework")
