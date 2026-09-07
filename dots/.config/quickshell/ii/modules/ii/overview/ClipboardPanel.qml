@@ -433,6 +433,51 @@ Item {
                         font.weight: Font.Medium
                         color: Appearance.colors.colOnSurfaceVariant
                     }
+
+                        RippleButton {
+        visible: Cliphist.entries.length > 0
+        anchors.verticalCenter: parent.verticalCenter
+        anchors.right: parent.right
+        implicitWidth: clearWipeRow.implicitWidth + 16
+        implicitHeight: 24
+        buttonRadius: Appearance.rounding.small
+        colBackground: root.confirmWipe ? Appearance.colors.colErrorContainer : "transparent"
+        colBackgroundHover: root.confirmWipe ? Appearance.colors.colErrorContainerHover : Appearance.colors.colSurfaceContainerHighest
+        colRipple: root.confirmWipe ? Appearance.colors.colErrorContainerActive : Appearance.colors.colSurfaceContainerHighest
+        onClicked: {
+            if (!root.confirmWipe) {
+                root.confirmWipe = true;
+                confirmWipeTimer.restart();
+                return;
+            }
+            root.confirmWipe = false;
+            confirmWipeTimer.stop();
+            Persistent.states.clipboard.historySeen = [];
+            Cliphist.wipeUnpinned();
+        }
+        PointingHandInteraction {}
+
+        Row {
+            id: clearWipeRow
+            anchors.centerIn: parent
+            spacing: 4
+
+            MaterialSymbol {
+                anchors.verticalCenter: parent.verticalCenter
+                text: root.confirmWipe ? "warning" : "delete_sweep"
+                iconSize: 16
+                color: root.confirmWipe ? Appearance.colors.colOnErrorContainer : Appearance.colors.colOnSurfaceVariant
+            }
+            StyledText {
+                anchors.verticalCenter: parent.verticalCenter
+                text: root.confirmWipe ? Translation.tr("Confirm?") : Translation.tr("Clear")
+                font.pixelSize: Appearance.font.pixelSize.smaller
+                font.weight: Font.Medium
+                color: root.confirmWipe ? Appearance.colors.colOnErrorContainer : Appearance.colors.colOnSurfaceVariant
+            }
+        }
+    }
+
                 }
 
                 ListView {
