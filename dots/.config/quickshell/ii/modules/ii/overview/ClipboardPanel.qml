@@ -65,6 +65,14 @@ Item {
     property int selectedIndex: -1
     property int selectedActionIndex: -1
     property string selectedEntry: (filteredEntries.length > 0 && selectedIndex >= 0) ? filteredEntries[Math.min(selectedIndex, filteredEntries.length - 1)] : ""
+    property bool confirmWipe: false
+
+    Timer {
+    id: confirmWipeTimer
+    interval: 3000
+    repeat: false
+    onTriggered: root.confirmWipe = false
+    }
 
     readonly property bool hasSmartAction: {
         if (selectedIsImage)
