@@ -166,6 +166,7 @@ class MpvProcess:
             "--idle=yes",
             "--keep-open=yes",
             "--terminal=no",
+            "--gapless-audio=yes",
             f"--input-ipc-server={self.socket_path}",
         ]
         if self.null_audio:

@@ -98,6 +98,45 @@ class QueueStoreTests(unittest.TestCase):
         with self.assertRaises(QueueError):
             store.move("missing", 0)
 
+    def test_sort_queue_by_multiple_criteria_and_directions(self) -> None:
+        store = QueueStore()
+        e1 = QueueEntry.create("/tmp/zebra.mp3", title="Zebra", artist="Bob", duration_sec=120.0, mtime=100.0, ctime=300.0)
+        e2 = QueueEntry.create("/tmp/apple.mp3", title="Apple", artist="Charlie", duration_sec=300.0, mtime=200.0, ctime=100.0)
+        e3 = QueueEntry.create("/tmp/mango.mp3", title="Mango", artist="Alice", duration_sec=60.0, mtime=300.0, ctime=200.0)
+        store.open([e1, e2, e3], session_kind="playlist")
+
+        # Title ascending
+        by_title_asc = store.sort(criterion="title", descending=False)
+        self.assertEqual([e.title for e in by_title_asc], ["Apple", "Mango", "Zebra"])
+
+        # Title descending
+        by_title_desc = store.sort(criterion="title", descending=True)
+        self.assertEqual([e.title for e in by_title_desc], ["Zebra", "Mango", "Apple"])
+
+        # Artist ascending
+        by_artist_asc = store.sort(criterion="artist", descending=False)
+        self.assertEqual([e.artist for e in by_artist_asc], ["Alice", "Bob", "Charlie"])
+
+        # Duration ascending
+        by_dur_asc = store.sort(criterion="duration", descending=False)
+        self.assertEqual([e.title for e in by_dur_asc], ["Mango", "Zebra", "Apple"])
+
+        # Duration descending
+        by_dur_desc = store.sort(criterion="duration", descending=True)
+        self.assertEqual([e.title for e in by_dur_desc], ["Apple", "Zebra", "Mango"])
+
+        # Modification date ascending & descending
+        by_mtime_asc = store.sort(criterion="mtime", descending=False)
+        self.assertEqual([e.title for e in by_mtime_asc], ["Zebra", "Apple", "Mango"])
+        by_mtime_desc = store.sort(criterion="mtime", descending=True)
+        self.assertEqual([e.title for e in by_mtime_desc], ["Mango", "Apple", "Zebra"])
+
+        # Creation date ascending & descending
+        by_ctime_asc = store.sort(criterion="ctime", descending=False)
+        self.assertEqual([e.title for e in by_ctime_asc], ["Apple", "Mango", "Zebra"])
+        by_ctime_desc = store.sort(criterion="ctime", descending=True)
+        self.assertEqual([e.title for e in by_ctime_desc], ["Zebra", "Mango", "Apple"])
+
 
 if __name__ == "__main__":
     unittest.main()

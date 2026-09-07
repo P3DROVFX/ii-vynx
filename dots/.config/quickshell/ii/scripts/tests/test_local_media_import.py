@@ -74,6 +74,17 @@ class LocalMediaImportTests(unittest.TestCase):
             self.assertEqual(payload["skipped"], 1)
             self.assertEqual(payload["sessionKind"], "single")
 
+    def test_ttml_sidecar_lyrics_are_discovered(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="ii-local-media-ttml-") as temp_dir:
+            root = Path(temp_dir)
+            track = root / "song.wav"
+            ttml = root / "song.ttml"
+            write_silence(track)
+            ttml.write_text('<tt xmlns="http://www.w3.org/ns/ttml"><body><div><p begin="00:00.00">Test</p></div></body></tt>', encoding="utf-8")
+            payload = final_payload(list(scan([track], request_id="ttml-1", folder=False, cache_dir=root / "cache")))
+            self.assertEqual(len(payload["entries"]), 1)
+            self.assertEqual(payload["entries"][0]["lyricsPath"], str(ttml))
+
 
 if __name__ == "__main__":
     unittest.main()

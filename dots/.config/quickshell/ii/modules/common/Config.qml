@@ -3474,6 +3474,10 @@ Singleton {
                         property string searchSuffix: "official music video"
                         property int videoSamplingInterval: 200 // ms between color sampling updates (100-5000)
                     }
+                    property JsonObject crossfade: JsonObject {
+                        property bool enable: false
+                        property int durationSec: 3
+                    }
                 }
             }
 

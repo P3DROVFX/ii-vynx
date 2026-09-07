@@ -62,6 +62,7 @@ class LocalPlayerDaemon:
         bus_name: str,
         daemon_socket_path: Path | None = None,
         daemon_mode: bool = False,
+        initial_volume: float | None = None,
     ) -> None:
         self.queue = QueueStore()
         self.socket_path = socket_path
@@ -81,7 +82,10 @@ class LocalPlayerDaemon:
         self._playback_status = "Stopped"
         self._position_sec = 0.0
         self._duration_sec = 0.0
-        self._volume = 1.0
+        self._volume = max(0.0, min(1.0, float(initial_volume))) if initial_volume is not None else 1.0
+        self._crossfade_enabled = False
+        self._crossfade_duration_sec = 3.0
+        self._last_applied_mpv_volume = -1.0
         self._loop_status = "None"
         self._rate = 1.0
         self._shuffle = False
@@ -199,6 +203,15 @@ class LocalPlayerDaemon:
             self.queue.revision,
         )
 
+    def _apply_mpv_volume(self, volume: float) -> None:
+        target = max(0.0, min(100.0, volume * 100.0))
+        if abs(self._last_applied_mpv_volume - target) > 0.4:
+            try:
+                self.client.set_property("volume", target)
+                self._last_applied_mpv_volume = target
+            except MpvIpcError:
+                pass
+
     def _refresh_state_unlocked(self) -> bool:
         """Read mpv's current state and return whether public state changed."""
 
@@ -224,6 +237,20 @@ class LocalPlayerDaemon:
                 self._playback_status = "Stopped"
             else:
                 self._playback_status = "Paused" if pause else "Playing"
+
+            if self._playback_status == "Playing" and self._crossfade_enabled:
+                fade_dur = self._crossfade_duration_sec
+                fade_factor = 1.0
+                if fade_dur > 0:
+                    if self._position_sec < fade_dur:
+                        fade_factor = min(1.0, max(0.0, self._position_sec / fade_dur))
+                    if self._duration_sec > fade_dur * 1.5:
+                        rem = self._duration_sec - self._position_sec
+                        if rem < fade_dur:
+                            fade_factor = min(fade_factor, max(0.0, rem / fade_dur))
+                self._apply_mpv_volume(self._volume * fade_factor)
+            elif not self._crossfade_enabled:
+                self._apply_mpv_volume(self._volume)
         else:
             self._playback_status = "Stopped"
             self._position_sec = 0.0
@@ -290,6 +317,16 @@ class LocalPlayerDaemon:
                     duration = max(0.0, float(raw_duration))
                 except (TypeError, ValueError) as error:
                     raise ProtocolError("invalidEntries", "durationSec must be numeric") from error
+            raw_mtime = raw_entry.get("mtime")
+            try:
+                mtime = float(raw_mtime) if raw_mtime is not None else 0.0
+            except (TypeError, ValueError):
+                mtime = 0.0
+            raw_ctime = raw_entry.get("ctime")
+            try:
+                ctime = float(raw_ctime) if raw_ctime is not None else 0.0
+            except (TypeError, ValueError):
+                ctime = 0.0
             entries.append(QueueEntry.create(
                 path,
                 track_id=raw_entry.get("trackId") if isinstance(raw_entry.get("trackId"), str) else None,
@@ -299,6 +336,8 @@ class LocalPlayerDaemon:
                 art_url=raw_entry.get("artUrl") if isinstance(raw_entry.get("artUrl"), str) else "",
                 lyrics_path=raw_entry.get("lyricsPath") if isinstance(raw_entry.get("lyricsPath"), str) else "",
                 duration_sec=duration,
+                mtime=mtime,
+                ctime=ctime,
             ))
         return entries
 
@@ -329,6 +368,7 @@ class LocalPlayerDaemon:
             # mpv's unhelpful "error running command".
             self.client.wait_for_property("path", lambda value: value == str(paths[0]), timeout=2.5)
             self.client.set_property("pause", self.start_paused)
+            self._apply_mpv_volume(0.0 if self._crossfade_enabled else self._volume)
         except MpvIpcError as error:
             raise ProtocolError("playbackError", str(error)) from error
 
@@ -365,8 +405,20 @@ class LocalPlayerDaemon:
         except (TypeError, ValueError) as error:
             raise ProtocolError("invalidVolume", "volume must be a number") from error
         volume = min(1.0, max(0.0, volume))
-        self.client.set_property("volume", volume * 100.0)
         self._volume = volume
+        if not self._crossfade_enabled or self._playback_status != "Playing":
+            self._apply_mpv_volume(volume)
+        else:
+            fade_dur = self._crossfade_duration_sec
+            fade_factor = 1.0
+            if fade_dur > 0:
+                if self._position_sec < fade_dur:
+                    fade_factor = min(1.0, max(0.0, self._position_sec / fade_dur))
+                if self._duration_sec > fade_dur * 1.5:
+                    rem = self._duration_sec - self._position_sec
+                    if rem < fade_dur:
+                        fade_factor = min(fade_factor, max(0.0, rem / fade_dur))
+            self._apply_mpv_volume(volume * fade_factor)
 
     def _set_loop_status_unlocked(self, value: object) -> None:
         status = str(value)
@@ -554,6 +606,19 @@ class LocalPlayerDaemon:
             raise ProtocolError("invalidUri", "only file URIs are supported")
         self._open_paths_unlocked([unquote(parsed.path)])
 
+    def _sort_queue_unlocked(self, criterion: str, descending: bool) -> None:
+        if self.queue.current_entry() is None:
+            return
+        sorted_entries = self.queue.sort(criterion=criterion, descending=descending)
+        self._apply_effective_order_unlocked(sorted_entries, shuffle=False)
+        self._shuffle = False
+
+    def _set_crossfade_unlocked(self, enable: bool, duration: float) -> None:
+        self._crossfade_enabled = enable
+        self._crossfade_duration_sec = duration
+        if not enable:
+            self._apply_mpv_volume(self._volume)
+
     def _execute_unlocked(self, operation: str, payload: Mapping[str, Any]) -> tuple[dict[str, object], float | None, bool]:
         """Apply one operation; returns response, seek event and state change hint."""
 
@@ -619,6 +684,17 @@ class LocalPlayerDaemon:
             self._remove_entries_unlocked(payload.get("entryIds"))
         elif operation == "clearFuture":
             self._clear_future_unlocked()
+        elif operation in {"sort", "sortQueue"}:
+            criterion = str(payload.get("criterion", "title")).lower()
+            descending = bool(payload.get("descending", False))
+            self._sort_queue_unlocked(criterion, descending)
+        elif operation == "setCrossfade":
+            enable = bool(payload.get("enable", payload.get("enabled", False)))
+            try:
+                duration = max(0.5, min(30.0, float(payload.get("durationSec", 3.0))))
+            except (TypeError, ValueError):
+                duration = 3.0
+            self._set_crossfade_unlocked(enable, duration)
         else:  # guarded by LOCAL_PLAYER_OPERATIONS; defensive for MPRIS input
             raise ProtocolError("unsupportedOperation", f"unsupported operation: {operation}")
 
@@ -777,7 +853,7 @@ class LocalPlayerDaemon:
             if not self.daemon_mode:
                 reader = threading.Thread(target=self._read_stdin, name="ii-local-media-stdin", daemon=True)
                 reader.start()
-            GLib.timeout_add(250, self._tick)
+            GLib.timeout_add(100, self._tick)
             self.loop.run()
             return 0
         except Exception as error:
@@ -963,6 +1039,8 @@ def connect_or_spawn_daemon(args: argparse.Namespace) -> socket.socket | None:
         "--mpv", args.mpv,
         "--mpris-name", args.mpris_name,
     ]
+    if args.volume is not None:
+        cmd.extend(["--volume", str(args.volume)])
     subprocess.Popen(
         cmd,
         start_new_session=True,
@@ -989,6 +1067,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--daemon-socket", type=Path, default=runtime_dir / "daemon.sock")
     parser.add_argument("--mpv", default="mpv")
     parser.add_argument("--mpris-name", default=DEFAULT_BUS_NAME)
+    parser.add_argument("--volume", type=float, default=None, help="initial volume (0.0 to 1.0)")
     parser.add_argument("--test-null-audio", action="store_true", help="use mpv's null audio output for isolated tests")
     parser.add_argument("--test-start-paused", action="store_true", help="keep test fixtures paused after open")
     parser.add_argument("--daemon-mode", action="store_true", help="run as background daemon server")
@@ -1016,6 +1095,7 @@ def main(argv: list[str] | None = None) -> int:
             bus_name=args.mpris_name,
             daemon_socket_path=args.daemon_socket,
             daemon_mode=True,
+            initial_volume=args.volume,
         ).run()
 
     if args.no_daemon or args.test_null_audio:
@@ -1027,6 +1107,7 @@ def main(argv: list[str] | None = None) -> int:
             bus_name=args.mpris_name,
             daemon_socket_path=None,
             daemon_mode=False,
+            initial_volume=args.volume,
         ).run()
 
     sock = connect_or_spawn_daemon(args)
@@ -1041,6 +1122,7 @@ def main(argv: list[str] | None = None) -> int:
         bus_name=args.mpris_name,
         daemon_socket_path=args.daemon_socket,
         daemon_mode=False,
+        initial_volume=args.volume,
     ).run()
 
 

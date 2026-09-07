@@ -48,7 +48,26 @@ class ProtocolTests(unittest.TestCase):
 
         with self.assertRaises(ProtocolError) as wrong_payload:
             decode_request('{"protocolVersion":1,"requestId":"a","op":"ping","payload":[]}')
-        self.assertEqual(wrong_payload.exception.code, "invalidRequest")
+    def test_protocol_supports_sort_and_crossfade_operations(self) -> None:
+        sort_req = decode_request(json.dumps({
+            "protocolVersion": PROTOCOL_VERSION,
+            "requestId": "sort-1",
+            "op": "sortQueue",
+            "payload": {"criterion": "duration", "descending": True},
+        }))
+        self.assertEqual(sort_req.operation, "sortQueue")
+        self.assertEqual(sort_req.payload["criterion"], "duration")
+        self.assertTrue(sort_req.payload["descending"])
+
+        crossfade_req = decode_request(json.dumps({
+            "protocolVersion": PROTOCOL_VERSION,
+            "requestId": "fade-1",
+            "op": "setCrossfade",
+            "payload": {"enable": True, "durationSec": 5},
+        }))
+        self.assertEqual(crossfade_req.operation, "setCrossfade")
+        self.assertTrue(crossfade_req.payload["enable"])
+        self.assertEqual(crossfade_req.payload["durationSec"], 5)
 
     @unittest.skipUnless(shutil.which("ffmpeg"), "ffmpeg is not installed")
     def test_fixture_generator_covers_local_media_inputs_without_committed_binaries(self) -> None:

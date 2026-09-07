@@ -160,8 +160,21 @@ Singleton {
         // A local TXT is intentionally shown before online providers. An LRC
         // is represented by lrclib.overrideLines and therefore bypasses this
         // branch through `hasSyncedLines`.
-        if (root.usingLocalLyrics && !lrclib.hasOverride)
-            return root.localLyricsText.trim();
+        if (root.usingLocalLyrics && !lrclib.hasOverride) {
+            const raw = root.localLyricsText.trim();
+            if (raw.indexOf("<tt") !== -1 || raw.indexOf("<p") !== -1) {
+                return raw.replace(/<br\s*\/?>/gi, "\n")
+                          .replace(/<[^>]+>/g, "")
+                          .replace(/&quot;/g, '"')
+                          .replace(/&apos;/g, "'")
+                          .replace(/&lt;/g, "<")
+                          .replace(/&gt;/g, ">")
+                          .replace(/&amp;/g, "&")
+                          .replace(/\n\s*\n+/g, "\n")
+                          .trim();
+            }
+            return raw;
+        }
         const provider = root.lyricsProvider;
         if (provider === "lrclib") return lrclib.plainLyricsText;
         if (provider === "ytmusic") return ytmusic.lyricsString;

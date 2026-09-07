@@ -68,7 +68,7 @@ Singleton {
         property real length: 0
         property real position: 0
         property real _lastAppliedPosition: 0
-        property real volume: 1
+        property real volume: Persistent.states.background.mediaMode.localMediaVolume ?? 0.8
         property real rate: 1
         property int loopState: 0 // MprisLoopState: None, Playlist, Track
         property bool shuffle: false
@@ -114,8 +114,10 @@ Singleton {
             }
         }
         onVolumeChanged: {
-            if (!root.applyingState)
+            if (!root.applyingState) {
+                Persistent.states.background.mediaMode.localMediaVolume = volume;
                 root.setVolume(volume);
+            }
         }
         onRateChanged: {
             if (!root.applyingState)
@@ -162,6 +164,7 @@ Singleton {
         localPlayer._lastAppliedPosition = Math.max(0, Number(nextSession.positionSec ?? 0));
         localPlayer.position = localPlayer._lastAppliedPosition;
         localPlayer.volume = Math.max(0, Math.min(1, Number(nextSession.volume ?? 1)));
+        Persistent.states.background.mediaMode.localMediaVolume = localPlayer.volume;
         localPlayer.rate = Number(nextSession.rate ?? 1);
         localPlayer.loopState = nextSession.loopStatus === "Track"
             ? 2
@@ -210,6 +213,7 @@ Singleton {
 
         if (message.event === "ready") {
             helperReady = true;
+            _syncSettings();
             _request("snapshot");
             _sendPendingOpen();
             return;
@@ -459,6 +463,31 @@ Singleton {
     }
     function clearFutureQueueEntries(): void { _request("clearFuture"); }
 
+    function sortQueue(criterion: string, descending: bool): void {
+        _request("sortQueue", {
+            criterion: String(criterion || "title"),
+            descending: Boolean(descending)
+        });
+    }
+
+    function setCrossfade(enable: bool, durationSec: real): void {
+        _request("setCrossfade", {
+            enable: Boolean(enable),
+            durationSec: Math.max(0.5, Number(durationSec ?? 3))
+        });
+    }
+
+    function _syncSettings(): void {
+        const savedVol = Persistent.states.background.mediaMode.localMediaVolume;
+        if (typeof savedVol === "number" && isFinite(savedVol)) {
+            root.setVolume(savedVol);
+        }
+        root.setCrossfade(
+            Boolean(Config.options.background.mediaMode.crossfade?.enable ?? false),
+            Number(Config.options.background.mediaMode.crossfade?.durationSec ?? 3)
+        );
+    }
+
     function terminateService(): void {
         cancelImport();
         importRunning = false;
@@ -516,7 +545,12 @@ Singleton {
 
     Process {
         id: helperProcess
-        command: ["python3", root.helperPath]
+        command: [
+            "python3",
+            root.helperPath,
+            "--volume",
+            String(Persistent.states.background.mediaMode.localMediaVolume ?? 0.8)
+        ]
         stdinEnabled: true
         running: root.helperWanted
         stdout: SplitParser {
@@ -562,6 +596,18 @@ Singleton {
             root.helperWanted = true;
         } else {
             probeProcess.running = true;
+        }
+    }
+
+    Connections {
+        target: Config.options.background.mediaMode.crossfade
+        function onEnableChanged(): void {
+            if (root.helperReady)
+                root.setCrossfade(Config.options.background.mediaMode.crossfade?.enable ?? false, Config.options.background.mediaMode.crossfade?.durationSec ?? 3);
+        }
+        function onDurationSecChanged(): void {
+            if (root.helperReady)
+                root.setCrossfade(Config.options.background.mediaMode.crossfade?.enable ?? false, Config.options.background.mediaMode.crossfade?.durationSec ?? 3);
         }
     }
 

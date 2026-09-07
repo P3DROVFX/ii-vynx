@@ -30,6 +30,8 @@ class QueueEntry:
     art_url: str = ""
     lyrics_path: str = ""
     duration_sec: float | None = None
+    mtime: float = 0.0
+    ctime: float = 0.0
 
     @classmethod
     def create(
@@ -43,12 +45,23 @@ class QueueEntry:
         art_url: str = "",
         lyrics_path: str = "",
         duration_sec: float | None = None,
+        mtime: float = 0.0,
+        ctime: float = 0.0,
     ) -> "QueueEntry":
         resolved_path = str(Path(path).expanduser().resolve(strict=False))
         if not resolved_path:
             raise QueueError("path must not be empty")
         if duration_sec is not None and duration_sec < 0:
             raise QueueError("duration_sec must be non-negative")
+        if mtime == 0.0 or ctime == 0.0:
+            try:
+                st = Path(resolved_path).stat()
+                if mtime == 0.0:
+                    mtime = float(st.st_mtime)
+                if ctime == 0.0:
+                    ctime = float(getattr(st, "st_birthtime", st.st_ctime))
+            except OSError:
+                pass
         return cls(
             entry_id=uuid4().hex,
             track_id=track_id or uuid4().hex,
@@ -59,6 +72,8 @@ class QueueEntry:
             art_url=art_url,
             lyrics_path=lyrics_path,
             duration_sec=duration_sec,
+            mtime=mtime,
+            ctime=ctime,
         )
 
     def snapshot(self) -> dict[str, object]:
@@ -72,6 +87,8 @@ class QueueEntry:
             "artUrl": self.art_url,
             "lyricsPath": self.lyrics_path,
             "durationSec": self.duration_sec,
+            "mtime": self.mtime,
+            "ctime": self.ctime,
         }
 
 
@@ -162,6 +179,27 @@ class QueueStore:
         SystemRandom().shuffle(future)
         return [current, *future]
 
+    def sort(self, criterion: str = "title", descending: bool = False) -> list[QueueEntry]:
+        """Return entries sorted by criterion."""
+        c = (criterion or "title").lower()
+
+        def sort_key(entry: QueueEntry):
+            if c == "title":
+                return (entry.title.lower(), entry.artist.lower())
+            elif c == "artist":
+                return (entry.artist.lower() if entry.artist else "zzz", entry.title.lower())
+            elif c == "album":
+                return (entry.album.lower() if entry.album else "zzz", entry.title.lower())
+            elif c == "duration":
+                return (entry.duration_sec if entry.duration_sec is not None else -1.0, entry.title.lower())
+            elif c == "mtime":
+                return (entry.mtime, entry.title.lower())
+            elif c == "ctime":
+                return (entry.ctime, entry.title.lower())
+            return (entry.title.lower(), entry.artist.lower())
+
+        return sorted(self.entries, key=sort_key, reverse=descending)
+
     def set_effective_order(self, entries: Iterable[QueueEntry], *, shuffle: bool) -> None:
         """Commit an mpv-synchronized effective order without altering base order."""
 
@@ -172,6 +210,8 @@ class QueueStore:
             raise QueueError("effective order must contain every existing queue entry exactly once")
         self.entries = next_entries
         self.shuffle_enabled = shuffle
+        if not shuffle:
+            self.base_entries = list(next_entries)
         self._bump()
 
     def play(self, entry_id: str) -> None:

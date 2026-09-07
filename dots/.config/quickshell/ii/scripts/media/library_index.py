@@ -32,7 +32,7 @@ else:
 AUDIO_SUFFIXES = frozenset({".aac", ".aiff", ".alac", ".ape", ".flac", ".m4a", ".m4b", ".mp3", ".ogg", ".oga", ".opus", ".wav", ".wma"})
 PLAYLIST_SUFFIXES = frozenset({".m3u", ".m3u8"})
 COVER_SUFFIXES = (".jpg", ".jpeg", ".png", ".webp")
-LYRICS_SUFFIXES = (".lrc", ".txt")
+LYRICS_SUFFIXES = (".lrc", ".ttml", ".xml", ".txt")
 
 
 def message(name: str, **payload: object) -> dict[str, object]:
@@ -177,6 +177,13 @@ def describe_track(path: Path, cache_dir: Path) -> dict[str, object]:
     title, artist, album, duration = _easy_tags(resolved)
     cover = _embedded_cover(resolved, cache_dir) or _folder_cover(resolved)
     lyrics = _sidecar_lyrics(resolved)
+    try:
+        st = resolved.stat()
+        mtime = float(st.st_mtime)
+        ctime = float(getattr(st, "st_birthtime", st.st_ctime))
+    except OSError:
+        mtime = 0.0
+        ctime = 0.0
     return {
         "path": str(resolved),
         "trackId": track_identity(resolved),
@@ -186,6 +193,8 @@ def describe_track(path: Path, cache_dir: Path) -> dict[str, object]:
         "durationSec": duration,
         "artUrl": cover.as_uri() if cover else "",
         "lyricsPath": str(lyrics) if lyrics else "",
+        "mtime": mtime,
+        "ctime": ctime,
     }
 
 

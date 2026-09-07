@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Layouts
 import Qt5Compat.GraphicalEffects
 import qs.modules.common
@@ -46,8 +47,43 @@ Item {
 
     signal expandedToggled()
     signal lyricsExpandedToggled()
+    signal openFileBrowserRequested(bool audioOnly)
 
     property bool initialCenterDone: false
+    property bool sortPanelOpen: false
+    property string sortCriterion: Persistent.states.background.mediaMode.queueSortCriterion || "title"
+    property bool sortDescending: Persistent.states.background.mediaMode.queueSortDescending ?? false
+
+    readonly property var sortOptions: [
+        { value: "title", label: Translation.tr("Title"), icon: "sort_by_alpha" },
+        { value: "artist", label: Translation.tr("Artist"), icon: "person" },
+        { value: "mtime", label: Translation.tr("Date modified"), icon: "update" },
+        { value: "ctime", label: Translation.tr("Date created"), icon: "calendar_add_on" },
+        { value: "duration", label: Translation.tr("Duration"), icon: "schedule" }
+    ]
+
+    function openSortDialog() {
+        sortDialog.open();
+    }
+
+    function closeSortDialog() {
+        sortDialog.close();
+    }
+
+    onExpandedChanged: {
+        if (!expanded && sortDialog.visible)
+            sortDialog.close();
+        if (root.expanded && !root.initialCenterDone)
+            root.tryInitialCenter();
+    }
+
+    function applySort(criterion, descending) {
+        root.sortCriterion = criterion;
+        root.sortDescending = descending;
+        Persistent.states.background.mediaMode.queueSortCriterion = criterion;
+        Persistent.states.background.mediaMode.queueSortDescending = descending;
+        LocalMediaService.sortQueue(criterion, descending);
+    }
 
     function _syncEntries(): void {
         const rawEntries = root.queueSnapshot?.entries;
@@ -129,11 +165,6 @@ Item {
             root.tryInitialCenter();
     }
 
-    onExpandedChanged: {
-        if (root.expanded && !root.initialCenterDone)
-            root.tryInitialCenter();
-    }
-
     onCurrentIndexChanged: {
         if (!root.initialCenterDone)
             root.tryInitialCenter();
@@ -166,6 +197,7 @@ Item {
 
         Item {
             id: headerItem
+            z: 85
             anchors.top: parent.top
             anchors.left: parent.left
             anchors.right: parent.right
@@ -238,7 +270,7 @@ Item {
                     colBackground: Appearance.colors.colLayer2
                     colBackgroundHover: Appearance.colors.colLayer2Hover
                     colBackgroundActive: Appearance.colors.colLayer2Active
-                    onClicked: LocalMediaSelection.chooseMusicFiles("append")
+                    onClicked: root.openFileBrowserRequested(true)
 
                     MaterialSymbol {
                         anchors.centerIn: parent
@@ -261,7 +293,7 @@ Item {
                     colBackground: Appearance.colors.colLayer2
                     colBackgroundHover: Appearance.colors.colLayer2Hover
                     colBackgroundActive: Appearance.colors.colLayer2Active
-                    onClicked: LocalMediaSelection.chooseMusicFolder("append")
+                    onClicked: root.openFileBrowserRequested(false)
 
                     MaterialSymbol {
                         anchors.centerIn: parent
@@ -296,6 +328,41 @@ Item {
 
                     PopupToolTip {
                         text: Translation.tr("Center on current track")
+                    }
+                }
+
+                RippleButton {
+                    id: sortButton
+                    visible: root.expanded && root.entries.length > 1
+                    Layout.alignment: Qt.AlignVCenter
+                    implicitWidth: root.headerButtonSize
+                    implicitHeight: root.headerButtonSize
+                    buttonRadius: Appearance.rounding.full
+                    toggled: sortDialog.visible
+                    colBackground: Appearance.colors.colLayer2
+                    colBackgroundHover: Appearance.colors.colLayer2Hover
+                    colBackgroundActive: Appearance.colors.colLayer2Active
+                    colBackgroundToggled: root.accentColor
+                    colBackgroundToggledHover: Appearance.colors.colPrimaryHover
+                    colBackgroundToggledActive: Appearance.colors.colPrimaryActive
+                    colRipple: Appearance.colors.colLayer2Active
+                    colRippleToggled: Appearance.colors.colPrimaryActive
+                    onClicked: {
+                        if (sortDialog.visible)
+                            root.closeSortDialog();
+                        else
+                            root.openSortDialog();
+                    }
+
+                    MaterialSymbol {
+                        anchors.centerIn: parent
+                        text: "sort"
+                        iconSize: Appearance.font.pixelSize.normal
+                        color: sortButton.toggled ? Appearance.colors.colOnPrimary : Appearance.colors.colOnLayer2
+                    }
+
+                    PopupToolTip {
+                        text: Translation.tr("Sort queue")
                     }
                 }
 
@@ -444,7 +511,14 @@ Item {
                         readonly property bool isLast: queueRow.index === root.entries.length - 1
                         readonly property bool aboveCurrent: root.currentIndex !== -1 && queueRow.index === root.currentIndex - 1
                         readonly property bool belowCurrent: root.currentIndex !== -1 && queueRow.index === root.currentIndex + 1
-                        readonly property bool rowHovered: rowHoverArea.containsMouse
+                        readonly property bool rowHovered: rowHoverHandler.hovered
+                            || rowHoverArea.containsMouse
+                            || trackInfoMouseArea.containsMouse
+                            || artClickArea.containsMouse
+
+                        HoverHandler {
+                            id: rowHoverHandler
+                        }
 
                         readonly property real rFull: Appearance.rounding.scale === 0 ? 0 : (height / 2)
                         readonly property real rDynamicFull: Appearance.rounding.scale === 0 ? 0 : Math.min(height / 2, Appearance.rounding.large)
@@ -504,7 +578,8 @@ Item {
                             id: rowHoverArea
                             anchors.fill: parent
                             hoverEnabled: true
-                            acceptedButtons: Qt.NoButton
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: LocalMediaService.playQueueEntry(queueRow.entryId)
                         }
 
                         RowLayout {
@@ -609,8 +684,8 @@ Item {
                                             ? (ColorUtils.contrastRatio(root.accentColor, Appearance.colors.colLayer1Base) >= 3.0
                                                 ? root.accentColor
                                                 : ColorUtils.adaptToAccent(Appearance.colors.colOnLayer0, root.accentColor))
-                                            : (trackInfoMouseArea.containsMouse
-                                                ? Appearance.colors.colOnLayer1
+                                            : (queueRow.rowHovered
+                                                ? Appearance.colors.colOnLayer0
                                                 : Appearance.colors.colOnLayer2)
                                     }
 
@@ -623,7 +698,9 @@ Item {
                                         font.pixelSize: Appearance.font.pixelSize.small
                                         color: queueRow.current
                                             ? ColorUtils.mix(root.accentColor, Appearance.colors.colSubtext, 0.4)
-                                            : Appearance.colors.colSubtext
+                                            : (queueRow.rowHovered
+                                                ? Appearance.colors.colOnLayer1
+                                                : Appearance.colors.colSubtext)
                                     }
                                 }
 
@@ -693,5 +770,138 @@ Item {
                     }
                 }
             }
+
+        Popup {
+            id: sortDialog
+            parent: queueCard
+            x: Math.max(0, queueCard.width - width - (Appearance.sizes.elevationMargin * 2))
+            y: headerItem.height + Appearance.sizes.hyprlandGapsOut
+            width: Math.min(Appearance.sizes.wallpaperSelectorSortDialogWidth, queueCard.width - 24)
+            padding: Appearance.font.pixelSize.smaller
+            modal: false
+            focus: true
+            closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutsideParent
+
+            onOpened: root.sortPanelOpen = true
+            onClosed: {
+                Qt.callLater(() => root.sortPanelOpen = false);
+            }
+
+            background: Rectangle {
+                color: Appearance.m3colors.m3surfaceContainerHigh
+                radius: Appearance.rounding.large
+            }
+
+            enter: Transition {
+                ParallelAnimation {
+                    NumberAnimation {
+                        target: sortDialog
+                        property: "y"
+                        from: headerItem.height
+                        to: headerItem.height + Appearance.sizes.hyprlandGapsOut
+                        duration: Appearance.animation.elementMoveFast.duration
+                        easing.type: Easing.BezierSpline
+                        easing.bezierCurve: Appearance.animationCurves.standardDecel
+                    }
+                    NumberAnimation {
+                        target: sortDialog
+                        property: "opacity"
+                        from: 0.0
+                        to: 1.0
+                        duration: Appearance.animation.elementMoveFast.duration
+                        easing.type: Easing.BezierSpline
+                        easing.bezierCurve: Appearance.animationCurves.standardDecel
+                    }
+                }
+            }
+
+            exit: Transition {
+                ParallelAnimation {
+                    NumberAnimation {
+                        target: sortDialog
+                        property: "y"
+                        from: headerItem.height + Appearance.sizes.hyprlandGapsOut
+                        to: headerItem.height
+                        duration: Appearance.animation.elementMoveFast.duration
+                        easing.type: Easing.BezierSpline
+                        easing.bezierCurve: Appearance.animationCurves.standardAccel
+                    }
+                    NumberAnimation {
+                        target: sortDialog
+                        property: "opacity"
+                        from: 1.0
+                        to: 0.0
+                        duration: Appearance.animation.elementMoveFast.duration
+                        easing.type: Easing.BezierSpline
+                        easing.bezierCurve: Appearance.animationCurves.standardAccel
+                    }
+                }
+            }
+
+            contentItem: ColumnLayout {
+                spacing: Appearance.sizes.hyprlandGapsOut
+
+                Repeater {
+                    model: root.sortOptions
+
+                    delegate: RippleButton {
+                        id: sortOptionButton
+                        required property var modelData
+
+                        Layout.fillWidth: true
+                        implicitHeight: Appearance.sizes.barHeight - Appearance.sizes.hyprlandGapsOut * 2
+                        buttonRadius: Appearance.rounding.large
+                        buttonRadiusPressed: Appearance.rounding.large
+                        useDynamicRadius: true
+                        toggled: modelData.value === root.sortCriterion
+                        colBackground: Appearance.colors.colLayer2
+                        colBackgroundHover: Appearance.colors.colLayer2Hover
+                        colBackgroundActive: Appearance.colors.colLayer2Active
+                        colBackgroundToggled: root.accentColor
+                        colBackgroundToggledHover: Appearance.colors.colPrimaryHover
+                        colBackgroundToggledActive: Appearance.colors.colPrimaryActive
+                        colRipple: Appearance.colors.colLayer2Active
+                        colRippleToggled: Appearance.colors.colPrimaryActive
+
+                        contentItem: RowLayout {
+                            anchors.fill: parent
+                            anchors.leftMargin: Appearance.font.pixelSize.small
+                            anchors.rightMargin: Appearance.font.pixelSize.small
+                            spacing: Appearance.font.pixelSize.small
+
+                            MaterialSymbol {
+                                Layout.alignment: Qt.AlignVCenter | Qt.AlignLeft
+                                iconSize: Appearance.font.pixelSize.huge
+                                text: sortOptionButton.modelData.icon
+                                color: sortOptionButton.toggled ? Appearance.colors.colOnPrimary : Appearance.colors.colOnLayer2
+                            }
+
+                            StyledText {
+                                Layout.fillWidth: true
+                                Layout.alignment: Qt.AlignVCenter | Qt.AlignLeft
+                                text: sortOptionButton.modelData.label
+                                color: sortOptionButton.toggled ? Appearance.colors.colOnPrimary : Appearance.colors.colOnLayer2
+                            }
+
+                            MaterialSymbol {
+                                Layout.alignment: Qt.AlignVCenter | Qt.AlignRight
+                                visible: sortOptionButton.modelData.value === root.sortCriterion
+                                iconSize: Appearance.font.pixelSize.huge
+                                text: root.sortDescending ? "arrow_downward" : "arrow_upward"
+                                color: Appearance.colors.colOnPrimary
+                            }
+                        }
+
+                        onClicked: {
+                            if (root.sortCriterion === sortOptionButton.modelData.value) {
+                                root.applySort(sortOptionButton.modelData.value, !root.sortDescending);
+                            } else {
+                                root.applySort(sortOptionButton.modelData.value, false);
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
+}

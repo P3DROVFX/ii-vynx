@@ -332,6 +332,9 @@ Singleton {
                 property bool lockBehaviorMigrated: false
                 property JsonObject mediaMode: JsonObject {
                     property real userScrollOffset: 0
+                    property real localMediaVolume: 0.8
+                    property string queueSortCriterion: "title"
+                    property bool queueSortDescending: false
                 }
             }
 

@@ -1461,6 +1461,7 @@ Item { // Fullscreen MediaMode instance
                                 accentColor: root.dynamicAccentColor
                                 accentContainerColor: root.dynamicAccentContainer
                                 onAccentContainerColor: root.dynamicOnAccentContainer
+                                onOpenFileBrowserRequested: audioOnly => root.openFileBrowser(audioOnly)
                                 onExpandedToggled: {
                                     if (root.localQueueExpanded) {
                                         root.localQueueExpanded = false;

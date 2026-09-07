@@ -250,6 +250,28 @@ Item {
             }
 
             ConfigSwitch {
+                buttonIcon: "compare_arrows"
+                text: Translation.tr("Enable track crossfade")
+                checked: Config.options.background.mediaMode.crossfade.enable ?? false
+                onCheckedChanged: {
+                    Config.options.background.mediaMode.crossfade.enable = checked;
+                }
+            }
+
+            ConfigSpinBox {
+                enabled: Config.options.background.mediaMode.crossfade.enable ?? false
+                icon: "timer"
+                text: Translation.tr("Crossfade duration (seconds)")
+                value: Config.options.background.mediaMode.crossfade.durationSec ?? 3
+                from: 1
+                to: 15
+                stepSize: 1
+                onValueChanged: {
+                    Config.options.background.mediaMode.crossfade.durationSec = value;
+                }
+            }
+
+            ConfigSwitch {
                 buttonIcon: "play_circle"
                 text: Translation.tr("Replace blurred background with music video")
                 checked: Config.options.background.mediaMode.musicVideo.enable ?? false

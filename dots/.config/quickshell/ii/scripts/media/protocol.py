@@ -37,6 +37,9 @@ LOCAL_PLAYER_OPERATIONS = frozenset({
     "removeEntries",
     "clearFuture",
     "openUri",
+    "sort",
+    "sortQueue",
+    "setCrossfade",
     "shutdown",
 })
 
