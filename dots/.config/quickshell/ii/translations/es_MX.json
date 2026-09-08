@@ -553,6 +553,7 @@
     "Write something here...\nUse '-' to create copyable bullet points, like this:\n\nSheep fricker\n- 4x Slab\n- 1x Boat\n- 4x Redstone Dust\n- 1x Sticky Piston\n- 1x End Rod\n- 4x Redstone Repeater\n- 1x Redstone Torch\n- 1x Sheep": "Escribe algo aquí...\nUsa '-' para crear viñetas copiables, así:\n\nOveja traviesa\n- 4x Losa\n- 1x Bote\n- 4x Polvo de redstone\n- 1x Pistón pegajoso\n- 1x Varilla del End\n- 4x Repetidor de redstone\n- 1x Antorcha de redstone\n- 1x Oveja",
     "Edit": "Editar",
     "Add task": "Agregar tarea",
+    "Back to tasks": "Volver a las tareas",
     "Depends on workspace": "Depende del espacio\nde trabajo",
     "Use old sine wave cookie implementation": "Usar implementación antigua de cookie en onda sinusoidal",
     "Darken screen": "Oscurecer pantalla",

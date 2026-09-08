@@ -224,73 +224,98 @@ Item {
                 }
             }
 
-            Flow {
-                Layout.alignment: Qt.AlignHCenter
+            RowLayout {
+                id: bottomToolbar
                 Layout.fillWidth: true
-                spacing: 6
-                Repeater {
-                    model: root.board?.layers?.length ?? 0
-                    delegate: Action {
-                        required property int index
-                        mainText: Translation.tr("Layer %1").arg(String(index))
-                            + (root.board?.layerNames?.[index] ? " · " + root.board.layerNames[index] : "")
-                        materialIcon: ""
-                        colBackground: root.activeLayer === index ? Appearance.colors.colPrimary : Appearance.colors.colLayer2
-                        colText: root.activeLayer === index ? Appearance.colors.colOnPrimary : Appearance.colors.colOnSurface
-                        onClicked: root.selectLayer(index)
-                    }
-                }
-                Action {
-                    visible: root.board?.source === "manual"
-                    enabled: KeybindsService.writable && (root.board?.layers?.length ?? 0) < 32
-                    materialIcon: "add"
-                    mainText: Translation.tr("Layer")
-                    onClicked: root.addLayer()
-                }
-            }
+                spacing: 12
 
-            StyledText {
-                Layout.fillWidth: true
-                visible: (root.board?.layers?.length ?? 0) > 1
-                text: Translation.tr("← / →  Previous / next layer     ·     0–9  Go to layer")
-                wrapMode: Text.Wrap
-                color: Appearance.colors.colOnSurfaceVariant
-                font.pixelSize: Appearance.font.pixelSize.small
-            }
+                Flickable {
+                    id: layerFlickable
+                    Layout.fillWidth: false
+                    Layout.maximumWidth: Math.max(100, bottomToolbar.width - layoutControlsRow.implicitWidth - (layerHintText.visible ? layerHintText.implicitWidth + 24 : 0) - 24)
+                    implicitWidth: Math.min(layerButtonsRow.implicitWidth, Layout.maximumWidth)
+                    implicitHeight: 40
+                    contentWidth: layerButtonsRow.implicitWidth
+                    contentHeight: 40
+                    clip: true
+                    flickableDirection: Flickable.HorizontalFlick
+                    boundsBehavior: Flickable.StopAtBounds
 
-            Flow {
-                Layout.fillWidth: true
-                spacing: 6
-                StyledComboBox {
-                    id: presetPicker
-                    objectName: "presetPicker"
-                    width: Math.min(210, parent.width)
-                    model: [Translation.tr("Add another layout…"), "QWERTY", "QWERTZ", "AZERTY", "Dvorak", "Colemak", "Português (Brasil · ABNT2)"]
-                    enabled: KeybindsService.writable && !KeybindsService.detectingSystemKeyboard
-                    onActivated: index => {
-                        if (index === 6) {
-                            KeybindsService.detectSystemKeyboard("abnt2");
-                            currentIndex = 0;
-                        } else if (index > 0) {
-                            const preset = root.presets[index - 1];
-                            KeybindsService.createKeyboardPage(KeyboardMap.manual(TypingKeyboardLayouts.rowsFor(preset), preset));
-                            currentIndex = 0;
+                    Row {
+                        id: layerButtonsRow
+                        spacing: 6
+                        Repeater {
+                            model: root.board?.layers?.length ?? 0
+                            delegate: Action {
+                                required property int index
+                                mainText: Translation.tr("Layer %1").arg(String(index))
+                                    + (root.board?.layerNames?.[index] ? " · " + root.board.layerNames[index] : "")
+                                materialIcon: ""
+                                colBackground: root.activeLayer === index ? Appearance.colors.colPrimary : Appearance.colors.colLayer2
+                                colText: root.activeLayer === index ? Appearance.colors.colOnPrimary : Appearance.colors.colOnSurface
+                                onClicked: root.selectLayer(index)
+                            }
                         }
-                        root.forceActiveFocus();
+                        Action {
+                            visible: root.board?.source === "manual"
+                            enabled: KeybindsService.writable && (root.board?.layers?.length ?? 0) < 32
+                            materialIcon: "add"
+                            mainText: Translation.tr("Layer")
+                            onClicked: root.addLayer()
+                        }
                     }
                 }
-                Action { objectName: "zoomOut"; materialIcon: "remove"; Accessible.name: Translation.tr("Zoom out"); enabled: root.zoom > 0.8; onClicked: root.zoom = Math.max(0.8, root.zoom - 0.2) }
-                Action { mainText: Math.round(root.zoom * 100) + "%"; Accessible.name: Translation.tr("Reset zoom"); onClicked: root.zoom = 1 }
-                Action { materialIcon: "add"; Accessible.name: Translation.tr("Zoom in"); enabled: root.zoom < 2; onClicked: root.zoom = Math.min(2, root.zoom + 0.2) }
-                Action { materialIcon: "download"; Accessible.name: Translation.tr("Export keyboard map"); onClicked: KeybindsService.openExportDialog(root.pageId) }
-                Action {
-                    materialIcon: root.confirmingDelete ? "delete_forever" : "delete"
-                    mainText: root.confirmingDelete ? Translation.tr("Delete?") : ""
-                    Accessible.name: Translation.tr("Delete keyboard page")
-                    enabled: KeybindsService.writable
-                    onClicked: {
-                        if (root.confirmingDelete) KeybindsService.deletePage(root.pageId);
-                        else { root.confirmingDelete = true; deleteTimer.restart(); }
+
+                StyledText {
+                    id: layerHintText
+                    visible: (root.board?.layers?.length ?? 0) > 1
+                    text: Translation.tr("← / →  Previous / next layer     ·     0–9  Go to layer")
+                    color: Appearance.colors.colOnSurfaceVariant
+                    font.pixelSize: Appearance.font.pixelSize.small
+                    Layout.alignment: Qt.AlignVCenter
+                    elide: Text.ElideRight
+                }
+
+                Item {
+                    Layout.fillWidth: true
+                }
+
+                Row {
+                    id: layoutControlsRow
+                    spacing: 6
+                    Layout.alignment: Qt.AlignVCenter
+
+                    StyledComboBox {
+                        id: presetPicker
+                        objectName: "presetPicker"
+                        width: 210
+                        model: [Translation.tr("Add another layout…"), "QWERTY", "QWERTZ", "AZERTY", "Dvorak", "Colemak", "Português (Brasil · ABNT2)"]
+                        enabled: KeybindsService.writable && !KeybindsService.detectingSystemKeyboard
+                        onActivated: index => {
+                            if (index === 6) {
+                                KeybindsService.detectSystemKeyboard("abnt2");
+                                currentIndex = 0;
+                            } else if (index > 0) {
+                                const preset = root.presets[index - 1];
+                                KeybindsService.createKeyboardPage(KeyboardMap.manual(TypingKeyboardLayouts.rowsFor(preset), preset));
+                                currentIndex = 0;
+                            }
+                            root.forceActiveFocus();
+                        }
+                    }
+                    Action { objectName: "zoomOut"; materialIcon: "remove"; Accessible.name: Translation.tr("Zoom out"); enabled: root.zoom > 0.8; onClicked: root.zoom = Math.max(0.8, root.zoom - 0.2) }
+                    Action { mainText: Math.round(root.zoom * 100) + "%"; Accessible.name: Translation.tr("Reset zoom"); onClicked: root.zoom = 1 }
+                    Action { materialIcon: "add"; Accessible.name: Translation.tr("Zoom in"); enabled: root.zoom < 2; onClicked: root.zoom = Math.min(2, root.zoom + 0.2) }
+                    Action { materialIcon: "download"; Accessible.name: Translation.tr("Export keyboard map"); onClicked: KeybindsService.openExportDialog(root.pageId) }
+                    Action {
+                        materialIcon: root.confirmingDelete ? "delete_forever" : "delete"
+                        mainText: root.confirmingDelete ? Translation.tr("Delete?") : ""
+                        Accessible.name: Translation.tr("Delete keyboard page")
+                        enabled: KeybindsService.writable
+                        onClicked: {
+                            if (root.confirmingDelete) KeybindsService.deletePage(root.pageId);
+                            else { root.confirmingDelete = true; deleteTimer.restart(); }
+                        }
                     }
                 }
             }

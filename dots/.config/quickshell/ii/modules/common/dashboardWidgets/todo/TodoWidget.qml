@@ -27,8 +27,15 @@ Item {
     ]
     property int selectedTab: Math.max(0, Math.min(root.tabButtonList.length - 1,
         Persistent.states.sidebar.bottomGroup.todoTab))
-    property bool showAddDialog: false
-    property int dialogMargins: root.dense ? 8 : 20
+    /**
+     * Canvas views in the AiChat fashion: the FAB does not open a dialog over
+     * the list, it swaps the whole surface for a subpage that slides in from
+     * the right while the list leaves to the left.
+     */
+    property string activeView: ""
+    readonly property bool viewOpen: root.activeView.length > 0
+    readonly property int canvasSlideDistance: Appearance.font.pixelSize.huge * 1.5
+    readonly property int canvasContentPadding: root.dense ? 10 : 16
     // 56 is FloatingActionButton's own baseSize; fabSize was never handed to it,
     // so the button was 56 while the list reserved room for 48. Compact scales
     // both buttons by the same 260/350 the bottom group itself lost.
@@ -44,9 +51,17 @@ Item {
         Persistent.states.sidebar.bottomGroup.todoTab = index;
     }
 
+    function closeView() {
+        // Clear while the view still exists: the Loader destroys its item the
+        // moment activeView flips, so nothing survives to be cleaned after.
+        if (canvasViewLoader.item?.clearInput)
+            canvasViewLoader.item.clearInput();
+        root.activeView = "";
+    }
+
     Keys.onPressed: event => {
-        // Open add dialog on "N" (any modifiers)
-        // Close dialog on Esc if open
+        // Open the new-task subpage on "N" (any modifiers)
+        // Close the subpage on Esc if open
 
         if ((event.key === Qt.Key_PageDown || event.key === Qt.Key_PageUp) && event.modifiers === Qt.NoModifier) {
             if (event.key === Qt.Key_PageDown)
@@ -55,17 +70,50 @@ Item {
                 tabBar.decrementCurrentIndex();
             event.accepted = true;
         } else if (event.key === Qt.Key_N) {
-            root.showAddDialog = true;
+            root.activeView = "newTask";
             event.accepted = true;
-        } else if (event.key === Qt.Key_Escape && root.showAddDialog) {
-            root.showAddDialog = false;
+        } else if (event.key === Qt.Key_Escape && root.viewOpen) {
+            root.closeView();
             event.accepted = true;
         }
     }
 
+    onActiveViewChanged: {
+        // The view already cleared its own input in closeView(); here the
+        // focus is handed back to the FAB that opened it.
+        if (!root.viewOpen)
+            fabButton.focus = true;
+    }
+
     ColumnLayout {
+        id: mainColumn
         anchors.fill: parent
         spacing: 0
+
+        // Same choreography as the AiChat transcript: the list leaves to the
+        // left while the subpage enters from the right, so the widget reads
+        // as one surface swapping its content.
+        opacity: root.viewOpen ? 0 : 1
+        visible: opacity > 0.001
+        transform: Translate {
+            x: root.viewOpen ? -root.canvasSlideDistance : 0
+
+            Behavior on x {
+                NumberAnimation {
+                    duration: Appearance.animation.elementMoveFast.duration
+                    easing.type: Easing.BezierSpline
+                    easing.bezierCurve: Appearance.animationCurves.emphasizedDecel
+                }
+            }
+        }
+
+        Behavior on opacity {
+            NumberAnimation {
+                duration: Appearance.animation.elementMoveFast.duration
+                easing.type: Easing.BezierSpline
+                easing.bezierCurve: Appearance.animationCurves.emphasizedDecel
+            }
+        }
 
         Toolbar {
             Layout.alignment: Qt.AlignHCenter
@@ -165,6 +213,16 @@ Item {
         implicitWidth: root.syncButtonSize
         implicitHeight: root.syncButtonSize
         buttonRadius: Appearance.rounding.full
+        opacity: root.viewOpen ? 0 : 1
+        visible: opacity > 0.001
+
+        Behavior on opacity {
+            NumberAnimation {
+                duration: Appearance.animation.elementMoveFast.duration
+                easing.type: Easing.BezierSpline
+                easing.bezierCurve: Appearance.animationCurves.emphasizedDecel
+            }
+        }
 
         onClicked: {
             if (Todo.remoteEnabled && Todo.connected) {
@@ -241,107 +299,172 @@ Item {
         anchors.bottomMargin: root.fabMargins
         baseSize: root.fabSize
         iconSize: root.compact ? 20 : 26
-        onClicked: root.showAddDialog = true
+        opacity: root.viewOpen ? 0 : 1
+        visible: opacity > 0.001
+
+        Behavior on opacity {
+            NumberAnimation {
+                duration: Appearance.animation.elementMoveFast.duration
+                easing.type: Easing.BezierSpline
+                easing.bezierCurve: Appearance.animationCurves.emphasizedDecel
+            }
+        }
+
+        onClicked: root.activeView = "newTask"
         iconText: "add"
     }
 
-    Item {
+    /**
+     * The subpage shell. Built once per opening and then only swaps what it
+     * holds, like ChatControlBar's canvas view: no scrim, nothing anchored —
+     * the view slides in from the right over the faded list.
+     */
+    Loader {
+        id: canvasViewLoader
         anchors.fill: parent
-        z: 9999
-        visible: opacity > 0
-        opacity: root.showAddDialog ? 1 : 0
-        onVisibleChanged: {
-            if (!visible) {
-                todoInput.text = "";
-                fabButton.focus = true;
+        z: 100
+        active: root.viewOpen
+
+        sourceComponent: Item {
+            id: canvasView
+
+            function clearInput() {
+                newTaskInput.text = "";
             }
-        }
-
-        // Scrim
-        Rectangle {
-            anchors.fill: parent
-            radius: Appearance.rounding.small
-            color: Appearance.colors.colScrim
-
-            MouseArea {
-                hoverEnabled: true
-                anchors.fill: parent
-                preventStealing: true
-                propagateComposedEvents: false
-            }
-        }
-
-        // The dialog
-        Rectangle {
-            id: dialog
 
             function addTask() {
-                if (todoInput.text.length > 0) {
-                    Todo.addTask(todoInput.text);
-                    todoInput.text = "";
-                    root.showAddDialog = false;
-                    tabBar.setCurrentIndex(0); // Show unfinished tasks
+                if (newTaskInput.text.length > 0) {
+                    Todo.addTask(newTaskInput.text);
+                    newTaskInput.text = "";
+                    root.selectTab(0); // Show unfinished tasks
+                    root.closeView();
                 }
             }
 
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.verticalCenter: parent.verticalCenter
-            anchors.margins: root.dialogMargins
-            implicitHeight: dialogColumnLayout.implicitHeight
+            opacity: 0
+            transform: Translate {
+                id: canvasViewTransform
+                x: root.canvasSlideDistance
+            }
 
-            color: Appearance.m3colors.m3surfaceContainerHigh
-            radius: Appearance.rounding.normal
+            Component.onCompleted: {
+                canvasViewEnter.start();
+                newTaskInput.forceActiveFocus();
+            }
+
+            ParallelAnimation {
+                id: canvasViewEnter
+
+                NumberAnimation {
+                    target: canvasView
+                    property: "opacity"
+                    from: 0
+                    to: 1
+                    duration: Appearance.animation.elementMoveFast.duration
+                    easing.type: Easing.BezierSpline
+                    easing.bezierCurve: Appearance.animationCurves.emphasizedDecel
+                }
+
+                NumberAnimation {
+                    target: canvasViewTransform
+                    property: "x"
+                    from: root.canvasSlideDistance
+                    to: 0
+                    duration: Appearance.animation.elementMoveFast.duration
+                    easing.type: Easing.BezierSpline
+                    easing.bezierCurve: Appearance.animationCurves.emphasizedDecel
+                }
+            }
+
+            Rectangle {
+                anchors.fill: parent
+                radius: Appearance.rounding.small
+                color: Appearance.colors.colSurfaceContainer
+            }
+
+            MouseArea {
+                // The list is still behind this view during the cross fade;
+                // without this it would take the clicks meant for the page.
+                anchors.fill: parent
+                onWheel: wheel => wheel.accepted = true
+            }
 
             ColumnLayout {
-                id: dialogColumnLayout
-
                 anchors.fill: parent
-                spacing: 16
+                anchors.margins: root.canvasContentPadding
+                spacing: root.canvasContentPadding
 
-                StyledText {
-                    Layout.topMargin: 16
-                    Layout.leftMargin: 16
-                    Layout.rightMargin: 16
-                    Layout.alignment: Qt.AlignLeft
-                    color: Appearance.m3colors.m3onSurface
-                    font.pixelSize: Appearance.font.pixelSize.larger
-                    text: Translation.tr("Add task")
+                // One header, one way out: the back button closes the view,
+                // mirroring the canvas views of the AI sidebar.
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: root.canvasContentPadding
+
+                    RippleButton {
+                        implicitWidth: root.fabSize
+                        implicitHeight: root.fabSize
+                        buttonRadius: Appearance.rounding.full
+                        colBackground: Appearance.colors.colSurfaceContainerHighest
+                        colBackgroundHover: Appearance.colors.colSurfaceContainerHighestHover
+                        colBackgroundActive: Appearance.colors.colSurfaceContainerHighestActive
+
+                        onClicked: root.closeView()
+
+                        contentItem: Item {
+                            MaterialSymbol {
+                                anchors.centerIn: parent
+                                text: "arrow_back"
+                                iconSize: root.compact ? 20 : 24
+                                color: Appearance.colors.colOnSurface
+                            }
+                        }
+
+                        StyledToolTip {
+                            text: Translation.tr("Back to tasks")
+                        }
+                    }
+
+                    StyledText {
+                        Layout.fillWidth: true
+                        text: Translation.tr("Add task")
+                        font.pixelSize: Appearance.font.pixelSize.larger
+                        font.bold: true
+                        color: Appearance.colors.colOnLayer1
+                        elide: Text.ElideRight
+                    }
                 }
 
                 TextField {
-                    id: todoInput
+                    id: newTaskInput
 
                     Layout.fillWidth: true
-                    Layout.leftMargin: 16
-                    Layout.rightMargin: 16
-                    padding: 10
+                    padding: 12
                     color: activeFocus ? Appearance.m3colors.m3onSurface : Appearance.m3colors.m3onSurfaceVariant
                     renderType: Text.NativeRendering
                     selectedTextColor: Appearance.m3colors.m3onSecondaryContainer
                     selectionColor: Appearance.colors.colSecondaryContainer
                     placeholderText: Translation.tr("Task description")
                     placeholderTextColor: Appearance.m3colors.m3outline
-                    focus: root.showAddDialog
-                    onAccepted: dialog.addTask()
+                    wrapMode: TextEdit.NoWrap
+                    onAccepted: canvasView.addTask()
 
                     background: Rectangle {
                         anchors.fill: parent
-                        radius: Appearance.rounding.verysmall
-                        color: todoInput.activeFocus
+                        radius: Math.min(height / 2, Appearance.rounding.large)
+                        color: newTaskInput.activeFocus
                             ? Appearance.colors.colPrimaryContainer
                             : Appearance.m3colors.m3surfaceContainerHighest
                     }
 
                     cursorDelegate: Rectangle {
                         width: 1
-                        color: todoInput.activeFocus ? Appearance.colors.colPrimary : "transparent"
+                        color: newTaskInput.activeFocus ? Appearance.colors.colPrimary : "transparent"
                         radius: 1
                     }
 
                     StyledTextContextMenu {
                         id: todoContextMenu
-                        targetField: todoInput
+                        targetField: newTaskInput
                     }
 
                     MouseArea {
@@ -350,39 +473,39 @@ Item {
                         acceptedButtons: Qt.RightButton
                         onPressed: mouse => {
                             if (mouse.button === Qt.RightButton) {
-                                todoInput.forceActiveFocus();
+                                newTaskInput.forceActiveFocus();
                                 todoContextMenu.popup(mouse.x, mouse.y);
                             }
                         }
                     }
                 }
 
-                RowLayout {
-                    Layout.bottomMargin: 16
-                    Layout.leftMargin: 16
-                    Layout.rightMargin: 16
-                    Layout.alignment: Qt.AlignRight
-                    spacing: 5
-
-                    DialogButton {
-                        buttonText: Translation.tr("Cancel")
-                        onClicked: root.showAddDialog = false
-                    }
-
-                    DialogButton {
-                        buttonText: Translation.tr("Add")
-                        enabled: todoInput.text.length > 0
-                        onClicked: dialog.addTask()
-                    }
+                Item {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
                 }
             }
-        }
 
-        Behavior on opacity {
-            NumberAnimation {
-                duration: Appearance.animation.elementMoveFast.duration
-                easing.type: Appearance.animation.elementMoveFast.type
-                easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
+            StyledRectangularShadow {
+                target: saveFab
+                radius: saveFab.buttonRadius
+                blur: 0.6 * Appearance.sizes.elevationMargin
+            }
+
+            // Save is a FAB in the same spot the create FAB occupies, so the
+            // button the user pressed to get here is the button that commits.
+            FloatingActionButton {
+                id: saveFab
+
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                anchors.rightMargin: root.fabMargins
+                anchors.bottomMargin: root.fabMargins
+                baseSize: root.fabSize
+                iconSize: root.compact ? 20 : 26
+                enabled: newTaskInput.text.length > 0
+                onClicked: canvasView.addTask()
+                iconText: "check"
             }
         }
     }
