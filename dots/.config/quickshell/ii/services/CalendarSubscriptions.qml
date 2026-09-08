@@ -20,6 +20,7 @@ Singleton {
 
     readonly property bool enabled: Config.ready
     readonly property string helperPath: Directories.scriptPath + "/calendar/subscriptions.py"
+    readonly property string syncHelperPath: Directories.scriptPath + "/calendar/subscriptions_sync.py"
     readonly property string configRoot: FileUtils.trimFileProtocol(Directories.config)
     readonly property string stateRoot: FileUtils.trimFileProtocol(Directories.state)
     readonly property string vdirsyncerConfigPath: root.configRoot + "/vdirsyncer/config"
@@ -111,10 +112,25 @@ Singleton {
         }
     }
 
+    function managedPairs() {
+        return Array.from(root.managedCalendars ?? [])
+            .map(item => String(item?.calendar ?? ""))
+            .filter(name => name.length > 0);
+    }
+
     function syncSubscriptions() {
         if (subscriptionSyncProcess.running)
             return;
+        const pairs = root.managedPairs();
+        if (pairs.length === 0) {
+            CalendarService.loadCalendarList();
+            CalendarService.loadEvents();
+            return;
+        }
         root.syncInProgress = true;
+        subscriptionSyncProcess.replyText = "";
+        subscriptionSyncProcess.pairs = pairs;
+        subscriptionSyncProcess.stdinEnabled = true;
         subscriptionSyncProcess.running = true;
     }
 
@@ -191,16 +207,44 @@ Singleton {
         }
     }
 
+    // The helper reports a missing vdirsyncer as a normal reply. Spawning the
+    // binary directly would fail before startup, so no exit code would ever
+    // arrive and the "synchronizing" state would never clear.
     Process {
         id: subscriptionSyncProcess
 
-        command: ["vdirsyncer", "sync"]
+        command: ["python3", root.syncHelperPath]
+        stdinEnabled: true
+        property string replyText: ""
+        property var pairs: []
+
+        onRunningChanged: {
+            if (!running)
+                return;
+            write(JSON.stringify({
+                "pairs": subscriptionSyncProcess.pairs
+            }) + "\n");
+            stdinEnabled = false;
+        }
+
+        stdout: StdioCollector {
+            onStreamFinished: subscriptionSyncProcess.replyText = text.trim()
+        }
+
         onExited: exitCode => {
             root.syncInProgress = false;
-            if (exitCode !== 0) {
-                root.lastError = Translation.tr("The subscription was saved, but vdirsyncer could not synchronize it yet.");
+            let reply = null;
+            try {
+                reply = JSON.parse(subscriptionSyncProcess.replyText);
+            } catch (error) {
+                reply = null;
+            }
+            if (!reply?.ok) {
+                root.lastError = String(reply?.error ?? "").trim()
+                    || Translation.tr("The subscription was saved, but vdirsyncer could not synchronize it yet.");
                 return;
             }
+            root.lastError = "";
             CalendarService.loadCalendarList();
             CalendarService.loadEvents();
         }
