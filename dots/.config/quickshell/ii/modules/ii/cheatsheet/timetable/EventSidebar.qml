@@ -559,7 +559,8 @@ Item {
     readonly property var dayCalendarEvents: CalendarService.eventsByDay[H.dayKeyOf(root.day)] ?? []
     readonly property var dayBirthdays: BirthdaysService.birthdaysForDate(root.day)
     readonly property var daySports: SportsService.gamesForDate(root.day)
-    readonly property var dayEvents: root.sportsListOnly ? root.daySports : root.dayCalendarEvents.concat(root.dayBirthdays, root.daySports)
+    readonly property var dayTasks: Todo.getTasksByDate(root.day).filter(task => !task.done)
+    readonly property var dayEvents: root.sportsListOnly ? root.daySports : root.dayCalendarEvents.concat(root.dayBirthdays, root.daySports, root.dayTasks)
     readonly property var dayHolidays: (Config.options.calendar.holidays.enable && Config.options.calendar.holidays.showInMonthView) ? (Holidays.byDayKey[H.dayKeyOf(root.day)] ?? []) : []
     readonly property color accent: (root.sportsEvent || root.birthdayEvent)
         ? Appearance.colors.colTertiary
@@ -951,6 +952,34 @@ Item {
                                         Layout.fillWidth: true
                                         eventData: modelData
                                         onActivated: root.showEvent(modelData)
+                                    }
+                                }
+
+                                Item {
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: 12
+                                    visible: !root.sportsListOnly && root.dayTasks.length > 0
+                                        && (root.dayCalendarEvents.length > 0 || root.dayBirthdays.length > 0 || root.daySports.length > 0)
+                                }
+
+                                StyledText {
+                                    Layout.fillWidth: true
+                                    visible: !root.sportsListOnly && root.dayTasks.length > 0
+                                    text: Translation.tr("Tasks").toUpperCase()
+                                    font.pixelSize: Appearance.font.pixelSize.smallest
+                                    font.weight: Font.Bold
+                                    color: Appearance.colors.colPrimary
+                                }
+
+                                Repeater {
+                                    model: root.sportsListOnly ? [] : root.dayTasks
+
+                                    delegate: TaskChip {
+                                        required property var modelData
+                                        Layout.fillWidth: true
+                                        Layout.preferredHeight: 42
+                                        taskData: modelData
+                                        onCompletionRequested: task => root.taskCompletionRequested(task)
                                     }
                                 }
                             }

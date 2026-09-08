@@ -48,6 +48,7 @@ ShellRoot {
         VideoColorSampler.active; // Touch singleton to initialize
         WaterReminderService.enabled; // Touch singleton: drives water reminder notifications
         CalendarNotifier.enabled; // Touch singleton: evaluates calendar VALARMs every minute
+        Todo.list; // Touch singleton: monitors due task notifications and done history
         CalendarSubscriptions.enabled; // Touch singleton: keeps managed read-only ICS subscriptions reconciled
         GmailCalendarImport.enabled; // Touch singleton: imports opted-in Gmail ICS attachments idempotently
         OutlookCalendarImport.enabled; // Touch singleton: mirrors opted-in Outlook events into a read-only calendar

@@ -150,9 +150,9 @@ Item {
                             checkIconScaleAnim.restart();
                             
                             if (!todoItem.modelData.done)
-                                Todo.markDone(todoItem.modelData.originalIndex);
+                                Todo.markDone(todoItem.modelData);
                             else
-                                Todo.markUnfinished(todoItem.modelData.originalIndex);
+                                Todo.markUnfinished(todoItem.modelData);
                         }
                         contentItem: MaterialSymbol {
                             id: checkIcon
@@ -186,24 +186,116 @@ Item {
                         maximumLineCount: taskListRoot.dense ? 1 : 3
                         color: todoItem._optimisticDone ? Appearance.colors.colOnSurfaceVariant : Appearance.colors.colOnSurface
                         font.strikeout: todoItem._optimisticDone
+
+                        StyledToolTip {
+                            extraVisibleCondition: cellHover.hovered && String(todoItem.modelData.notes ?? "").length > 0
+                            text: todoItem.modelData.notes ?? ""
+                        }
+                    }
+
+                    // Priority uses TickTick's scale, which the local schema
+                    // shares, so one flag reads the same on both providers.
+                    MaterialSymbol {
+                        visible: todoItem.modelData.priority > 0
+                        Layout.alignment: Qt.AlignVCenter
+                        text: "flag"
+                        iconSize: Appearance.font.pixelSize.smallie
+                        color: todoItem.modelData.priority >= 5 ? Appearance.colors.colError
+                            : todoItem.modelData.priority >= 3 ? Appearance.colors.colTertiary
+                            : Appearance.colors.colPrimary
+
+                        StyledToolTip {
+                            extraVisibleCondition: cellHover.hovered
+                            text: todoItem.modelData.priority >= 5 ? Translation.tr("High priority")
+                                : todoItem.modelData.priority >= 3 ? Translation.tr("Medium priority")
+                                : Translation.tr("Low priority")
+                        }
+                    }
+
+                    Flow {
+                        id: tagChipsFlow
+                        visible: !taskListRoot.dense && tagChipsFlow.taskTags.length > 0
+                        Layout.alignment: Qt.AlignVCenter
+                        Layout.maximumWidth: taskListRoot.width * 0.45
+                        spacing: 4
+
+                        readonly property var allTags: Array.isArray(todoItem.modelData.tags) ? todoItem.modelData.tags : []
+                        readonly property var taskTags: tagChipsFlow.allTags.slice(0, 2)
+                        readonly property int extraCount: tagChipsFlow.allTags.length - tagChipsFlow.taskTags.length
+
+                        Repeater {
+                            model: tagChipsFlow.taskTags
+
+                            Rectangle {
+                                required property var modelData
+                                implicitWidth: tagChipText.implicitWidth + 12
+                                implicitHeight: tagChipText.implicitHeight + 4
+                                radius: Appearance.rounding.full
+                                color: Appearance.colors.colSecondaryContainer
+
+                                StyledText {
+                                    id: tagChipText
+                                    anchors.centerIn: parent
+                                    text: "#" + modelData
+                                    font.pixelSize: Appearance.font.pixelSize.smaller
+                                    font.weight: Font.Medium
+                                    color: Appearance.colors.colOnSecondaryContainer
+                                }
+                            }
+                        }
+
+                        Rectangle {
+                            visible: tagChipsFlow.extraCount > 0
+                            implicitWidth: extraTagText.implicitWidth + 12
+                            implicitHeight: extraTagText.implicitHeight + 4
+                            radius: Appearance.rounding.full
+                            color: Appearance.m3colors.m3surfaceContainerHighest
+
+                            StyledText {
+                                id: extraTagText
+                                anchors.centerIn: parent
+                                text: "+" + tagChipsFlow.extraCount
+                                font.pixelSize: Appearance.font.pixelSize.smaller
+                                font.weight: Font.Medium
+                                color: Appearance.colors.colOnSurfaceVariant
+                            }
+                        }
                     }
 
                     Rectangle {
                         id: dateChip
-                        visible: todoItem.modelData.hasDate
+                        visible: todoItem.modelData.hasDate && !!todoItem.modelData.date
                         Layout.alignment: Qt.AlignVCenter
                         implicitWidth: dateText.implicitWidth + 16
                         implicitHeight: dateText.implicitHeight + 4
-                        color: Appearance.m3colors.m3tertiaryContainer
                         radius: Appearance.rounding.full
+                        // A due day in the past on an open task is overdue,
+                        // regardless of provider; the error container pair is
+                        // reserved for exactly this kind of real failure.
+                        readonly property bool overdue: {
+                            if (!todoItem.modelData.hasDate || !todoItem.modelData.date || todoItem._optimisticDone)
+                                return false;
+                            const d = new Date(todoItem.modelData.date);
+                            const t = new Date();
+                            return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
+                                < new Date(t.getFullYear(), t.getMonth(), t.getDate()).getTime();
+                        }
+                        color: overdue ? Appearance.colors.colErrorContainer : Appearance.m3colors.m3tertiaryContainer
+
+                        Behavior on color { ColorAnimation { duration: 150 } }
 
                         StyledText {
                             id: dateText
                             anchors.centerIn: parent
-                            text: todoItem.modelData.hasDate ? Qt.formatDateTime(todoItem.modelData.date, "dd/MM") : ""
-                            color: Appearance.m3colors.m3onTertiaryContainer
+                            text: (todoItem.modelData.hasDate && todoItem.modelData.date) ? Qt.formatDateTime(todoItem.modelData.date, "dd/MM") : ""
+                            color: parent.overdue ? Appearance.colors.colOnErrorContainer : Appearance.m3colors.m3onTertiaryContainer
                             font.pixelSize: Appearance.font.pixelSize.smaller
                             font.weight: Font.Medium
+                        }
+
+                        StyledToolTip {
+                            extraVisibleCondition: cellHover.hovered && dateChip.overdue
+                            text: Translation.tr("Overdue")
                         }
                     }
 
@@ -218,7 +310,7 @@ Item {
                         Behavior on opacity { NumberAnimation { duration: Appearance.animation.elementMoveFast.duration } }
                         
                         onClicked: {
-                            Todo.deleteItem(todoItem.modelData.originalIndex);
+                            Todo.deleteItem(todoItem.modelData);
                         }
                         contentItem: MaterialSymbol {
                             anchors.centerIn: parent

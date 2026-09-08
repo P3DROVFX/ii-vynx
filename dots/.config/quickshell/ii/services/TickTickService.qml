@@ -125,6 +125,23 @@ Singleton {
         });
     }
 
+    function _localDueDate(value) {
+        const match = String(value ?? "").match(/^(\d{4})-(\d{2})-(\d{2})(?:[T\s](\d{2}):(\d{2})(?::(\d{2}))?)?/);
+        if (!match)
+            return new Date(value);
+        const year = Number(match[1]);
+        const month = Number(match[2]) - 1;
+        const day = Number(match[3]);
+        const hours = match[4] !== undefined ? Number(match[4]) : 0;
+        const minutes = match[5] !== undefined ? Number(match[5]) : 0;
+        const seconds = match[6] !== undefined ? Number(match[6]) : 0;
+        if (!match[4] || (hours === 0 && minutes === 0 && seconds === 0)) {
+            return new Date(year, month, day, 0, 0, 0);
+        }
+        const parsed = new Date(value);
+        return isNaN(parsed.getTime()) ? new Date(year, month, day) : parsed;
+    }
+
     function aiListTasks(operationId, projectId) {
         return root.aiRequest(operationId, "list", { projectId: projectId || root.inboxProjectId });
     }
@@ -325,8 +342,14 @@ Singleton {
                         "projectId": task.projectId || root.inboxProjectId,
                         "content": task.title || "",
                         "done": (task.status !== undefined) ? (task.status === 2) : false,
-                        "date": task.dueDate ? new Date(task.dueDate) : new Date(),
-                        "hasDate": task.dueDate !== undefined && task.dueDate !== null
+                        "date": task.dueDate ? root._localDueDate(task.dueDate) : new Date(),
+                        "hasDate": task.dueDate !== undefined && task.dueDate !== null,
+                        "notes": String(task.content || ""),
+                        "priority": Number.isInteger(task.priority) ? task.priority : 0,
+                        // Read-only here: the Open API v1 offers no way to set
+                        // tags on a created task, so the list shows them and
+                        // the creation form never asks for them.
+                        "tags": Array.isArray(task.tags) ? task.tags.map(String) : []
                     });
                 }
                 root.tasks = parsed;

@@ -59,6 +59,7 @@ Singleton {
     // opened it on the spot.
     property string welcomeRequestPath: FileUtils.trimFileProtocol(`${Directories.state}/user/welcome_pending`)
     property string todoPath: FileUtils.trimFileProtocol(`${Directories.state}/user/todo.json`)
+    property string todoDoneHistoryPath: FileUtils.trimFileProtocol(`${Directories.state}/user/todo_done.json`)
     property string appUsagePath: FileUtils.trimFileProtocol(`${Directories.state}/user/app_usage.json`)
     // One file per local day, written by the app_stats sampler.
     property string appStats: FileUtils.trimFileProtocol(`${Directories.state}/user/app_stats`)

@@ -43,12 +43,63 @@ Item {
     property int fabMargins: root.dense ? 6 : (root.compact ? 10 : 14)
     property int syncButtonSize: root.dense ? 36 : (root.compact ? 27 : 36)
 
+    readonly property var unfinishedTasks: {
+        const source = Todo.list ?? [];
+        const result = [];
+        for (let i = 0; i < source.length; i++) {
+            const item = source[i];
+            if (!item || item.done)
+                continue;
+            result.push(Object.assign({}, item, {
+                "originalIndex": i
+            }));
+        }
+        return result.sort(function (a, b) {
+            if (a.hasDate && !b.hasDate)
+                return -1;
+            if (!a.hasDate && b.hasDate)
+                return 1;
+            if (a.hasDate && b.hasDate && a.date && b.date)
+                return a.date - b.date;
+            return b.originalIndex - a.originalIndex;
+        });
+    }
+
+    readonly property var doneTasks: {
+        const source = Todo.doneTasks ?? [];
+        const result = [];
+        for (let i = 0; i < source.length; i++) {
+            const item = source[i];
+            if (!item)
+                continue;
+            result.push(Object.assign({}, item, {
+                "originalIndex": i
+            }));
+        }
+        return result.sort(function (a, b) {
+            const timeA = a.completedAt ? Number(a.completedAt) : 0;
+            const timeB = b.completedAt ? Number(b.completedAt) : 0;
+            if (timeA && timeB && timeA !== timeB)
+                return timeB - timeA;
+            if (a.hasDate && !b.hasDate)
+                return -1;
+            if (!a.hasDate && b.hasDate)
+                return 1;
+            if (a.hasDate && b.hasDate && a.date && b.date)
+                return b.date - a.date;
+            return a.originalIndex - b.originalIndex;
+        });
+    }
+
     function selectTab(index) {
-        if (index < 0 || index >= root.tabButtonList.length || root.selectedTab === index)
+        if (index === undefined || index === null || isNaN(index))
+            return;
+        const target = Math.max(0, Math.min(root.tabButtonList.length - 1, Number(index)));
+        if (root.selectedTab === target)
             return;
 
-        root.selectedTab = index;
-        Persistent.states.sidebar.bottomGroup.todoTab = index;
+        root.selectedTab = target;
+        Persistent.states.sidebar.bottomGroup.todoTab = target;
     }
 
     function closeView() {
@@ -126,7 +177,7 @@ Item {
                 collapseInactiveLabels: root.dense
                 requestOnly: true
                 currentIndex: root.selectedTab
-                onIndexSelected: root.selectTab(index)
+                onIndexSelected: index => root.selectTab(index)
             }
         }
 
@@ -147,58 +198,23 @@ Item {
             }
 
             // To Do tab
-            Loader {
-                active: root.selectedTab === 0
-                asynchronous: true
-                sourceComponent: TaskList {
-                    dense: root.dense
-                    listBottomPadding: root.fabSize + root.fabMargins * 2
-                    emptyPlaceholderIcon: "check_circle"
-                    emptyPlaceholderText: Translation.tr("Nothing here!")
-                    entranceTrigger: root.entranceTrigger
-                    taskList: Todo.list.map(function (item, i) {
-                        return Object.assign({}, item, {
-                            "originalIndex": i
-                        });
-                    }).filter(function (item) {
-                        return !item.done;
-                    }).sort(function (a, b) {
-                        if (a.hasDate && !b.hasDate)
-                            return -1;
-                        if (!a.hasDate && b.hasDate)
-                            return 1;
-                        if (a.hasDate && b.hasDate)
-                            return a.date - b.date;
-                        return b.originalIndex - a.originalIndex;
-                    })
-                }
+            TaskList {
+                dense: root.dense
+                listBottomPadding: root.fabSize + root.fabMargins * 2
+                emptyPlaceholderIcon: "check_circle"
+                emptyPlaceholderText: Translation.tr("Nothing here!")
+                entranceTrigger: root.entranceTrigger
+                taskList: root.unfinishedTasks
             }
 
-            Loader {
-                active: root.selectedTab === 1
-                asynchronous: true
-                sourceComponent: TaskList {
-                    dense: root.dense
-                    listBottomPadding: root.fabSize + root.fabMargins * 2
-                    emptyPlaceholderIcon: "checklist"
-                    emptyPlaceholderText: Translation.tr("Finished tasks will go here")
-                    entranceTrigger: root.entranceTrigger
-                    taskList: Todo.list.map(function (item, i) {
-                        return Object.assign({}, item, {
-                            "originalIndex": i
-                        });
-                    }).filter(function (item) {
-                        return item.done;
-                    }).sort(function (a, b) {
-                        if (a.hasDate && !b.hasDate)
-                            return -1;
-                        if (!a.hasDate && b.hasDate)
-                            return 1;
-                        if (a.hasDate && b.hasDate)
-                            return b.date - a.date;
-                        return b.originalIndex - a.originalIndex;
-                    })
-                }
+            // Done tab
+            TaskList {
+                dense: root.dense
+                listBottomPadding: root.fabSize + root.fabMargins * 2
+                emptyPlaceholderIcon: "checklist"
+                emptyPlaceholderText: Translation.tr("Finished tasks will go here")
+                entranceTrigger: root.entranceTrigger
+                taskList: root.doneTasks
             }
         }
     }
@@ -328,29 +344,13 @@ Item {
         sourceComponent: Item {
             id: canvasView
 
-            function clearInput() {
-                newTaskInput.text = "";
-            }
-
-            function addTask() {
-                if (newTaskInput.text.length > 0) {
-                    Todo.addTask(newTaskInput.text);
-                    newTaskInput.text = "";
-                    root.selectTab(0); // Show unfinished tasks
-                    root.closeView();
-                }
-            }
-
             opacity: 0
             transform: Translate {
                 id: canvasViewTransform
                 x: root.canvasSlideDistance
             }
 
-            Component.onCompleted: {
-                canvasViewEnter.start();
-                newTaskInput.forceActiveFocus();
-            }
+            Component.onCompleted: canvasViewEnter.start()
 
             ParallelAnimation {
                 id: canvasViewEnter
@@ -389,123 +389,10 @@ Item {
                 onWheel: wheel => wheel.accepted = true
             }
 
-            ColumnLayout {
+            NewTaskSheet {
                 anchors.fill: parent
-                anchors.margins: root.canvasContentPadding
-                spacing: root.canvasContentPadding
-
-                // One header, one way out: the back button closes the view,
-                // mirroring the canvas views of the AI sidebar.
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: root.canvasContentPadding
-
-                    RippleButton {
-                        implicitWidth: root.fabSize
-                        implicitHeight: root.fabSize
-                        buttonRadius: Appearance.rounding.full
-                        colBackground: Appearance.colors.colSurfaceContainerHighest
-                        colBackgroundHover: Appearance.colors.colSurfaceContainerHighestHover
-                        colBackgroundActive: Appearance.colors.colSurfaceContainerHighestActive
-
-                        onClicked: root.closeView()
-
-                        contentItem: Item {
-                            MaterialSymbol {
-                                anchors.centerIn: parent
-                                text: "arrow_back"
-                                iconSize: root.compact ? 20 : 24
-                                color: Appearance.colors.colOnSurface
-                            }
-                        }
-
-                        StyledToolTip {
-                            text: Translation.tr("Back to tasks")
-                        }
-                    }
-
-                    StyledText {
-                        Layout.fillWidth: true
-                        text: Translation.tr("Add task")
-                        font.pixelSize: Appearance.font.pixelSize.larger
-                        font.bold: true
-                        color: Appearance.colors.colOnLayer1
-                        elide: Text.ElideRight
-                    }
-                }
-
-                TextField {
-                    id: newTaskInput
-
-                    Layout.fillWidth: true
-                    padding: 12
-                    color: activeFocus ? Appearance.m3colors.m3onSurface : Appearance.m3colors.m3onSurfaceVariant
-                    renderType: Text.NativeRendering
-                    selectedTextColor: Appearance.m3colors.m3onSecondaryContainer
-                    selectionColor: Appearance.colors.colSecondaryContainer
-                    placeholderText: Translation.tr("Task description")
-                    placeholderTextColor: Appearance.m3colors.m3outline
-                    wrapMode: TextEdit.NoWrap
-                    onAccepted: canvasView.addTask()
-
-                    background: Rectangle {
-                        anchors.fill: parent
-                        radius: Math.min(height / 2, Appearance.rounding.large)
-                        color: newTaskInput.activeFocus
-                            ? Appearance.colors.colPrimaryContainer
-                            : Appearance.m3colors.m3surfaceContainerHighest
-                    }
-
-                    cursorDelegate: Rectangle {
-                        width: 1
-                        color: newTaskInput.activeFocus ? Appearance.colors.colPrimary : "transparent"
-                        radius: 1
-                    }
-
-                    StyledTextContextMenu {
-                        id: todoContextMenu
-                        targetField: newTaskInput
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.IBeamCursor
-                        acceptedButtons: Qt.RightButton
-                        onPressed: mouse => {
-                            if (mouse.button === Qt.RightButton) {
-                                newTaskInput.forceActiveFocus();
-                                todoContextMenu.popup(mouse.x, mouse.y);
-                            }
-                        }
-                    }
-                }
-
-                Item {
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                }
-            }
-
-            StyledRectangularShadow {
-                target: saveFab
-                radius: saveFab.buttonRadius
-                blur: 0.6 * Appearance.sizes.elevationMargin
-            }
-
-            // Save is a FAB in the same spot the create FAB occupies, so the
-            // button the user pressed to get here is the button that commits.
-            FloatingActionButton {
-                id: saveFab
-
-                anchors.right: parent.right
-                anchors.bottom: parent.bottom
-                anchors.rightMargin: root.fabMargins
-                anchors.bottomMargin: root.fabMargins
-                baseSize: root.fabSize
-                iconSize: root.compact ? 20 : 26
-                enabled: newTaskInput.text.length > 0
-                onClicked: canvasView.addTask()
-                iconText: "check"
+                onCloseRequested: root.closeView()
+                onSaved: root.selectTab(0)
             }
         }
     }

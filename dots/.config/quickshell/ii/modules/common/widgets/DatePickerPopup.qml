@@ -28,7 +28,7 @@ Item {
     readonly property int firstDayOfWeek: Config.options.time.firstDayOfWeek
     readonly property var cells: root.buildMonthCells(root.viewYear, root.viewMonth, root.firstDayOfWeek, DateTime.clock.date)
     readonly property var weekdays: root.weekdayLabels(root.firstDayOfWeek, Config.options.calendar.locale, Locale.NarrowFormat)
-    readonly property real cellSize: 38
+    readonly property real cellSize: 36
 
     function pad2(value) {
         return (value < 10 ? "0" : "") + value;
@@ -168,14 +168,18 @@ Item {
     Rectangle {
         id: card
         anchors.centerIn: parent
-        width: cardColumn.implicitWidth + 40
-        height: Math.min(cardColumn.implicitHeight + 40, root.height - 24)
+        width: cardColumn.implicitWidth + 32
+        height: cardColumn.implicitHeight + 24
         radius: Appearance.rounding.large
         color: Appearance.m3colors.m3surfaceContainerHigh
-        clip: true
+
+        readonly property real fitScale: Math.min(1, Math.min(
+            (root.width - 16) / Math.max(1, card.width),
+            (root.height - 16) / Math.max(1, card.height)
+        ))
 
         opacity: progress.value
-        scale: 0.9 + 0.1 * progress.value
+        scale: fitScale * (0.9 + 0.1 * progress.value)
         transform: Translate {
             y: (1 - progress.value) * 20
         }
@@ -191,7 +195,7 @@ Item {
         Column {
             id: cardColumn
             anchors.centerIn: parent
-            spacing: 10
+            spacing: 8
 
             StyledText {
                 text: root.title.toUpperCase()
@@ -203,7 +207,7 @@ Item {
             // ─── Month nav ───
             Item {
                 width: root.cellSize * 7
-                height: 42
+                height: 38
 
                 RippleButton {
                     anchors.left: parent.left
@@ -262,7 +266,7 @@ Item {
                         required property int index
 
                         width: root.cellSize
-                        height: 24
+                        height: 22
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
                         text: String(root.weekdays?.[index] ?? "").toUpperCase()
@@ -362,13 +366,13 @@ Item {
             // ─── Actions ───
             Item {
                 width: root.cellSize * 7
-                height: 46
+                height: 40
 
                 RippleButtonWithIcon {
                     anchors.left: parent.left
                     anchors.verticalCenter: parent.verticalCenter
                     implicitWidth: 116
-                    implicitHeight: 44
+                    implicitHeight: 38
                     buttonRadius: Appearance.rounding.full
                     centerContent: true
                     materialIcon: "close"
@@ -396,7 +400,7 @@ Item {
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
                     implicitWidth: 126
-                    implicitHeight: 44
+                    implicitHeight: 38
                     buttonRadius: Appearance.rounding.full
                     centerContent: true
                     materialIcon: "check"

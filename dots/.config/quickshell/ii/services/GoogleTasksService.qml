@@ -118,13 +118,15 @@ Singleton {
         root._ensureValidToken("fetchTaskLists", null);
     }
 
-    function createTask(title, dueDate = "") {
+    function createTask(title, dueDate = "", notes = "") {
         if (!root.available || !title || !title.trim())
             return;
         const body = { "title": title.trim() };
         const due = root._normalizedDueDate(dueDate);
         if (due)
             body.due = due;
+        if (notes && String(notes).trim().length > 0)
+            body.notes = String(notes);
         root._enqueueMutation("create", { "body": body });
     }
 
