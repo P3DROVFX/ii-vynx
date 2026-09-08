@@ -25,6 +25,7 @@ ContentPage {
     readonly property string selectedMonitorName: selectedMonitor && selectedMonitor.name ? selectedMonitor.name : ""
     readonly property var selectedCalibration: DisplayCalibration.monitorForName(selectedMonitorName)
     readonly property var selectedGpuCalibration: DisplayColorFilter.profileForMonitor(selectedMonitorName)
+    readonly property int activeMonitorCount: monitorConfig.activeMonitorCount
 
     component MonitorRect: Rectangle {
         id: rectRoot
@@ -744,14 +745,34 @@ ContentPage {
                 }
 
                 ConfigSwitch {
+                    id: monitorEnabledSwitch
                     Layout.fillWidth: true
-                    buttonIcon: "tv_off"
+                    buttonIcon: checked ? "tv" : "tv_off"
                     text: Translation.tr("Enabled")
-                    checked: !(monitorConfig.monitors && monitorConfig.monitors[monitorCanvas.selectedIndex] && monitorConfig.monitors[monitorCanvas.selectedIndex].disabled)
+
+                    readonly property bool isCurrentMonitorActive: Boolean(monitorConfig.monitors
+                        && monitorConfig.monitors[monitorCanvas.selectedIndex]
+                        && !monitorConfig.monitors[monitorCanvas.selectedIndex].disabled)
+                    readonly property bool isLastActiveMonitor: isCurrentMonitorActive && page.activeMonitorCount <= 1
+
+                    enabled: !isLastActiveMonitor
+                    checked: isCurrentMonitorActive
+                    description: isLastActiveMonitor ? Translation.tr("Cannot disable the only active display") : ""
+
+                    Binding {
+                        target: monitorEnabledSwitch
+                        property: "checked"
+                        value: monitorEnabledSwitch.isCurrentMonitorActive
+                    }
+
                     onCheckedChanged: {
                         if (monitorConfig.monitors && monitorConfig.monitors[monitorCanvas.selectedIndex]) {
                             let currentVal = !monitorConfig.monitors[monitorCanvas.selectedIndex].disabled;
                             if (checked !== currentVal) {
+                                if (!checked && page.activeMonitorCount <= 1) {
+                                    checked = true;
+                                    return;
+                                }
                                 monitorConfig.updateMonitor(monitorCanvas.selectedIndex, {
                                     disabled: !checked
                                 });
