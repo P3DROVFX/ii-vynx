@@ -68,10 +68,10 @@ Item {
     property bool confirmWipe: false
 
     Timer {
-    id: confirmWipeTimer
-    interval: 3000
-    repeat: false
-    onTriggered: root.confirmWipe = false
+        id: confirmWipeTimer
+        interval: 3000
+        repeat: false
+        onTriggered: root.confirmWipe = false
     }
 
     readonly property bool hasSmartAction: {
@@ -434,50 +434,48 @@ Item {
                         color: Appearance.colors.colOnSurfaceVariant
                     }
 
-                        RippleButton {
-        visible: Cliphist.entries.length > 0
-        anchors.verticalCenter: parent.verticalCenter
-        anchors.right: parent.right
-        implicitWidth: clearWipeRow.implicitWidth + 16
-        implicitHeight: 24
-        buttonRadius: Appearance.rounding.small
-        colBackground: root.confirmWipe ? Appearance.colors.colErrorContainer : "transparent"
-        colBackgroundHover: root.confirmWipe ? Appearance.colors.colErrorContainerHover : Appearance.colors.colSurfaceContainerHighest
-        colRipple: root.confirmWipe ? Appearance.colors.colErrorContainerActive : Appearance.colors.colSurfaceContainerHighest
-        onClicked: {
-            if (!root.confirmWipe) {
-                root.confirmWipe = true;
-                confirmWipeTimer.restart();
-                return;
-            }
-            root.confirmWipe = false;
-            confirmWipeTimer.stop();
-            Persistent.states.clipboard.historySeen = [];
-            Cliphist.wipeUnpinned();
-        }
-        PointingHandInteraction {}
+                    RippleButton {
+                        visible: Cliphist.entries.slice().some(entry => !Cliphist.isPinned(entry))
+                        anchors.verticalCenter: parent.verticalCenter
+                        anchors.right: parent.right
+                        implicitWidth: clearWipeRow.implicitWidth + 16
+                        implicitHeight: 24
+                        buttonRadius: Appearance.rounding.small
+                        colBackground: root.confirmWipe ? Appearance.colors.colErrorContainer : "transparent"
+                        colBackgroundHover: root.confirmWipe ? Appearance.colors.colErrorContainerHover : Appearance.colors.colSurfaceContainerHighest
+                        colRipple: root.confirmWipe ? Appearance.colors.colErrorContainerActive : Appearance.colors.colSurfaceContainerHighest
+                        onClicked: {
+                            if (!root.confirmWipe) {
+                                root.confirmWipe = true;
+                                confirmWipeTimer.restart();
+                                return;
+                            }
+                            root.confirmWipe = false;
+                            confirmWipeTimer.stop();
+                            Persistent.states.clipboard.historySeen = [];
+                            Cliphist.wipeUnpinned();
+                        }
 
-        Row {
-            id: clearWipeRow
-            anchors.centerIn: parent
-            spacing: 4
+                        Row {
+                            id: clearWipeRow
+                            anchors.centerIn: parent
+                            spacing: 4
 
-            MaterialSymbol {
-                anchors.verticalCenter: parent.verticalCenter
-                text: root.confirmWipe ? "warning" : "delete_sweep"
-                iconSize: 16
-                color: root.confirmWipe ? Appearance.colors.colOnErrorContainer : Appearance.colors.colOnSurfaceVariant
-            }
-            StyledText {
-                anchors.verticalCenter: parent.verticalCenter
-                text: root.confirmWipe ? Translation.tr("Confirm?") : Translation.tr("Clear")
-                font.pixelSize: Appearance.font.pixelSize.smaller
-                font.weight: Font.Medium
-                color: root.confirmWipe ? Appearance.colors.colOnErrorContainer : Appearance.colors.colOnSurfaceVariant
-            }
-        }
-    }
-
+                            MaterialSymbol {
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: root.confirmWipe ? "warning" : "delete_sweep"
+                                iconSize: 16
+                                color: root.confirmWipe ? Appearance.colors.colOnErrorContainer : Appearance.colors.colOnSurfaceVariant
+                            }
+                            StyledText {
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: root.confirmWipe ? Translation.tr("Confirm?") : Translation.tr("Clear")
+                                font.pixelSize: Appearance.font.pixelSize.smaller
+                                font.weight: Font.Medium
+                                color: root.confirmWipe ? Appearance.colors.colOnErrorContainer : Appearance.colors.colOnSurfaceVariant
+                            }
+                        }
+                    }
                 }
 
                 ListView {
