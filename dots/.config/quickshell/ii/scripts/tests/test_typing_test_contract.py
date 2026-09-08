@@ -79,8 +79,8 @@ class TypingTestContractTests(unittest.TestCase):
             self.assertNotIn("function handleShortcut", host)
         self.assertIn('"id": "typingTest"', cheatsheet)
         self.assertIn('return "CheatsheetTypingTest.qml"', cheatsheet)
-        # A new cheatsheet page must not appear unasked.
-        self.assertIn("property bool enableTypingTest: false", config)
+        # The typing page is enabled by default in the current project config.
+        self.assertIn("property bool enableTypingTest: true", config)
         self.assertIn("Config.options.cheatsheet.enableTypingTest", settings)
 
     def test_config_and_settings_expose_the_feature(self) -> None:

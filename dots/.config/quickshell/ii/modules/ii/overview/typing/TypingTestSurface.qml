@@ -306,11 +306,13 @@ Item {
 
         // ── The test ──────────────────────────────────────────────
         ColumnLayout {
+            id: testLayout
             anchors.fill: parent
             visible: root.page === "test"
             spacing: 0
 
             TypingTestToolbar {
+                id: testToolbar
                 Layout.fillWidth: true
                 engine: engine
                 settingsOpen: root.page === "settings"
@@ -485,8 +487,11 @@ Item {
                 // A split board is wider than the three rows it replaces, so it
                 // needs to know what it may take before it decides its scale.
                 maxWidth: stageColumn.width
+                maxHeight: Math.max(180, testLayout.height - stageColumn.implicitHeight
+                    - testToolbar.implicitHeight - restartButton.implicitHeight - Appearance.sizes.elevationMargin * 2)
                 nextChar: engine.nextExpectedChar.toLowerCase()
-                opacity: engine.isRunning ? 0.85 : 1
+                onRequestInputFocus: root.focusInput()
+                opacity: engine.isRunning && !keyboard.fingerGuide ? 0.85 : 1
             }
 
             RippleButton {

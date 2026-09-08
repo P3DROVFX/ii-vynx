@@ -6,243 +6,299 @@ import qs.modules.common
 import qs.modules.common.functions
 import qs.modules.common.widgets
 import qs.services
+import "TypingFingers.js" as Fingers
 
-/**
- * A keyboard drawn under the words, showing which key comes next and flashing
- * the one that was just pressed.
- *
- * Two boards live here. The default one is a flat three-row picture of a
- * layout the user picked, the way Monkeytype presents it. The other is the
- * keyboard actually on the desk, read from its own firmware by VialKeyboard —
- * split, staggered and rotated as it really is, with its layers labelled.
- *
- * It is a hint surface. The layer chips are the only thing here that can be
- * clicked, and they take no keyboard focus, so the test never loses the
- * keystrokes it exists to measure.
- */
+// The same geometry renderer serves static layouts and the real Vial board.
+// Guidance never writes to hardware or tries to observe the user's hands.
 Item {
     id: root
 
     property string layoutId: Config.options.search.typingTest.keyboard.layout
     property bool highlightNext: Config.options.search.typingTest.keyboard.highlightNextKey
-    /** The character the test expects next, lowercased by the caller. */
+    property bool fingerGuide: Config.options.search.typingTest.keyboard.fingerGuide
     property string nextChar: ""
     property string pressedChar: ""
     property real keySize: 32
     property real keySpacing: 5
-    /** Room the board may take before it is scaled down. 0 means unlimited. */
     property real maxWidth: 0
+    property real maxHeight: 0
+    property bool editingFingers: false
+    property int selectedKey: -1
+    signal requestInputFocus
 
     readonly property bool vialMode: root.layoutId === TypingKeyboardLayouts.liveLayoutId
-    readonly property var rows: TypingKeyboardLayouts.rowsFor(root.layoutId)
-    readonly property real rowHeight: root.keySize + root.keySpacing
-
-    /**
-     * Pixels per key unit for the real board.
-     *
-     * A split keyboard is far wider than the three rows it replaces — the Corne
-     * is 16 units across — so the unit shrinks to whatever the panel can give
-     * it rather than pushing the board off the sides.
-     */
-    readonly property real vialUnit: {
-        const natural = root.keySize + root.keySpacing;
-        if (root.maxWidth <= 0 || VialKeyboard.unitWidth <= 0)
-            return natural;
-        return Math.min(natural, root.maxWidth / VialKeyboard.unitWidth);
+    readonly property var classic: Fingers.classicBoard(TypingKeyboardLayouts.rowsFor(root.layoutId), TypingKeyboardLayouts.labelFor(root.layoutId))
+    readonly property var keys: root.vialMode ? VialKeyboard.keys : root.classic.keys
+    readonly property var entries: root.vialMode ? VialKeyboard.activeLabels : root.classic.entries
+    readonly property bool boardReady: !root.vialMode || VialKeyboard.ready
+    readonly property string boardId: root.vialMode
+        ? "vial:" + (VialKeyboard.snapshot.deviceUid || VialKeyboard.name) : "classic:" + root.layoutId
+    readonly property real boardWidth: root.vialMode ? VialKeyboard.unitWidth : root.classic.width
+    readonly property real boardHeight: root.vialMode ? VialKeyboard.unitHeight : root.classic.height
+    readonly property real basicUnit: root.keySize + root.keySpacing
+    readonly property real preferredUnit: root.keySize * (root.fingerGuide ? 2 : 1) + root.keySpacing
+    readonly property real sectionSpacing: Appearance.sizes.elevationMargin * 2.4
+    readonly property bool hasInfo: root.boardReady && (root.fingerGuide || (root.vialMode && VialKeyboard.layerCount > 1))
+    readonly property real sidebarWidth: root.maxWidth > 0 && root.maxWidth < 1000 ? 180 : 320
+    // Keep the board at least as wide as the ordinary preview before giving
+    // space to a sidebar. Very narrow hosts retain the stacked arrangement.
+    readonly property bool sideBySide: root.fingerGuide && root.boardReady
+        && (root.maxWidth <= 0 || root.maxWidth >= root.boardWidth * root.basicUnit + root.sidebarWidth + root.sectionSpacing)
+    readonly property real contentWidth: {
+        const natural = root.boardWidth * root.preferredUnit
+            + (root.sideBySide ? root.sidebarWidth + root.sectionSpacing : 0);
+        return root.maxWidth > 0 ? Math.min(root.maxWidth, Math.max(natural, 440)) : Math.max(natural, 440);
+    }
+    // These widths never depend on the height-constrained key unit. The text
+    // wraps here, and its height may in turn constrain a stacked keyboard.
+    readonly property real infoWidth: root.sideBySide ? root.sidebarWidth : root.contentWidth
+    readonly property real boardAvailableWidth: Math.max(1, root.contentWidth
+        - (root.sideBySide ? root.infoWidth + root.sectionSpacing : 0))
+    readonly property real infoHeightLimit: {
+        if (root.maxHeight <= 0) return Infinity;
+        if (root.sideBySide) return root.maxHeight;
+        const basicBoardHeight = Math.min(root.basicUnit, root.boardAvailableWidth / Math.max(1, root.boardWidth)) * root.boardHeight;
+        return Math.max(0, root.maxHeight - basicBoardHeight - content.rowSpacing);
+    }
+    readonly property real unit: {
+        const widthLimit = root.boardWidth > 0 ? root.boardAvailableWidth / root.boardWidth : Infinity;
+        const chrome = !root.sideBySide && root.hasInfo ? infoViewport.implicitHeight + content.rowSpacing : 0;
+        const heightLimit = root.maxHeight > 0 && root.boardHeight > 0 ? Math.max(1, root.maxHeight - chrome) / root.boardHeight : Infinity;
+        return Math.min(root.preferredUnit, widthLimit, heightLimit);
+    }
+    readonly property var automaticFingers: !root.fingerGuide ? []
+        : root.vialMode ? Fingers.infer(root.keys) : root.classic.fingers
+    readonly property var assignedFingers: !root.fingerGuide ? []
+        : Fingers.assignments(root.automaticFingers, root.keys, root.boardId, Config.options.search.typingTest.keyboard.fingerAssignments)
+    readonly property var keyHints: root.assignedFingers.map(finger => ({
+        fill: finger ? TypingFingerPalette.fill(finger) : undefined,
+        ink: finger ? TypingFingerPalette.ink(finger) : undefined,
+        name: TypingFingerPalette.name(finger)
+    }))
+    readonly property var nextKeys: root.fingerGuide && root.highlightNext ? Fingers.targets(root.entries, root.nextChar) : []
+    readonly property var nextFingers: root.nextKeys.map(index => root.assignedFingers[index]).filter((finger, index, all) => finger && all.indexOf(finger) === index)
+    readonly property var fingerChoices: [0, -5, -4, -3, -2, -1, 1, 2, 3, 4, 5, 6]
+    readonly property string nextHint: {
+        if (root.editingFingers) return Translation.tr("Select a key to assign its finger");
+        if (!root.highlightNext || !root.nextChar) return Translation.tr("Follow the colors · hover a key for its finger");
+        if (root.nextFingers.length) return root.nextFingers.map(finger => TypingFingerPalette.name(finger)).join(" / ");
+        return root.nextKeys.length ? Translation.tr("Assign a finger to this key")
+            : Translation.tr("Next character is not mapped on this layer");
     }
 
-    /**
-     * A tint of the foreground, not a surface token.
-     *
-     * `colSurfaceContainerHigh` and friends are solved overlays: they are the
-     * colour you paint *over an opaque* `m3surfaceContainer` to land on the
-     * target tone. The launcher's own background is transparentized, so over it
-     * the solved colour composites against the wallpaper instead and clamps to
-     * a flat grey that belongs to no theme. A fixed low alpha of the on-surface
-     * colour composites correctly over anything behind the panel.
-     */
-    readonly property color restingKey: ColorUtils.transparentize(Appearance.colors.colOnSurface, 0.88)
-    readonly property color restingText: Appearance.colors.colOnSurfaceVariant
-
-    implicitWidth: root.vialMode ? vialLoader.implicitWidth : classicLoader.implicitWidth
-    implicitHeight: root.vialMode ? vialLoader.implicitHeight : classicLoader.implicitHeight
-
-    // Reading the keyboard is a round trip to the hardware, so it waits until
-    // there is a surface that would show it.
+    implicitWidth: root.contentWidth
+    implicitHeight: content.implicitHeight
+    onLayoutIdChanged: { root.selectedKey = -1; root.editingFingers = false; }
+    onBoardIdChanged: root.selectedKey = -1
+    onFingerGuideChanged: if (!root.fingerGuide) root.editingFingers = false
     onVialModeChanged: if (root.vialMode) VialKeyboard.ensureLoaded()
     Component.onCompleted: if (root.vialMode) VialKeyboard.ensureLoaded()
 
-    /** Clears the flash so a held key does not stay lit after the keystroke. */
     Timer {
         id: flashTimer
         interval: 120
         onTriggered: root.pressedChar = ""
     }
-
     function flash(character: string) {
         root.pressedChar = String(character ?? "").toLowerCase();
         flashTimer.restart();
     }
+    function assignFinger(finger: int) {
+        const key = root.keys[root.selectedKey];
+        if (!key) return;
+        Config.options.search.typingTest.keyboard.fingerAssignments = Fingers.saveAssignment(
+            Config.options.search.typingTest.keyboard.fingerAssignments, root.boardId, key, finger);
+        root.requestInputFocus();
+    }
 
-    /** Shared so both boards light up, and fade, in exactly the same way. */
-    component PreviewKey: KeyboardKey {
-        id: previewKey
-        property bool isNext: false
-        property bool isPressed: false
-
-        // KeyboardKey draws its raised edge as an outer rectangle behind the
-        // face. With no edge to draw, the two rounded rectangles are the same
-        // size and their antialiased corners fringe against each other — so
-        // the one behind must not paint at all.
-        borderWidth: 0
-        extraBottomBorderWidth: 0
-        borderColor: "transparent"
-        borderRadius: Appearance.rounding.verysmall
-        pixelSize: Appearance.font.pixelSize.small
-        keyColor: previewKey.isPressed ? Appearance.colors.colPrimary
-            : (previewKey.isNext ? Appearance.colors.colPrimaryContainer : root.restingKey)
-        textColor: previewKey.isPressed ? Appearance.colors.colOnPrimary
-            : (previewKey.isNext ? Appearance.colors.colOnPrimaryContainer : root.restingText)
-
-        Behavior on keyColor {
-            ColorAnimation {
-                duration: Appearance.animation.elementMoveFast.duration
-                easing.type: Appearance.animation.elementMoveFast.type
-                easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
-            }
+    component SmallButton: RippleButton {
+        id: smallButton
+        implicitHeight: 30
+        implicitWidth: label.implicitWidth + 20
+        focusPolicy: Qt.NoFocus
+        buttonRadius: Appearance.rounding.full
+        colBackground: Appearance.colors.colSurfaceContainerHigh
+        colBackgroundHover: Appearance.colors.colSurfaceContainerHighestHover
+        colRipple: Appearance.colors.colSurfaceContainerHighestActive
+        StyledText {
+            id: label
+            anchors.centerIn: parent
+            text: smallButton.text
+            font.pixelSize: Appearance.font.pixelSize.smaller
+            color: Appearance.colors.colOnSurface
         }
     }
 
-    Loader {
-        id: classicLoader
-        anchors.centerIn: parent
-        active: !root.vialMode
-        visible: active
-        sourceComponent: classicBoard
-    }
+    GridLayout {
+        id: content
+        width: root.contentWidth
+        columns: root.sideBySide ? 2 : 1
+        columnSpacing: root.sectionSpacing
+        rowSpacing: root.keySpacing * 2
 
-    Loader {
-        id: vialLoader
-        anchors.centerIn: parent
-        active: root.vialMode
-        visible: active
-        sourceComponent: vialBoard
-    }
-
-    Component {
-        id: classicBoard
-
-        ColumnLayout {
-            id: keyRows
-            spacing: root.keySpacing
-
-            Repeater {
-                model: root.rows
-
-                delegate: RowLayout {
-                    required property var modelData
-                    Layout.alignment: Qt.AlignHCenter
-                    spacing: root.keySpacing
-
-                    Repeater {
-                        model: parent.modelData
-
-                        delegate: PreviewKey {
-                            required property string modelData
-                            isNext: root.highlightNext && root.nextChar.length > 0
-                                && modelData === root.nextChar
-                            isPressed: root.pressedChar.length > 0 && modelData === root.pressedChar
-                            key: modelData
-                            implicitWidth: root.keySize
-                            implicitHeight: root.keySize
-                        }
-                    }
-                }
-            }
-
-            PreviewKey {
-                Layout.alignment: Qt.AlignHCenter
-                isNext: root.highlightNext && root.nextChar === " "
-                isPressed: root.pressedChar === " "
-                key: TypingKeyboardLayouts.labelFor(root.layoutId)
-                pixelSize: Appearance.font.pixelSize.smaller
-                implicitWidth: root.keySize * 7
-                implicitHeight: root.keySize
-            }
-        }
-    }
-
-    Component {
-        id: vialBoard
-
-        ColumnLayout {
-            spacing: root.keySpacing * 2
+        Item {
+            Layout.fillWidth: true
+            Layout.alignment: Qt.AlignVCenter
+            implicitWidth: root.boardAvailableWidth
+            implicitHeight: root.boardReady ? diagram.implicitHeight : unavailable.implicitHeight
 
             StyledText {
-                Layout.alignment: Qt.AlignHCenter
-                visible: !VialKeyboard.ready
+                id: unavailable
+                width: parent.width
+                anchors.centerIn: parent
+                visible: !root.boardReady
                 text: VialKeyboard.loading ? Translation.tr("Reading the keyboard…")
                     : Translation.tr("No Vial keyboard is readable. Plug it in, or pick another layout.")
+                wrapMode: Text.WordWrap
+                horizontalAlignment: Text.AlignHCenter
                 font.pixelSize: Appearance.font.pixelSize.smaller
-                color: root.restingText
+                color: Appearance.colors.colOnSurfaceVariant
             }
 
             KeyboardDiagram {
-                Layout.alignment: Qt.AlignHCenter
-                visible: VialKeyboard.ready
-                keys: VialKeyboard.ready ? VialKeyboard.keys : []
-                entries: VialKeyboard.activeLabels
-                unitWidth: VialKeyboard.unitWidth
-                unitHeight: VialKeyboard.unitHeight
-                unit: root.vialUnit
+                id: diagram
+                objectName: "typingKeyboardDiagram"
+                anchors.centerIn: parent
+                visible: root.boardReady
+                keys: root.keys
+                entries: root.entries
+                unitWidth: root.boardWidth
+                unitHeight: root.boardHeight
+                unit: root.unit
                 keySpacing: root.keySpacing
-                labelSize: Appearance.font.pixelSize.small
+                labelSize: root.fingerGuide ? Appearance.font.pixelSize.huge : Appearance.font.pixelSize.small
                 nextChar: root.highlightNext ? root.nextChar : ""
                 pressedChar: root.pressedChar
+                keyHints: root.keyHints
+                hintTooltips: root.fingerGuide
+                interactive: root.editingFingers
+                preserveInputFocus: true
+                selectedKey: root.editingFingers ? root.selectedKey : -1
+                onKeyClicked: keyIndex => { root.selectedKey = keyIndex; root.requestInputFocus(); }
             }
+        }
 
-            RowLayout {
-                Layout.alignment: Qt.AlignHCenter
-                visible: VialKeyboard.ready && VialKeyboard.layerCount > 1
-                spacing: root.keySpacing
+        StyledFlickable {
+            id: infoViewport
+            objectName: "typingFingerInfo"
+            Layout.alignment: Qt.AlignVCenter | Qt.AlignHCenter
+            Layout.fillWidth: !root.sideBySide
+            implicitWidth: root.infoWidth
+            // Layouts round both rows up; leave fractional pixels to the
+            // keyboard so their combined height stays within the budget.
+            implicitHeight: Math.floor(Math.min(info.implicitHeight, root.infoHeightLimit))
+            visible: root.hasInfo
+            contentWidth: width
+            contentHeight: info.implicitHeight
+            clip: true
+            // Small hosts can scroll the guidance instead of taking height
+            // from the words or shrinking the keyboard to fit the controls.
+            interactive: contentHeight > height
 
-                Repeater {
-                    model: VialKeyboard.ready ? VialKeyboard.layerCount : 0
+            ColumnLayout {
+                id: info
+                width: infoViewport.width
+                spacing: root.keySpacing * 2
 
-                    delegate: Rectangle {
-                        id: chip
-                        required property int index
-                        readonly property bool selected: VialKeyboard.activeLayer === chip.index
-
-                        implicitWidth: 30
-                        implicitHeight: 22
-                        radius: Appearance.rounding.full
-                        color: chip.selected ? Appearance.colors.colPrimary
-                            : (chipArea.containsMouse ? Appearance.colors.colLayer1Hover : root.restingKey)
-
+                Loader {
+                    id: guideLoader
+                    Layout.fillWidth: true
+                    active: root.fingerGuide && root.boardReady && !root.editingFingers
+                    visible: active
+                    sourceComponent: ColumnLayout {
+                        spacing: root.keySpacing * 2
+                        TypingFingerHands {
+                            Layout.alignment: Qt.AlignHCenter
+                            stacked: root.sideBySide && root.infoWidth < 300
+                            activeFingers: root.nextFingers
+                        }
                         StyledText {
-                            anchors.centerIn: parent
-                            text: `L${chip.index}`
-                            font.pixelSize: Appearance.font.pixelSize.smaller
-                            color: chip.selected ? Appearance.colors.colOnPrimary : root.restingText
+                            Layout.fillWidth: true
+                            // Reserve three lines so changes of finger or an
+                            // unmapped character never move the typing stage.
+                            Layout.preferredHeight: Math.ceil(font.pixelSize * 1.3) * 3
+                            text: root.nextHint
+                            horizontalAlignment: Text.AlignHCenter
+                            wrapMode: Text.WordWrap
+                            maximumLineCount: 3
+                            elide: Text.ElideRight
+                            font.pixelSize: Appearance.font.pixelSize.small
+                            font.weight: Font.Medium
+                            color: Appearance.colors.colOnSurface
+                            Accessible.name: root.nextHint
+                            HoverHandler { id: cueHover }
+                            StyledToolTip { text: root.nextHint; extraVisibleCondition: cueHover.hovered }
                         }
+                    }
+                }
 
-                        // Deliberately a bare MouseArea: anything focusable here
-                        // would take keystrokes away from the test itself.
-                        MouseArea {
-                            id: chipArea
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: VialKeyboard.setLayer(chip.index)
+                GridLayout {
+                    id: layers
+                    objectName: "typingLayerControls"
+                    Layout.alignment: Qt.AlignHCenter
+                    visible: root.vialMode && root.boardReady && VialKeyboard.layerCount > 1
+                    columns: Math.max(1, Math.floor(root.infoWidth / 42))
+                    columnSpacing: root.keySpacing
+                    rowSpacing: root.keySpacing
+                    Repeater {
+                        model: root.vialMode && root.boardReady ? VialKeyboard.layerCount : 0
+                        delegate: SmallButton {
+                            required property int index
+                            text: "L" + index
+                            colBackground: VialKeyboard.activeLayer === index ? Appearance.colors.colPrimaryContainer
+                                : Appearance.colors.colSurfaceContainerHigh
+                            onClicked: { VialKeyboard.setLayer(index); root.requestInputFocus(); }
                         }
+                    }
+                }
 
-                        Behavior on color {
-                            ColorAnimation {
-                                duration: Appearance.animation.elementMoveFast.duration
-                                easing.type: Appearance.animation.elementMoveFast.type
-                                easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
-                            }
+                SmallButton {
+                    objectName: "editFingersButton"
+                    Layout.alignment: Qt.AlignHCenter
+                    visible: root.fingerGuide && root.boardReady
+                    text: root.editingFingers ? Translation.tr("Done") : Translation.tr("Adjust fingers")
+                    onClicked: {
+                        root.editingFingers = !root.editingFingers;
+                        infoViewport.contentY = 0;
+                        root.requestInputFocus();
+                    }
+                }
+
+                ColumnLayout {
+                    id: editor
+                    Layout.fillWidth: true
+                    visible: root.editingFingers
+                    spacing: root.keySpacing
+                    StyledText {
+                        Layout.fillWidth: true
+                        text: Translation.tr("Suggested by position. Adjust any key for your keyboard or technique.")
+                        wrapMode: Text.WordWrap
+                        font.pixelSize: Appearance.font.pixelSize.smaller
+                        color: Appearance.colors.colOnSurfaceVariant
+                    }
+                    StyledText {
+                        Layout.fillWidth: true
+                        text: root.selectedKey >= 0 ? (root.entries[root.selectedKey]?.label || "—")
+                            : Translation.tr("Select a key to assign its finger")
+                        wrapMode: Text.WordWrap
+                        font.pixelSize: Appearance.font.pixelSize.small
+                    }
+                    StyledComboBox {
+                        objectName: "fingerAssignmentChoice"
+                        Layout.fillWidth: true
+                        Layout.minimumWidth: 0
+                        enabled: root.selectedKey >= 0 && root.selectedKey < root.keys.length
+                        model: root.fingerChoices.map(finger => TypingFingerPalette.name(finger))
+                        currentIndex: Math.max(0, root.fingerChoices.indexOf(root.assignedFingers[root.selectedKey] || 0))
+                        Accessible.name: Translation.tr("Finger for the selected key")
+                        onActivated: index => root.assignFinger(root.fingerChoices[index])
+                    }
+                    SmallButton {
+                        text: Translation.tr("Reset fingers")
+                        onClicked: {
+                            Config.options.search.typingTest.keyboard.fingerAssignments = Fingers.resetBoard(
+                                Config.options.search.typingTest.keyboard.fingerAssignments, root.boardId);
+                            root.requestInputFocus();
                         }
                     }
                 }

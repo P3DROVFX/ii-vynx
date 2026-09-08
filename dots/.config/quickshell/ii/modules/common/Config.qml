@@ -4929,6 +4929,10 @@ Singleton {
                         // keyboard actually plugged in, read from its own firmware.
                         property string layout: "qwerty"
                         property bool highlightNextKey: true
+                        property bool fingerGuide: false
+                        // Physical assignments by board UID + matrix position,
+                        // shared across layers. Explicit lists keep JsonAdapter safe.
+                        property list<string> fingerAssignments: []
                     }
                     property JsonObject sounds: JsonObject {
                         property bool enable: true

@@ -381,6 +381,18 @@ Item {
                 }
             }
 
+            OptionRow {
+                Layout.columnSpan: 2
+                label: Translation.tr("Finger guide")
+                description: Translation.tr("Color keys by finger and guide the next keystroke")
+
+                StyledSwitch {
+                    checked: root.options.keyboard.fingerGuide
+                    Accessible.name: Translation.tr("Finger guide")
+                    onToggled: root.options.keyboard.fingerGuide = checked
+                }
+            }
+
             // ── Sound ─────────────────────────────────────────────────
             SectionTitle {
                 Layout.columnSpan: 2
