@@ -89,15 +89,27 @@ ContentPage {
         }
 
         ConfigSlider {
+            id: ignoreAlphaSlider
             buttonIcon: "gradient"
             text: Translation.tr("Ignore Alpha")
             value: Config.options.appearance.ignoreAlpha ?? 0.2
             from: 0
             to: 1
             stepSize: 0.05
+            isLast: !ignoreAlphaNotice.visible
             onValueChanged: {
                 Config.options.appearance.ignoreAlpha = value;
             }
+        }
+
+        NoticeBox {
+            id: ignoreAlphaNotice
+            Layout.fillWidth: true
+            visible: Math.round(ignoreAlphaSlider.value * 100) <= 30
+            isFirst: false
+            isLast: true
+            materialIcon: "info"
+            text: Translation.tr("Low Ignore Alpha values can cause visual artifacts around element borders. It is recommended to keep this value high.")
         }
 
     }
