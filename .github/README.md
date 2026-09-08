@@ -22,9 +22,6 @@ It aims to provide a state-of-the-art Linux desktop experience by strictly adher
 - **Matugen 4.1.0 or newer**
 - **quickshell-git 0.3.0 or newer**
 
-> [!NOTE]
-> Matugen **4.1.0+ is the supported/recommended version**. The lightweight scheme-switching path still detects Matugen 3 and avoids the Matugen 4-only `--source-color-index` option, preserving scheme changes on older installations. On Fedora, the installer enables `avengemedia/danklinux` to source the current Matugen package.
-
 ## Installation
 
 ### Default installation
