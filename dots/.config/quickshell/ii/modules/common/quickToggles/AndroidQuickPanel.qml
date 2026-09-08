@@ -26,6 +26,7 @@ AbstractQuickPanel {
         return Math.max(0, Math.min(1, (root.revealProgress - delay) / span));
     }
     Layout.fillWidth: true
+    Layout.alignment: Qt.AlignHCenter
 
     // Current page index
     property int currentPage: 0
@@ -56,9 +57,10 @@ AbstractQuickPanel {
     property real spacing: 6
     property real padding: 6
     readonly property real baseCellWidth: {
-        const availableWidth = root.width - (root.padding * 2) - (root.spacing * (root.columns));
-        return availableWidth / root.columns;
+        const availableWidth = root.width - (root.padding * 2) - (root.spacing * Math.max(0, root.columns - 1));
+        return Math.max(1, availableWidth / Math.max(1, root.columns));
     }
+    readonly property real gridWidth: Math.max(0, (root.columns * root.baseCellWidth) + (Math.max(0, root.columns - 1) * root.spacing))
     // Hosts with touch-sized grids (tablet family) raise this; the ii sidebar keeps 56,
     // and every derived metric (icon circles, typography) scales off it.
     property real baseCellHeight: 56
@@ -283,7 +285,8 @@ AbstractQuickPanel {
 
         Column {
             id: fixedSlidersColumn
-            width: parent.width
+            anchors.horizontalCenter: parent.horizontalCenter
+            width: root.gridWidth
             spacing: root.spacing
 
             readonly property real reveal: root.stageReveal(0)
@@ -434,11 +437,9 @@ AbstractQuickPanel {
 
                             Item {
                                 id: pageContentCanvas
-                                anchors {
-                                    left: parent.left
-                                    right: parent.right
-                                    top: parent.top
-                                }
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                width: root.gridWidth
+                                anchors.top: parent.top
                                 implicitHeight: root.pageHeight(pageContainer.index)
                                 height: implicitHeight
                                 objectName: "pageContent_" + pageContainer.index
@@ -694,7 +695,8 @@ AbstractQuickPanel {
                     Item {
                         id: unusedCanvas
                         y: root.trayBadgeOverhang
-                        width: trayFlickable.width
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        width: root.gridWidth
                         implicitHeight: Math.max(0, root.packedUnusedToggles.rowsUsed
                             * (root.baseCellHeight + root.spacing) - root.spacing)
                         height: implicitHeight

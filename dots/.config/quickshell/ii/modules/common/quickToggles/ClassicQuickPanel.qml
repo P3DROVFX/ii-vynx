@@ -16,6 +16,7 @@ import "classicStyle/ClassicQuickToggleCatalog.js" as ClassicQuickToggleCatalog
 AbstractQuickPanel {
     id: root
     Layout.fillWidth: true
+    Layout.alignment: Qt.AlignHCenter
     implicitWidth: contentColumn.implicitWidth
     implicitHeight: contentColumn.implicitHeight
     color: "transparent"

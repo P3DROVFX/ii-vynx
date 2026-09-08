@@ -908,7 +908,7 @@ Item {
     component LoaderedQuickPanelImplementation: Loader {
         id: quickPanelImplLoader
         required property string styleName
-        Layout.alignment: item?.Layout.alignment ?? Qt.AlignHCenter
+        Layout.alignment: (item && item.Layout.alignment !== undefined && item.Layout.alignment !== 0) ? item.Layout.alignment : Qt.AlignHCenter
         Layout.fillWidth: item?.Layout.fillWidth ?? false
         Layout.preferredHeight: animatedPanelHeight
         visible: active
