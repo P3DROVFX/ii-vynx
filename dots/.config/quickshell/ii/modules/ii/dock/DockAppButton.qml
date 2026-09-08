@@ -26,11 +26,16 @@ DockButton {
     property bool isVertical: dockContent?.isVertical ?? false
 
     readonly property bool appIsActive: focusedWindowIndex >= 0
+
+    /// Activation alone is not enough: Hyprland leaves it set on a window sent to another
+    /// workspace with a silent move, which kept the dot lit under an app that had left
+    /// the screen. It has to still be somewhere the user can see it.
     readonly property int focusedWindowIndex: {
         if (!appToplevel || !appToplevel.toplevels)
             return -1;
         for (let i = 0; i < appToplevel.toplevels.length; i++) {
-            if (appToplevel.toplevels[i].activated)
+            const toplevel = appToplevel.toplevels[i];
+            if (toplevel.activated && HyprlandData.toplevelOnScreen(toplevel))
                 return i;
         }
         return -1;
