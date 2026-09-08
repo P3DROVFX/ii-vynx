@@ -10,8 +10,9 @@ import QtQuick
  *
  * State conditions bind `satisfied`. Event conditions (a notification
  * arrives, a shortcut is pressed) call pulse() instead: `satisfied` goes
- * true for a moment — longer than the watcher's debounce — and drops back,
- * which is the false→true edge a "when" routine fires on.
+ * true for a moment — long enough for the watcher to commit it — and drops
+ * back, which is the false→true edge a "when" routine fires on. Events that
+ * land within one pulse of each other merge into a single edge.
  */
 QtObject {
     id: root
@@ -26,7 +27,7 @@ QtObject {
     property string reason: ""
 
     readonly property Timer pulseTimer: Timer {
-        interval: 1500
+        interval: 500
         repeat: false
         onTriggered: root.satisfied = false
     }

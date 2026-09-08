@@ -45,6 +45,27 @@ var CONDITION_SOURCES = {
     shortcut: "conditions/ShortcutCondition.qml"
 };
 
+// Milliseconds a trigger's verdict must hold before the watcher commits it.
+// Only sources that flap by nature wait: a workspace scroll passes through
+// several workspaces, a track change pauses the player for a moment, a
+// Wi-Fi roam drops and reconnects. Everything else — clocks, the lock
+// screen, shortcuts, thresholds with their own hysteresis — commits at once.
+var SETTLE_MS = {
+    workspace: 400,
+    app: 400,
+    fullscreen: 400,
+    media: 800,
+    audioDevice: 800,
+    deviceInUse: 800,
+    bluetooth: 800,
+    wifi: 1500,
+    monitors: 1500
+};
+
+function settleMs(type) {
+    return SETTLE_MS[type] ?? 0;
+}
+
 // Editor metadata per trigger type: label, icon, group in the "add
 // condition" menu and which parameter form the editor row shows. Every
 // trigger also accepts `not: true`, which flips its verdict ("Zoom is not

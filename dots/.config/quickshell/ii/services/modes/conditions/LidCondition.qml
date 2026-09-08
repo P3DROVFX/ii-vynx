@@ -1,19 +1,23 @@
 import QtQuick
 import Quickshell.Io
+import qs.modules.common.functions
 import ".."
 
 /**
- * The laptop lid is closed (`closed: true`, default) or open, read from
- * /proc/acpi/button/lid every few seconds while the condition exists.
- * Machines without a lid never hold.
+ * The laptop lid is closed (`closed: true`, default) or open. The first
+ * reading comes from /proc/acpi/button/lid — which also proves a lid exists;
+ * machines without one never hold — and every flip after that arrives from
+ * logind's LidClosed property over D-Bus, so nothing polls.
  */
 ModeCondition {
     id: root
     readonly property bool wantClosed: root.params?.closed !== false
 
+    // "closed" / "open"; "" before the first reading, or with no lid at all.
     property string state: ""
 
     readonly property Process reader: Process {
+        running: true
         command: ["sh", "-c", "cat /proc/acpi/button/lid/*/state 2>/dev/null | head -n1"]
         stdout: StdioCollector {
             onStreamFinished: {
@@ -23,14 +27,36 @@ ModeCondition {
         }
     }
 
-    readonly property Timer poll: Timer {
-        interval: 4000
-        repeat: true
+    // logind announces each lid flip as a PropertiesChanged on its manager.
+    readonly property Process monitor: Process {
         running: true
-        triggeredOnStart: true
+        command: ProcUtils.pdeath(["gdbus", "monitor", "--system", "--dest", "org.freedesktop.login1",
+            "--object-path", "/org/freedesktop/login1"])
+        stdout: SplitParser {
+            onRead: data => root.handleChunk(data)
+        }
+        onExited: root.retry.restart()
+    }
+
+    function handleChunk(data) {
+        // One chunk may carry several signals; the last LidClosed wins.
+        const re = /'LidClosed':\s*<(true|false)>/g;
+        let last = null;
+        for (let m = re.exec(data); m !== null; m = re.exec(data))
+            last = m[1] === "true";
+        if (last === null || !root.state.length)
+            return;
+        root.state = last ? "closed" : "open";
+    }
+
+    // Comes back after logind or gdbus went away, re-reading a state that
+    // may have flipped meanwhile.
+    readonly property Timer retry: Timer {
+        interval: 5000
+        repeat: false
         onTriggered: {
-            if (!root.reader.running)
-                root.reader.running = true;
+            root.reader.running = true;
+            root.monitor.running = true;
         }
     }
 

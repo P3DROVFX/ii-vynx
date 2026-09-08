@@ -6,8 +6,10 @@ import "ModeSchema.js" as ModeSchema
  * Evaluates the triggers of one mode definition and reports debounced edges.
  *
  * Every trigger becomes a ModeCondition loaded by type; unknown types (phases
- * that have not landed yet) count as unsatisfied. A 1 s debounce keeps
- * workspace switches and Wi-Fi roams from reaching the engine as flaps.
+ * that have not landed yet) count as unsatisfied. A verdict is committed once
+ * every condition that changed since the last commit has settled for its
+ * source's ModeSchema.SETTLE_MS — a workspace scroll or a Wi-Fi roam waits a
+ * moment, a lock or a shortcut lands on the next tick.
  */
 QtObject {
     id: root
@@ -30,15 +32,22 @@ QtObject {
     // Epoch ms when a satisfied schedule window ends, 0 if none.
     property real scheduleEndsAt: 0
 
-    // Raw state, before the debounce.
+    // Raw state, before the settle.
     property bool pending: false
     property bool pendingSchedule: false
+    // Epoch ms of the last commit; a condition that changed after it is
+    // still settling.
+    property real committedAt: 0
+    readonly property real createdAt: Date.now()
+    // Services (Hyprland clients, Wi-Fi, players) populate over the first
+    // second of a shell start; the first verdict waits for them.
+    readonly property int initialSettleMs: 1000
 
     signal evaluated(bool satisfied, bool initial)
     signal scheduleEnded()
 
     property Timer debounce: Timer {
-        interval: 1000
+        interval: 0
         repeat: false
         onTriggered: root.commit()
     }
@@ -64,6 +73,10 @@ QtObject {
             // The verdict the watcher combines: rawOk once it has held long enough.
             readonly property bool ok: loader.forSec > 0 ? loader.held : loader.rawOk
             readonly property bool counting: loader.forSec > 0 && loader.rawOk && !loader.held
+            // A dwell already filters flaps; the verdict then commits at once.
+            readonly property int settleMs: loader.forSec > 0 ? 0 : ModeSchema.settleMs(conditionType)
+            // Epoch ms of the last `ok` flip, for the settle.
+            property real changedAt: 0
             property bool held: false
             property real heldSince: 0
             readonly property Timer hold: Timer {
@@ -92,7 +105,10 @@ QtObject {
 
             onRawOkChanged: loader.syncHold()
             onForSecChanged: loader.syncHold()
-            onOkChanged: root.recompute()
+            onOkChanged: {
+                loader.changedAt = Date.now();
+                root.recompute();
+            }
             Component.onCompleted: {
                 if (!supported) {
                     console.log(`[Modes] ${root.modeId}: trigger "${conditionType}" `
@@ -163,14 +179,31 @@ QtObject {
             root.reason = firstReason;
         }
         const dirty = root.pending !== root.satisfied || root.pendingSchedule !== root.scheduleSatisfied;
-        if (!root.evaluatedOnce || dirty) {
-            root.debounce.restart();
-        } else {
+        if (root.evaluatedOnce && !dirty) {
             root.debounce.stop();
+            return;
         }
+        root.debounce.interval = root.settleRemaining();
+        root.debounce.restart();
+    }
+
+    // Ms until every condition that changed since the last commit has
+    // settled; 0 commits on the next tick.
+    function settleRemaining() {
+        const now = Date.now();
+        let deadline = root.evaluatedOnce ? now : root.createdAt + root.initialSettleMs;
+        const count = root.conditions.count;
+        for (let i = 0; i < count; ++i) {
+            const loader = root.conditionAt(i);
+            if (!loader || loader.changedAt <= root.committedAt)
+                continue;
+            deadline = Math.max(deadline, loader.changedAt + loader.settleMs);
+        }
+        return Math.max(0, Math.ceil(deadline - now));
     }
 
     function commit() {
+        root.committedAt = Date.now();
         const initial = !root.evaluatedOnce;
         const scheduleWasOn = root.scheduleSatisfied;
         root.scheduleSatisfied = root.pendingSchedule;

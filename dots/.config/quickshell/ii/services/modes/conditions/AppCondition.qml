@@ -17,16 +17,29 @@ ModeCondition {
     readonly property var titleRe: ModeSchema.titleRegex(root.params?.title)
     readonly property bool wantFocused: root.params?.when === "focused"
 
+    readonly property var activeToplevel: ToplevelManager.activeToplevel
     readonly property string focusedAddress: {
-        const a = ToplevelManager.activeToplevel?.HyprlandToplevel?.address;
+        const a = root.activeToplevel?.HyprlandToplevel?.address;
         return a ? `0x${a}` : "";
     }
+    // The focused window's title straight from the compositor: a tab switch
+    // or page load shows here well before the client list is re-read.
+    readonly property string focusedTitle: String(root.activeToplevel?.title ?? "")
     readonly property var windows: HyprlandData.windowList ?? []
     readonly property var matching: root.windows.filter(w => ModeSchema.windowMatches(w, root.regexes, root.titleRe))
-    readonly property var focusedMatch: root.matching.find(w => w.address === root.focusedAddress) ?? null
+    readonly property var focusedWindow: root.windows.find(w => w.address === root.focusedAddress) ?? null
+    readonly property var focusedMatch: {
+        const w = root.focusedWindow;
+        if (!w)
+            return null;
+        const live = root.titleRe && root.focusedTitle.length
+            ? Object.assign({}, w, { title: root.focusedTitle }) : w;
+        return ModeSchema.windowMatches(live, root.regexes, root.titleRe) ? live : null;
+    }
 
     satisfied: (root.regexes.length > 0 || root.titleRe !== null)
-        && (root.wantFocused ? root.focusedMatch !== null : root.matching.length > 0)
+        && (root.wantFocused ? root.focusedMatch !== null
+            : (root.matching.length > 0 || root.focusedMatch !== null))
     reason: {
         const w = root.focusedMatch ?? root.matching[0];
         if (!w)
