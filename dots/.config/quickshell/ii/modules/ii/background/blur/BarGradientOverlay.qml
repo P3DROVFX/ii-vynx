@@ -157,21 +157,15 @@ Item {
 
                 GradientStop {
                     position: 0.0
-                    color: barGradientOverlay.isVertical
-                        ? (barGradientOverlay.isBottom ? "transparent" : Qt.rgba(0,0,0,0.45))
-                        : (!barGradientOverlay.isBottom ? Qt.rgba(0,0,0,0.45) : "transparent")
+                    color: !barGradientOverlay.isBottom ? Qt.rgba(0,0,0,0.45) : "transparent"
                 }
                 GradientStop {
-                    position: 0.55
-                    color: barGradientOverlay.isVertical
-                        ? (barGradientOverlay.isBottom ? "transparent" : Qt.rgba(0,0,0,0.15))
-                        : (!barGradientOverlay.isBottom ? Qt.rgba(0,0,0,0.15) : "transparent")
+                    position: !barGradientOverlay.isBottom ? 0.55 : 0.45
+                    color: Qt.rgba(0,0,0,0.15)
                 }
                 GradientStop {
                     position: 1.0
-                    color: barGradientOverlay.isVertical
-                        ? (barGradientOverlay.isBottom ? "rgba(0,0,0,0.45)" : "transparent")
-                        : (!barGradientOverlay.isBottom ? "transparent" : "rgba(0,0,0,0.45)")
+                    color: !barGradientOverlay.isBottom ? "transparent" : Qt.rgba(0,0,0,0.45)
                 }
             }
         }
