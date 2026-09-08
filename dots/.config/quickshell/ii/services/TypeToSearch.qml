@@ -90,25 +90,22 @@ Singleton {
     }
 
     /**
-     * Whether the keyboard already belongs to a window on the monitor being typed at.
+     * Whether the keyboard belongs to a window the user can actually see.
      *
-     * Hyprland moves the focused *monitor* under the cursor without moving keyboard focus
-     * with it, so a window on the other screen keeps the keys while the user looks at an
-     * empty desktop here. Asking only "is anything focused anywhere" therefore never came
-     * true with a second monitor plugged in, and the feature did nothing at all there.
+     * Hyprland keeps keyboard focus on windows that are no longer on screen - a window on the
+     * other monitor while the cursor is over an empty desktop here, or a window just sent away
+     * with a silent move. Asking "is anything focused anywhere" therefore never came true with
+     * a second screen plugged in, and came true forever after Super + Alt + a number: two
+     * different reports of the feature doing nothing at all.
      *
-     * Focusing a window focuses its monitor too, so a window that answers this is genuinely
-     * the one in front of the user - a scratchpad on a special workspace included.
+     * A window on a workspace this monitor is showing is the one in front of the user, and a
+     * scratchpad on a special workspace is one of those.
      */
-    readonly property bool focusedWindowOnActiveMonitor: {
+    readonly property bool focusedWindowOnScreen: {
         if (!ToplevelManager.activeToplevel)
             return false;
-        const client = HyprlandData.clientForToplevel(ToplevelManager.activeToplevel);
-        const monitorId = Number(Hyprland.focusedMonitor?.id ?? NaN);
         // A window that cannot be placed is taken to own the keys: not arming is the safe half.
-        if (!client || !isFinite(monitorId))
-            return true;
-        return Number(client.monitor ?? NaN) === monitorId;
+        return HyprlandData.toplevelOnScreen(ToplevelManager.activeToplevel);
     }
 
     /**
@@ -125,7 +122,7 @@ Singleton {
         || GlobalStates.scratchpadOpen
 
     readonly property bool armed: root.enabled && !PanelFamily.isTablet
-        && !root.focusedWindowOnActiveMonitor && !root.shellSurfaceFocused
+        && !root.focusedWindowOnScreen && !root.shellSurfaceFocused
         && (root.trigger === "noFocusedWindow" || root.workspaceEmpty)
 
     // ------------------------------------------------------------------ typing
