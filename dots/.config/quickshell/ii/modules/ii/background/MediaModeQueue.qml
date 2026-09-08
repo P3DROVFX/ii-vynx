@@ -174,7 +174,7 @@ Item {
         id: queueCard
         anchors.fill: parent
         radius: Appearance.rounding.verylarge
-        color: ColorUtils.transparentize(Appearance.colors.colLayer1Base, 0.35)
+        color: ColorUtils.transparentize(Appearance.colors.colLayer1Base, 0.55)
 
         layer.enabled: true
         layer.smooth: true

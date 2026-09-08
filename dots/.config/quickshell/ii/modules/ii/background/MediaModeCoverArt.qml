@@ -22,6 +22,7 @@ Item {
     property color accentColor: Appearance.colors.colPrimary
     property color accentContainerColor: Appearance.colors.colPrimaryContainer
     property color onAccentContainerColor: Appearance.colors.colOnPrimaryContainer
+    property bool expanded: false
 
     onShowLoadingIndicatorChanged: {
         if (coverArt.showLoadingIndicator) {
@@ -57,8 +58,18 @@ Item {
         Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.maximumHeight: parent.height * 0.48
+            Layout.maximumHeight: coverArt.expanded
+                ? Math.min(parent.height * 0.52, 540)
+                : parent.height * 0.48
             Layout.alignment: Qt.AlignHCenter
+
+            Behavior on Layout.maximumHeight {
+                NumberAnimation {
+                    duration: Appearance.animation.elementMove.duration
+                    easing.type: Appearance.animation.elementMove.type
+                    easing.bezierCurve: Appearance.animation.elementMove.bezierCurve
+                }
+            }
 
             StyledDropShadow {
                 target: artBackgroundLoader
@@ -175,7 +186,15 @@ Item {
                         color: Appearance.colors.colOnLayer2
                         opacity: 0.8
                         elide: Text.ElideRight
-                        Layout.maximumWidth: 280
+                        Layout.maximumWidth: coverArt.expanded ? 450 : 280
+
+                        Behavior on Layout.maximumWidth {
+                            NumberAnimation {
+                                duration: Appearance.animation.elementMove.duration
+                                easing.type: Appearance.animation.elementMove.type
+                                easing.bezierCurve: Appearance.animation.elementMove.bezierCurve
+                            }
+                        }
                     }
                 }
             }
@@ -228,8 +247,16 @@ Item {
             StyledSlider {
                 id: positionSlider
                 Layout.fillWidth: true
-                Layout.maximumWidth: 540
+                Layout.maximumWidth: coverArt.expanded ? 680 : 540
                 Layout.alignment: Qt.AlignHCenter
+
+                Behavior on Layout.maximumWidth {
+                    NumberAnimation {
+                        duration: Appearance.animation.elementMove.duration
+                        easing.type: Appearance.animation.elementMove.type
+                        easing.bezierCurve: Appearance.animation.elementMove.bezierCurve
+                    }
+                }
 
                 readonly property real trackLength: coverArt.player?.length ?? 0
                 // MPRIS players can briefly report a position past the end of the
@@ -339,8 +366,16 @@ Item {
 
             RowLayout {
                 Layout.fillWidth: true
-                Layout.maximumWidth: 540
+                Layout.maximumWidth: coverArt.expanded ? 680 : 540
                 Layout.alignment: Qt.AlignHCenter
+
+                Behavior on Layout.maximumWidth {
+                    NumberAnimation {
+                        duration: Appearance.animation.elementMove.duration
+                        easing.type: Appearance.animation.elementMove.type
+                        easing.bezierCurve: Appearance.animation.elementMove.bezierCurve
+                    }
+                }
 
                 StyledText {
                     text: coverArt.formatTime(positionSlider.displayPosition)
@@ -361,7 +396,15 @@ Item {
         // Playback Control Buttons Row (M3 Expressive Shapes)
         RowLayout {
             Layout.alignment: Qt.AlignHCenter
-            spacing: 14
+            spacing: coverArt.expanded ? 20 : 14
+
+            Behavior on spacing {
+                NumberAnimation {
+                    duration: Appearance.animation.elementMove.duration
+                    easing.type: Appearance.animation.elementMove.type
+                    easing.bezierCurve: Appearance.animation.elementMove.bezierCurve
+                }
+            }
 
             // Shuffle Button
             RippleButton {
@@ -470,10 +513,18 @@ Item {
         // Volume Bar Row
         RowLayout {
             Layout.fillWidth: true
-            Layout.maximumWidth: 420
+            Layout.maximumWidth: coverArt.expanded ? 520 : 420
             Layout.alignment: Qt.AlignHCenter
             spacing: 10
             visible: Config.options.background.mediaMode.showVolumeSlider ?? true
+
+            Behavior on Layout.maximumWidth {
+                NumberAnimation {
+                    duration: Appearance.animation.elementMove.duration
+                    easing.type: Appearance.animation.elementMove.type
+                    easing.bezierCurve: Appearance.animation.elementMove.bezierCurve
+                }
+            }
 
             MaterialSymbol {
                 iconSize: 20

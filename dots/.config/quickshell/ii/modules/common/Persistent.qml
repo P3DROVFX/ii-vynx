@@ -335,6 +335,7 @@ Singleton {
                     property real localMediaVolume: 0.8
                     property string queueSortCriterion: "title"
                     property bool queueSortDescending: false
+                    property bool coverExpanded: false
                 }
             }
 

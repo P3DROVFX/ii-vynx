@@ -67,7 +67,18 @@ Item { // Fullscreen MediaMode instance
     readonly property bool lyricsPanelVisible: showLyricsPanel
     readonly property bool lyricsContentVisible: lyricsPanelVisible
         && (!queueEligible || localLyricsExpanded)
-    readonly property bool rightPanelVisible: lyricsPanelVisible || queueEligible
+    readonly property bool rightPanelEligible: lyricsPanelVisible || queueEligible
+    readonly property bool rightPanelTargetVisible: rightPanelEligible && !coverExpanded
+    readonly property bool rightPanelVisible: rightPanelAnimationProgress > 0.001
+    property bool coverExpanded: Persistent.states.background.mediaMode.coverExpanded ?? false
+    property real rightPanelAnimationProgress: rightPanelTargetVisible ? 1.0 : 0.0
+    Behavior on rightPanelAnimationProgress {
+        NumberAnimation {
+            duration: Appearance.animation.elementMove.duration
+            easing.type: Appearance.animation.elementMove.type
+            easing.bezierCurve: Appearance.animation.elementMove.bezierCurve
+        }
+    }
     readonly property real panelGap: Appearance.sizes.elevationMargin * 2
     readonly property real lyricsHeaderHeight: Appearance.sizes.minimumTouchTarget
         + Appearance.sizes.elevationMargin * 4
@@ -821,6 +832,42 @@ Item { // Fullscreen MediaMode instance
                         RowLayout {
                             spacing: 10
 
+                            // Expanded Cover / Fullscreen Player Mode Toggle
+                            RippleButton {
+                                implicitWidth: 42
+                                implicitHeight: 42
+                                buttonRadius: Appearance.rounding.full
+                                colBackground: root.coverExpanded
+                                    ? root.dynamicAccentColor
+                                    : root.dynamicAccentContainer
+                                colBackgroundHover: root.coverExpanded
+                                    ? ColorUtils.mix(root.dynamicAccentColor, Appearance.colors.colLayer1Hover, 0.85)
+                                    : ColorUtils.mix(root.dynamicAccentContainer, Appearance.colors.colLayer1Hover, 0.85)
+                                colBackgroundActive: root.coverExpanded
+                                    ? ColorUtils.mix(root.dynamicAccentColor, Appearance.colors.colLayer1Active, 0.7)
+                                    : ColorUtils.mix(root.dynamicAccentContainer, Appearance.colors.colLayer1Active, 0.7)
+
+                                MaterialSymbol {
+                                    anchors.centerIn: parent
+                                    iconSize: 20
+                                    color: root.coverExpanded
+                                        ? Appearance.colors.colOnPrimary
+                                        : root.dynamicOnAccentContainer
+                                    text: root.coverExpanded ? "fullscreen_exit" : "fullscreen"
+                                }
+
+                                onClicked: {
+                                    root.coverExpanded = !root.coverExpanded;
+                                    Persistent.states.background.mediaMode.coverExpanded = root.coverExpanded;
+                                }
+
+                                PopupToolTip {
+                                    text: root.coverExpanded
+                                        ? Translation.tr("Show side panels (Lyrics & Queue)")
+                                        : Translation.tr("Expand player card (Fullscreen)")
+                                }
+                            }
+
                             // Audio Visualizer Selector Toggle
                             RippleButton {
                                 implicitWidth: 42
@@ -1050,20 +1097,22 @@ Item { // Fullscreen MediaMode instance
 
                     // 2. Main Responsive 2-Column Split Body
                     RowLayout {
+                        id: mainSplitRow
                         Layout.fillWidth: true
                         Layout.fillHeight: true
-                        spacing: 24
+                        spacing: Math.round(24 * root.rightPanelAnimationProgress)
 
                         // Left Column (~44%): Hero Cover Art & Player Control Card
                         Item {
+                            id: leftColumn
                             Layout.fillWidth: true
                             Layout.fillHeight: true
-                            Layout.preferredWidth: root.rightPanelVisible ? parent.width * 0.44 : parent.width
+                            Layout.preferredWidth: Math.round((mainSplitRow.width - (24 * root.rightPanelAnimationProgress)) * (1.0 - 0.56 * root.rightPanelAnimationProgress))
 
                             Rectangle {
                                 anchors.fill: parent
                                 radius: Appearance.rounding.verylarge
-                                color: videoActive ? ColorUtils.transparentize(Appearance.colors.colLayer1Base, 0.72) : ColorUtils.transparentize(Appearance.colors.colLayer1Base, 0.35)
+                                color: videoActive ? ColorUtils.transparentize(Appearance.colors.colLayer1Base, 0.70) : ColorUtils.transparentize(Appearance.colors.colLayer1Base, 0.55)
 
                                 Behavior on color {
                                     ColorAnimation { duration: 400; easing.type: Easing.InOutQuad }
@@ -1079,6 +1128,7 @@ Item { // Fullscreen MediaMode instance
                                     accentColor: root.dynamicAccentColor
                                     accentContainerColor: root.dynamicAccentContainer
                                     onAccentContainerColor: root.dynamicOnAccentContainer
+                                    expanded: !root.rightPanelTargetVisible
                                 }
                             }
                         }
@@ -1088,20 +1138,32 @@ Item { // Fullscreen MediaMode instance
                         // this area for queue controls.
                         Item {
                             id: rightColumn
-                            Layout.fillWidth: true
+                            Layout.fillWidth: false
                             Layout.fillHeight: true
-                            Layout.preferredWidth: parent.width * 0.56
-                            visible: root.rightPanelVisible
+                            Layout.preferredWidth: Math.round((mainSplitRow.width - (24 * root.rightPanelAnimationProgress)) * (0.56 * root.rightPanelAnimationProgress))
+                            visible: root.rightPanelAnimationProgress > 0.001
+                            clip: true
 
                             Binding {
                                 target: root
                                 property: "rightPanelHeight"
-                                value: rightColumn.height
+                                value: Math.max(100, rightColumn.height)
                             }
 
-                            ColumnLayout {
-                                anchors.fill: parent
-                                spacing: root.rightPanelLayout.gap
+                            Item {
+                                id: rightColumnContent
+                                width: Math.max(300, Math.round((mainSplitRow.width - 24) * 0.56))
+                                height: parent.height
+                                anchors.left: parent.left
+                                opacity: Math.max(0, Math.min(1, root.rightPanelAnimationProgress))
+
+                                transform: Translate {
+                                    x: Math.round((1.0 - root.rightPanelAnimationProgress) * 80)
+                                }
+
+                                ColumnLayout {
+                                    anchors.fill: parent
+                                    spacing: root.rightPanelLayout.gap
 
                                 Item {
                                     id: lyricsPanel
@@ -1123,7 +1185,7 @@ Item { // Fullscreen MediaMode instance
                                         id: lyricsContainer
                                         anchors.fill: parent
                                         radius: Appearance.rounding.verylarge
-                                        color: videoActive ? ColorUtils.transparentize(Appearance.colors.colLayer1Base, 0.72) : ColorUtils.transparentize(Appearance.colors.colLayer1Base, 0.35)
+                                        color: videoActive ? ColorUtils.transparentize(Appearance.colors.colLayer1Base, 0.80) : ColorUtils.transparentize(Appearance.colors.colLayer1Base, 0.65)
 
                                         Behavior on color {
                                             ColorAnimation { duration: 400; easing.type: Easing.InOutQuad }
@@ -1488,6 +1550,7 @@ Item { // Fullscreen MediaMode instance
                                 }
                             }
                         }
+                    }
                     }
                 }
             }
