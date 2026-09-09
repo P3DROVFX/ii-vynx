@@ -79,7 +79,7 @@ AbstractBackgroundWidget {
             id: shapeBgRect
             anchors.fill: parent
             radius: Appearance.rounding.windowRounding
-            color: WidgetColorScheme.cardBgColor
+            color: WidgetColorScheme.tintBackground(WidgetColorScheme.cardBgColor)
             visible: root.isRectangle
         }
 
@@ -87,7 +87,7 @@ AbstractBackgroundWidget {
             id: shapeBg
             anchors.fill: parent
             shape: root.chosenShape
-            color: WidgetColorScheme.cardBgColor
+            color: WidgetColorScheme.tintBackground(WidgetColorScheme.cardBgColor)
             visible: !root.isRectangle
         }
 

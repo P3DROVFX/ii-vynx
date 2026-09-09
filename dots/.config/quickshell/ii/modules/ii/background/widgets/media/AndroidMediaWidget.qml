@@ -228,7 +228,7 @@ AbstractBackgroundWidget {
         Rectangle {
             id: mainBg
             anchors.fill: parent
-            color: root.cardBgColor
+            color: WidgetColorScheme.tintBackground(root.cardBgColor)
             radius: Appearance.rounding.windowRounding + 16
             clip: true
 

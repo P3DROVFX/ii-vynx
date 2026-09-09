@@ -156,7 +156,7 @@ AbstractBackgroundWidget {
         id: outerCapsule
         anchors.fill: parent
         radius: Appearance.rounding.full
-        color: root.colOuterBg
+        color: WidgetColorScheme.tintBackground(root.colOuterBg)
 
         RowLayout {
             anchors.fill: parent
@@ -214,7 +214,7 @@ AbstractBackgroundWidget {
                     id: innerCapsule
                     anchors.fill: parent
                     radius: Appearance.rounding.full
-                    color: root.colInnerBg
+                    color: WidgetColorScheme.tintBackground(root.colInnerBg)
                     clip: true
 
                     Row {

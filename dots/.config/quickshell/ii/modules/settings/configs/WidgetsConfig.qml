@@ -273,6 +273,29 @@ Item {
                         }
                     }
                 }
+
+                ConfigSwitch {
+                    buttonIcon: "opacity"
+                    text: Translation.tr("Transparent widget backgrounds")
+                    description: Translation.tr("Adjust the background tint of all desktop widgets, including palette and album colors. Text and images keep their opacity.")
+                    checked: Config.options.background.widgets.tintOpacityEnabled ?? false
+                    onCheckedChanged: {
+                        if (Config.ready && checked !== Config.options.background.widgets.tintOpacityEnabled)
+                            Config.options.background.widgets.tintOpacityEnabled = checked;
+                    }
+                }
+
+                ConfigSlider {
+                    buttonIcon: "opacity"
+                    text: Translation.tr("Widget background opacity")
+                    visible: Config.options.background.widgets.tintOpacityEnabled ?? false
+                    from: 0
+                    to: 1
+                    stepSize: 0.01
+                    value: WidgetColorScheme.backgroundTintOpacity
+                    badgeText: Math.round(value * 100) + "%"
+                    onMoved: Config.options.background.widgets.tintOpacity = value
+                }
             }
 
             ContentSubsection {

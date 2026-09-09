@@ -92,8 +92,8 @@ AbstractBackgroundWidget {
             id: clockBgCircle
             anchors.fill: parent
             radius: width / 2
-            color: root.cfgUseBlackBg ? Appearance.m3colors.m3shadow
-                                      : WidgetColorScheme.cardBgColor
+            color: WidgetColorScheme.tintBackground(root.cfgUseBlackBg
+                ? Appearance.m3colors.m3shadow : WidgetColorScheme.cardBgColor)
             clip: true
 
             // 1. Main Calendar Dial Canvas

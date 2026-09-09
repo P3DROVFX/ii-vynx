@@ -49,7 +49,7 @@ AbstractBackgroundWidget {
         id: mainCard
         anchors.fill: parent
         radius: Appearance.rounding.windowRounding
-        color: WidgetColorScheme.cardBgColor
+        color: WidgetColorScheme.tintBackground(WidgetColorScheme.cardBgColor)
 
         Item {
             id: innerContent
@@ -60,7 +60,7 @@ AbstractBackgroundWidget {
                 id: fallbackBg
                 anchors.fill: parent
                 radius: Appearance.rounding.windowRounding - 4
-                color: WidgetColorScheme.innerShapeColor
+                color: WidgetColorScheme.tintBackground(WidgetColorScheme.innerShapeColor)
             }
 
             // Static Image loader (hardware-accelerated, zero QMovie overhead)

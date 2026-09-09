@@ -62,7 +62,7 @@ AbstractBackgroundWidget {
             id: clockBgShape
             anchors.fill: parent
             shape: MaterialShape.Shape.Circle
-            color: root.colBg
+            color: WidgetColorScheme.tintBackground(root.colBg)
         }
 
         // 2. Dial & Pointer Canvas Overlay

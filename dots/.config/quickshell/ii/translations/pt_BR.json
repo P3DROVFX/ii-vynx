@@ -1,4 +1,7 @@
 {
+    "Transparent widget backgrounds": "Fundos transparentes nos widgets",
+    "Adjust the background tint of all desktop widgets, including palette and album colors. Text and images keep their opacity.": "Ajuste a cor de fundo de todos os widgets de desktop, incluindo cores da paleta e do álbum. Textos e imagens mantêm sua opacidade.",
+    "Widget background opacity": "Opacidade do fundo dos widgets",
     "Color battery by power profile": "Colorir bateria pelo perfil de energia",
     "Change battery icon color when power saver or performance mode is active": "Alterar cor do ícone da bateria nos modos economia ou performance",
     "Laptop Keyboard": "Teclado do Laptop",

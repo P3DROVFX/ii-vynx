@@ -17,6 +17,7 @@ Rectangle {
     property alias snapMode: slider.snapMode
     property alias tooltipContent: slider.tooltipContent
     property alias pressed: slider.pressed
+    signal moved()
     property real textWidth: 180
     /// A small pill after the label, for a word about the row. Takes no room while empty.
     property string badgeText: ""
@@ -266,6 +267,7 @@ Rectangle {
 
         StyledSlider {
             id: slider
+            onMoved: root.moved()
             configuration: StyledSlider.Configuration.M
             usePercentTooltip: root.usePercentTooltip
             value: root.value

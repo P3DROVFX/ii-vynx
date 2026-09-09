@@ -142,7 +142,7 @@ AbstractBackgroundWidget {
         id: bezelRing
         anchors.fill: parent
         radius: width / 2
-        color: Appearance.m3colors.m3shadow // Opaque base to prevent transparency leaks
+        color: WidgetColorScheme.tintBackground(Appearance.m3colors.m3shadow)
 
         // Inner Screen Container
         Rectangle {
@@ -150,7 +150,7 @@ AbstractBackgroundWidget {
             anchors.fill: parent
             anchors.margins: parent.width * 0.08 // 8% bezel thickness
             radius: width / 2
-            color: Appearance.m3colors.m3shadow
+            color: WidgetColorScheme.tintBackground(Appearance.m3colors.m3shadow)
 
             // Opaque Background Artwork + Gradient Container (with circular masking)
             Item {
@@ -170,7 +170,7 @@ AbstractBackgroundWidget {
                 // Opaque base behind album art
                 Rectangle {
                     anchors.fill: parent
-                    color: Appearance.m3colors.m3shadow
+                    color: WidgetColorScheme.tintBackground(Appearance.m3colors.m3shadow)
                 }
 
                 // Album Art with a light blur

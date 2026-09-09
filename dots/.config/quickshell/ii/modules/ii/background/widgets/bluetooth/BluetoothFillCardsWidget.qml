@@ -64,7 +64,7 @@ AbstractBackgroundWidget {
     Rectangle {
         id: outerCardBg
         anchors.fill: parent
-        color: root.expressive ? Appearance.colors.colPrimaryContainer : Appearance.colors.colSurfaceContainerLow
+        color: WidgetColorScheme.tintBackground(root.expressive ? Appearance.colors.colPrimaryContainer : Appearance.colors.colSurfaceContainerLow)
         radius: Appearance.rounding.windowRounding
 
         layer.enabled: true
@@ -116,7 +116,7 @@ AbstractBackgroundWidget {
                     Rectangle {
                         id: cardInnerBg
                         anchors.fill: parent
-                        color: deviceCard.cardContainerColor
+                        color: WidgetColorScheme.tintBackground(deviceCard.cardContainerColor)
                         radius: Appearance.rounding.windowRounding - 4
 
                         layer.enabled: true

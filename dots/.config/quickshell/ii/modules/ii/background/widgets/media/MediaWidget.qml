@@ -179,9 +179,13 @@ AbstractBackgroundWidget {
             height: glowSourceShape.height
             radius: 28
             samples: 57
-            color: ColorUtils.transparentize(root.artDominantColor, 0.25)
+            // Full-alpha color: the glow competes with the compositor's
+            // ignore_alpha rule on quickshell.* windows (alpha <= ~0.05 is
+            // discarded), so the old transparentized color at 0.01*brightness
+            // ended up below the threshold and the glow simply vanished.
+            color: root.artDominantColor
             transparentBorder: true
-            opacity: Config.options.background.widgets.media.glow.enable ? (0.01 * Config.options.background.widgets.media.glow.brightness) : 0
+            opacity: Config.options.background.widgets.media.glow.enable ? Math.min(1, 0.035 * Config.options.background.widgets.media.glow.brightness) : 0
             visible: opacity > 0.01
 
             Behavior on opacity {
@@ -241,7 +245,7 @@ AbstractBackgroundWidget {
         MaterialShape { // Art background
             id: artBackground
             anchors.fill: parent
-            color: Appearance.colors.colPrimaryContainer
+            color: WidgetColorScheme.tintBackground(Appearance.colors.colPrimaryContainer)
             shapeString: root.backgroundShape
 
             layer.enabled: true

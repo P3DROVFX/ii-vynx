@@ -60,7 +60,7 @@ AbstractBackgroundWidget {
             id: clockBgShape
             anchors.fill: parent
             shape: MaterialShape.Shape.Circle
-            color: root.colBg
+            color: WidgetColorScheme.tintBackground(root.colBg)
         }
 
         // 2. Triple Rotating Concentric Rings & Pointer Canvas Overlay

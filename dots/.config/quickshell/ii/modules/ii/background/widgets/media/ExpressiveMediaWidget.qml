@@ -190,7 +190,7 @@ AbstractBackgroundWidget {
         id: mainBg
         anchors.fill: parent
         anchors.margins: 8
-        color: root.colBg
+        color: WidgetColorScheme.tintBackground(root.colBg)
         radius: root.globalRadius
         border.color: WidgetColorScheme.outlineColor
         border.width: 1
@@ -222,7 +222,7 @@ AbstractBackgroundWidget {
                     Layout.fillHeight: true
                     Layout.preferredWidth: height
                     Layout.alignment: Qt.AlignVCenter
-                    color: root.colAlbumBg
+                    color: WidgetColorScheme.tintBackground(root.colAlbumBg)
                     radius: root.globalRadius
 
                     Item {
@@ -300,7 +300,7 @@ AbstractBackgroundWidget {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     Layout.alignment: Qt.AlignVCenter
-                    color: root.colControlsBg
+                    color: WidgetColorScheme.tintBackground(root.colControlsBg)
                     radius: root.controlsRadius
                     clip: true
 

@@ -96,7 +96,7 @@ AbstractBackgroundWidget {
     Rectangle {
         id: bgRect
         anchors.fill: parent
-        color: root.cardBgColor
+        color: WidgetColorScheme.tintBackground(root.cardBgColor)
         radius: Appearance.rounding.windowRounding
 
         layer.enabled: Config.options.background.widgets.enableInnerShadow ?? false
@@ -147,7 +147,7 @@ AbstractBackgroundWidget {
                     width: notesListView.width
                     height: notesListView.height * 0.7
                     radius: Appearance.rounding.windowRounding
-                    color: root.innerShapeColor
+                    color: WidgetColorScheme.tintBackground(root.innerShapeColor)
 
                     MouseArea {
                         anchors.fill: parent

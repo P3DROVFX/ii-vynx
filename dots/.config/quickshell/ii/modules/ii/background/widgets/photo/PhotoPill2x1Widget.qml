@@ -63,7 +63,7 @@ AbstractBackgroundWidget {
                 id: fallbackBg
                 anchors.fill: parent
                 radius: Appearance.rounding.windowRounding
-                color: WidgetColorScheme.innerShapeColor
+                color: WidgetColorScheme.tintBackground(WidgetColorScheme.innerShapeColor)
             }
 
             // Static Image loader (hardware-accelerated, zero QMovie overhead)

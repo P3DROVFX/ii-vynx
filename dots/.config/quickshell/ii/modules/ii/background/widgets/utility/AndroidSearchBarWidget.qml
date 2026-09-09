@@ -110,7 +110,7 @@ AbstractBackgroundWidget {
         id: outerCapsule
         anchors.fill: parent
         radius: height / 2
-        color: root.colOuterBg
+        color: WidgetColorScheme.tintBackground(root.colOuterBg)
 
         RowLayout {
             anchors.fill: parent
@@ -123,7 +123,7 @@ AbstractBackgroundWidget {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 radius: height / 2
-                color: root.colInnerBg
+                color: WidgetColorScheme.tintBackground(root.colInnerBg)
 
                 // Click area for opening Search overlay on inner bar
                 MouseArea {
