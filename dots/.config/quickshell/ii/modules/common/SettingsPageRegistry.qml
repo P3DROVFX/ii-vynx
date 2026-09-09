@@ -352,7 +352,8 @@ Singleton {
             "icon": "battery_android_full",
             "component": "modules/settings/configs/PowerConfig.qml",
             "subPages": [],
-            "aliases": ["Core Services", "Suspend", "Battery warning", "Automatic suspend"]
+            "aliases": ["Core Services", "Suspend", "Battery warning", "Automatic suspend",
+                "Charge limit", "Charge threshold", "Battery full notification", "Battery health"]
         },
         {
             "id": "usageStats",

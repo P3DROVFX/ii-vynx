@@ -493,6 +493,15 @@ Singleton {
         // notify-send -a 'Recorder' → appName === "Recorder"
         var isRecording = appName === "Recorder";
 
+        // The battery warns before it suspends the machine, and the countdown is cancellable.
+        if (notifObj.notification?.hints?.["x-qs-notif"] === "battery-suspend-warn") {
+            notifObj.customActions = [
+                { "identifier": "__qs_battery_suspend_now", "text": Translation.tr("Suspend now") },
+                { "identifier": "__qs_battery_suspend_cancel", "text": Translation.tr("Stay awake") }
+            ];
+            return;
+        }
+
         // The "Keep awake" timer warns before it expires and offers to push the deadline out.
         // Matched on a private hint rather than the icon: notify-send's -i doesn't reach appIcon.
         if (notifObj.notification?.hints?.["x-qs-notif"] === "keepawake-warn") {
@@ -533,6 +542,13 @@ Singleton {
     function executeShellAction(notifObj, identifier) {
         if (String(identifier).startsWith("__qs_calendar_")) {
             root.internalActionInvoked(identifier, notifObj?.notificationId ?? 0, notifObj?.internalActionPayload ?? ({}));
+            return;
+        }
+        if (identifier === "__qs_battery_suspend_now") {
+            Battery.suspendNow();
+            return;
+        } else if (identifier === "__qs_battery_suspend_cancel") {
+            Battery.cancelAutomaticSuspend(true);
             return;
         }
         // Keep-awake actions carry no file, so they're handled before the file-path guard

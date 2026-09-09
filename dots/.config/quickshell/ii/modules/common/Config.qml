@@ -3973,6 +3973,12 @@ Singleton {
                 property int full: 101
                 property bool automaticSuspend: true
                 property int suspend: 3
+                // Announce the end of charging: a firmware charge limit holding the pack counts,
+                // and 101 above means the soft "nearly there" reminder is off.
+                property bool notifyCharged: true
+                // Grace period between the low-battery warning and the suspend itself; 0 suspends
+                // immediately.
+                property int suspendWarningSeconds: 30
             }
 
             property JsonObject calendar: JsonObject {

@@ -19,7 +19,7 @@ StyledPopup {
     readonly property bool hasTimeData: {
         const timeValue = Battery.isCharging ? Battery.timeToFullEffective : Battery.timeToEmpty;
         const power = Battery.energyRate;
-        return !(Battery.chargeState === 4 || Battery.chargeLimitReached || timeValue <= 0 || power <= 0.01);
+        return !(Battery.isFullyCharged || Battery.chargeLimitReached || timeValue <= 0 || power <= 0.01);
     }
 
     // Hide the limit label when it would collide with the fixed 0/50/100 labels
@@ -28,7 +28,7 @@ StyledPopup {
 
     // Hero card glow color logic:
     readonly property color heroGlowColor: {
-        if (Battery.percentage <= 0.15 && !Battery.isCharging)
+        if (Battery.percentage <= 0.15 && !Battery.isPluggedIn)
             return Appearance.m3colors.m3error;
         if (Battery.isCharging || Battery.chargeLimitReached)
             return "#10E055"; //using manually defined green
@@ -287,9 +287,11 @@ StyledPopup {
                     StyledText {
                         id: batteryHeroStatusText
                         text: {
-                            if (Battery.chargeState === 4) return Translation.tr("Fully Charged");
+                            if (Battery.isFullyCharged) return Translation.tr("Fully Charged");
                             if (Battery.chargeLimitReached) return Translation.tr("Charge limit reached");
                             if (Battery.isCharging) return Translation.tr("Charging...");
+                            if (Battery.drainingOnAc) return Translation.tr("On AC, still draining");
+                            if (Battery.isPluggedIn) return Translation.tr("Plugged in");
                             return Translation.tr("Discharging...");
                         }
                         font.pixelSize: Appearance.font.pixelSize.large
@@ -346,9 +348,9 @@ StyledPopup {
 
                     StyledText {
                         text: {
-                            if (!root.hasTimeData && Battery.chargeState !== 4 && !Battery.chargeLimitReached)
+                            if (!root.hasTimeData && !Battery.isFullyCharged && !Battery.chargeLimitReached)
                                 return Translation.tr("Calculating...");
-                            if (Battery.chargeState === 4 || Battery.chargeLimitReached)
+                            if (Battery.isFullyCharged || Battery.chargeLimitReached)
                                 return "";
                             const time = root.formatTime(
                                 Battery.isCharging ? Battery.timeToFullEffective : Battery.timeToEmpty
@@ -868,12 +870,16 @@ StyledPopup {
                         StyledText {
                             id: cellStatusValue
                             text: {
-                                if (Battery.chargeState === 4)
+                                if (Battery.isFullyCharged)
                                     return Translation.tr("Full");
                                 if (Battery.chargeLimitReached)
                                     return Translation.tr("Limit reached");
                                 if (Battery.isCharging)
                                     return Translation.tr("Charging");
+                                if (Battery.drainingOnAc)
+                                    return Translation.tr("Draining on AC");
+                                if (Battery.isPluggedIn)
+                                    return Translation.tr("Plugged in");
                                 return Translation.tr("Discharging");
                             }
                             font.pixelSize: Appearance.font.pixelSize.normal

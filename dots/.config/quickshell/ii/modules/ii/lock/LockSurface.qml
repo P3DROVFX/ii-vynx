@@ -855,7 +855,7 @@ MouseArea {
                 readonly property bool isPluggedIn: Battery.isPluggedIn
                 readonly property bool effectivelyCharging: isCharging || isPluggedIn
                 readonly property bool chargeLimitReached: Battery.chargeLimitReached
-                readonly property bool showCheck: chargeLimitReached || (Battery.isFull && effectivelyCharging)
+                readonly property bool showCheck: chargeLimitReached || Battery.atChargeCeiling
                 
                 readonly property bool isLow: percentage <= Config.options.battery.low / 100
                 readonly property bool isCritical: percentage <= Config.options.battery.critical / 100
