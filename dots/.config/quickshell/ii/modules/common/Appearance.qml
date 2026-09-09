@@ -313,24 +313,51 @@ Singleton {
     // rendered opacity, otherwise the entire island is excluded from blur.
     readonly property real barIgnoreAlpha: Math.min(root.ignoreAlpha, Math.max(0, 1 - root.backgroundTransparency - 0.01))
 
-    onIgnoreAlphaChanged: {
-        if (Config.ready) {
-            var a = root.ignoreAlpha;
-            var barA = root.barIgnoreAlpha;
-            var script = "";
-            script += "hl.layer_rule({ match = { namespace = 'quickshell.*' }, blur = true, blur_popups = true, ignore_alpha = " + a + " }) ";
-            script += "hl.layer_rule({ match = { namespace = 'quickshell:.*[pP]opup' }, blur = true, blur_popups = true, ignore_alpha = " + a + " }) ";
-            script += "hl.layer_rule({ match = { namespace = 'quickshell:(bar|floatingNotch)' }, blur = true, ignore_alpha = " + barA + " }) ";
-            script += "hl.layer_rule({ match = { namespace = 'quickshell:background' }, blur = false }) ";
-            script += "hl.layer_rule({ match = { namespace = 'quickshell:screenCorners' }, order = 10 }) ";
-            script += "hl.layer_rule({ match = { namespace = 'quickshell:session' }, blur = true, ignore_alpha = 0.0 }) ";
-            script += "hl.layer_rule({ match = { namespace = 'quickshell:wTaskView' }, blur = true, ignore_alpha = 0.0 }) ";
-            script += "hl.layer_rule({ match = { namespace = 'quickshell:overviewWindowTransition' }, blur = false }) ";
-            script += "hl.layer_rule({ match = { namespace = 'quickshell:workspaceBlurOverlay' }, blur = true, ignore_alpha = 0.0, order = -1, animation = 'fade' }) ";
-            script += "hl.layer_rule({ match = { namespace = 'quickshell:notificationPopup' }, noanim = true }) ";
-            script += "hl.window_rule({ match = { title = '^(illogical-impulse Settings)$' }, no_blur = false, ignorealpha = " + a + " }) ";
-            Quickshell.execDetached(["hyprctl", "eval", script]);
+    // Popups only need compositor blur when transparency is enabled; for opaque popups,
+    // compositor blur behind a 100% opaque surface is completely invisible and causes
+    // Hyprland to blur the drop shadow pixels into a thick frosted halo when ignore_alpha is low.
+    readonly property bool popupBlurEnabled: (Config.options?.appearance?.transparency?.enable ?? false) && (Config.options?.appearance?.transparency?.popups ?? false)
+    readonly property real popupIgnoreAlpha: Math.min(root.ignoreAlpha, Math.max(0, 1 - root.backgroundTransparency - 0.01))
+
+    function getLayerRulesScript(): string {
+        var a = root.ignoreAlpha;
+        var barA = root.barIgnoreAlpha;
+        var script = "";
+        script += "hl.layer_rule({ match = { namespace = 'quickshell.*' }, blur = true, blur_popups = true, ignore_alpha = " + a + " }) ";
+        if (root.popupBlurEnabled) {
+            var popupA = root.popupIgnoreAlpha;
+            script += "hl.layer_rule({ match = { namespace = 'quickshell:.*[pP]opup' }, blur = true, blur_popups = true, ignore_alpha = " + popupA + " }) ";
+            script += "hl.layer_rule({ match = { namespace = 'quickshell:popup' }, blur = true, blur_popups = true, ignore_alpha = " + popupA + " }) ";
+        } else {
+            script += "hl.layer_rule({ match = { namespace = 'quickshell:popup' }, blur = false, blur_popups = false, ignore_alpha = 0.5 }) ";
         }
+        script += "hl.layer_rule({ match = { namespace = 'quickshell:(bar|floatingNotch)' }, blur = true, ignore_alpha = " + barA + " }) ";
+        script += "hl.layer_rule({ match = { namespace = 'quickshell:background' }, blur = false }) ";
+        script += "hl.layer_rule({ match = { namespace = 'quickshell:screenCorners' }, order = 10 }) ";
+        script += "hl.layer_rule({ match = { namespace = 'quickshell:session' }, blur = true, ignore_alpha = 0.0 }) ";
+        script += "hl.layer_rule({ match = { namespace = 'quickshell:wTaskView' }, blur = true, ignore_alpha = 0.0 }) ";
+        script += "hl.layer_rule({ match = { namespace = 'quickshell:overviewWindowTransition' }, blur = false }) ";
+        script += "hl.layer_rule({ match = { namespace = 'quickshell:workspaceBlurOverlay' }, blur = true, ignore_alpha = 0.0, order = -1, animation = 'fade' }) ";
+        script += "hl.layer_rule({ match = { namespace = 'quickshell:notificationPopup' }, noanim = true }) ";
+        script += "hl.window_rule({ match = { title = '^(illogical-impulse Settings)$' }, no_blur = false, ignorealpha = " + a + " }) ";
+        return script;
+    }
+
+    function pushHyprlandLayerRules() {
+        if (Config.ready) {
+            Quickshell.execDetached(["hyprctl", "eval", root.getLayerRulesScript()]);
+        }
+    }
+
+    onIgnoreAlphaChanged: root.pushHyprlandLayerRules()
+    onBarIgnoreAlphaChanged: root.pushHyprlandLayerRules()
+    onPopupBlurEnabledChanged: root.pushHyprlandLayerRules()
+    onPopupIgnoreAlphaChanged: root.pushHyprlandLayerRules()
+
+    Connections {
+        target: Config.options?.appearance?.transparency ?? null
+        function onPopupsChanged() { root.pushHyprlandLayerRules(); }
+        function onEnableChanged() { root.pushHyprlandLayerRules(); }
     }
 
     property bool _isApplyingRules: false
@@ -395,21 +422,7 @@ Singleton {
 
         Quickshell.execDetached(["hyprctl", "eval", "hl.config({ decoration = { rounding = " + root.windowRounding + " } })"]);
         Quickshell.execDetached(["hyprctl", "eval", "hl.config({ decoration = { blur = { size = " + root.blurSize + " } } })"]);
-        var a = root.ignoreAlpha;
-        var barA = root.barIgnoreAlpha;
-        var bs = "";
-        bs += "hl.layer_rule({ match = { namespace = 'quickshell.*' }, blur = true, blur_popups = true, ignore_alpha = " + a + " }) ";
-        bs += "hl.layer_rule({ match = { namespace = 'quickshell:.*[pP]opup' }, blur = true, blur_popups = true, ignore_alpha = " + a + " }) ";
-        bs += "hl.layer_rule({ match = { namespace = 'quickshell:(bar|floatingNotch)' }, blur = true, ignore_alpha = " + barA + " }) ";
-        bs += "hl.layer_rule({ match = { namespace = 'quickshell:background' }, blur = false }) ";
-        bs += "hl.layer_rule({ match = { namespace = 'quickshell:screenCorners' }, order = 10 }) ";
-        bs += "hl.layer_rule({ match = { namespace = 'quickshell:session' }, blur = true, ignore_alpha = 0.0 }) ";
-        bs += "hl.layer_rule({ match = { namespace = 'quickshell:wTaskView' }, blur = true, ignore_alpha = 0.0 }) ";
-        bs += "hl.layer_rule({ match = { namespace = 'quickshell:overviewWindowTransition' }, blur = false }) ";
-        bs += "hl.layer_rule({ match = { namespace = 'quickshell:workspaceBlurOverlay' }, blur = true, ignore_alpha = 0.0, order = -1, animation = 'fade' }) ";
-        bs += "hl.layer_rule({ match = { namespace = 'quickshell:notificationPopup' }, noanim = true }) ";
-        bs += "hl.window_rule({ match = { title = '^(illogical-impulse Settings)$' }, no_blur = false, ignorealpha = " + a + " }) ";
-        Quickshell.execDetached(["hyprctl", "eval", bs]);
+        root.pushHyprlandLayerRules();
 
         root.applyHyprlandBorder();
 

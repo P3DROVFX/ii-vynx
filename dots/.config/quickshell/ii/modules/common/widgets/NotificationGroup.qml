@@ -263,7 +263,7 @@ MouseArea { // Notification group area
 
     StyledRectangularShadow {
         target: background
-        visible: popup
+        visible: popup && !(Config.options?.appearance?.transparency?.enable ?? false)
     }
     Rectangle { // Background of the notification
         id: background
