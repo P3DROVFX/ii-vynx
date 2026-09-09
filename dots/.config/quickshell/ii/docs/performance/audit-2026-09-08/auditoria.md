@@ -1,8 +1,10 @@
 # Auditoria de CPU e RAM do ii — 8 de setembro de 2026
 
+**Complemento posterior:** a [auditoria consolidada com testes individuais de RAM, CPU e GPU](../audit-2026-09-08-controlled/auditoria.md) reúne esta investigação e os ensaios controlados concluídos depois. Este documento preserva os resultados e limites da primeira rodada.
+
 O fork apresentou **1.050,953 MiB de RSS, 854,041 MiB de PSS e 4,117% de um núcleo de CPU** na medição de confirmação de 60 segundos. A árvore do shell, incluindo auxiliares, apresentou mediana conjunta de **1.036,573 MiB de PSS**. O maior desperdício de CPU identificado foi o polling duplicado de compartilhamento de tela, somado ao monitor de privacidade: **18,583% de um núcleo**, incluindo os subprocessos dessas três rotinas.
 
-**A atribuição exclusiva de RAM e CPU a cada painel QML permanece não isolada.** Esta auditoria mede processos, subárvores de processos e regiões de memória; inspeciona os ciclos de vida dos módulos e os compara com o checkout local do end-4. Não atribui megabytes de heap compartilhado a um módulo pelo seu tamanho de código. Os resultados permitem priorizar trabalho, mas não provam que uma mudança específica economizará os aproximadamente 400 MB mencionados pelo usuário.
+**Nesta primeira rodada, os painéis QML não foram isolados individualmente.** Esta auditoria mede processos, subárvores de processos e regiões de memória; inspeciona os ciclos de vida dos módulos e os compara com o checkout local do end-4. Não atribui megabytes de heap compartilhado a um módulo pelo seu tamanho de código. Os resultados permitem priorizar trabalho, mas não provam que uma mudança específica economizará os aproximadamente 400 MB mencionados pelo usuário. O complemento posterior mede incrementos por painel em processos isolados; a atribuição exclusiva por objeto/alocação continua pendente.
 
 As propostas, escritas após esta análise, estão em [melhorias.md](melhorias.md).
 

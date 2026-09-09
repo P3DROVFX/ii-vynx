@@ -2613,6 +2613,7 @@ Singleton {
                     // Standard snap step for the desktop wallpaper canvas is 10px.
                     property int gridStep: 10
                     property string colorScheme: "default"
+                    property bool lightweightPreviews: true
                     property bool showOnlyOnSingleMonitor: false
                     property string targetMonitor: ""
                     property JsonObject clock_cookie: JsonObject {

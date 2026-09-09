@@ -83,6 +83,17 @@ AbstractBackgroundWidget {
         };
     }
 
+    // The config page writes canonical MaterialShape keys ("Circle",
+    // "Cookie9Sided", ...). Older configs stored lowercase values
+    // ("circle"/"square"/"cookie") that never matched MaterialShape's
+    // shapeMap, so every option silently rendered as a Circle — normalize
+    // them here instead of shipping a one-shot migration.
+    readonly property string backgroundShape: {
+        const raw = Config.options.background.widgets.media.backgroundShape ?? "Circle";
+        const legacy = { "circle": "Circle", "square": "Square", "cookie": "Cookie9Sided" };
+        return legacy[raw] ?? raw;
+    }
+
     property bool downloaded: false
     property string displayedArtFilePath: root.downloaded ? Qt.resolvedUrl(artFilePath) : ""
 
@@ -145,16 +156,33 @@ AbstractBackgroundWidget {
         implicitWidth: root.widgetSize
         implicitHeight: root.widgetSize
 
-        RectangularGlow {
+        // Silhouette glow (same technique as the Phone sidebar header pills):
+        // a DropShadow of the widget's own shape rendered behind it. The
+        // blurred inner half is covered by the opaque art background, so only
+        // the outer falloff shows — no blur composited inside the widget and
+        // no circular "wall" cutting the glow when the shape has lobes
+        // (cookies, bursts, flowers), because the source IS the shape.
+        MaterialShape {
+            id: glowSourceShape
+            anchors.fill: parent
+            shapeString: root.backgroundShape
+            color: "#FFFFFF"
+            visible: false
+        }
+
+        DropShadow {
             id: blurredArtGlow
-            anchors.centerIn: parent
-            width: root.widgetSize
-            height: root.widgetSize
-            glowRadius: 28
-            spread: 0.15
+            source: glowSourceShape
+            x: glowSourceShape.x
+            y: glowSourceShape.y
+            width: glowSourceShape.width
+            height: glowSourceShape.height
+            radius: 28
+            samples: 57
             color: ColorUtils.transparentize(root.artDominantColor, 0.25)
-            cornerRadius: Config.options.background.widgets.media.backgroundShape === "circle" ? root.widgetSize / 2 : Appearance.rounding.verylarge
+            transparentBorder: true
             opacity: Config.options.background.widgets.media.glow.enable ? (0.01 * Config.options.background.widgets.media.glow.brightness) : 0
+            visible: opacity > 0.01
 
             Behavior on opacity {
                 animation: Appearance.animation.elementResize.numberAnimation.createObject(this)
@@ -200,7 +228,7 @@ AbstractBackgroundWidget {
         MaterialShape {
             id: shadowSourceShape
             anchors.fill: parent
-            shapeString: Config.options.background.widgets.media.backgroundShape
+            shapeString: root.backgroundShape
             visible: false
         }
 
@@ -214,13 +242,13 @@ AbstractBackgroundWidget {
             id: artBackground
             anchors.fill: parent
             color: Appearance.colors.colPrimaryContainer
-            shapeString: Config.options.background.widgets.media.backgroundShape
+            shapeString: root.backgroundShape
 
             layer.enabled: true
             layer.effect: OpacityMask {
                 maskSource: MaterialShape {
                     width: artBackground.width
-                    shapeString: Config.options.background.widgets.media.backgroundShape
+                    shapeString: root.backgroundShape
                     height: artBackground.height
                 }
             }

@@ -118,15 +118,29 @@ ContentPage {
                     icon: "category"
                     Layout.fillWidth: true
 
+                    // Values are canonical MaterialShape keys; legacy lowercase
+                    // entries ("circle"/"square"/"cookie") are normalized for
+                    // display and the widget normalizes them at render time.
                     ConfigSelectionArray {
-                        currentValue: Config.options.background.widgets.media.backgroundShape
+                        readonly property var legacyShapes: ({ "circle": "Circle", "square": "Square", "cookie": "Cookie9Sided" })
+                        currentValue: {
+                            const raw = Config.options.background.widgets.media.backgroundShape;
+                            return legacyShapes[raw] ?? raw;
+                        }
                         onSelected: newValue => {
                             Config.options.background.widgets.media.backgroundShape = newValue;
                         }
                         options: [
-                            { displayName: Translation.tr("Circle"), icon: "circle", value: "circle" },
-                            { displayName: Translation.tr("Square"), icon: "square", value: "square" },
-                            { displayName: Translation.tr("Cookie"), icon: "cookie", value: "cookie" }
+                            { displayName: Translation.tr("Circle"), icon: "circle", value: "Circle" },
+                            { displayName: Translation.tr("Square"), icon: "crop_square", value: "Square" },
+                            { displayName: Translation.tr("Cookie 6"), icon: "cookie", value: "Cookie6Sided" },
+                            { displayName: Translation.tr("Cookie 9"), icon: "cookie", value: "Cookie9Sided" },
+                            { displayName: Translation.tr("Cookie 12"), icon: "cookie", value: "Cookie12Sided" },
+                            { displayName: Translation.tr("Sunny"), icon: "wb_sunny", value: "Sunny" },
+                            { displayName: Translation.tr("Soft Burst"), icon: "star", value: "SoftBurst" },
+                            { displayName: Translation.tr("Flower"), icon: "filter_vintage", value: "Flower" },
+                            { displayName: Translation.tr("Puffy"), icon: "bubble_chart", value: "Puffy" },
+                            { displayName: Translation.tr("Clover"), icon: "eco", value: "Clover8Leaf" }
                         ]
                     }
                 }
