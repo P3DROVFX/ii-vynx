@@ -3,6 +3,7 @@ import qs.modules.common
 import qs.modules.common.widgets
 import qs.services
 import QtQuick
+import QtQuick.Layouts
 import "timetable"
 
 /**
@@ -50,6 +51,15 @@ Item {
     readonly property var activeViewItem: root.activeMode === "month" ? monthViewLoader.item : weekViewLoader.item
     readonly property bool activeViewReady: root.activeViewItem?.initialLoadComplete ?? false
     readonly property bool timetableDragActive: root.activeViewItem?.timetableDragActive === true
+    property bool authBannerDismissed: false
+
+    Connections {
+        target: CalendarService
+        function onGoogleAuthRequiredChanged() {
+            if (!CalendarService.googleAuthRequired)
+                root.authBannerDismissed = false;
+        }
+    }
 
     Keys.priority: Keys.AfterItem
     Keys.onPressed: event => {
@@ -215,10 +225,131 @@ Item {
         onTriggered: root.revealActiveView()
     }
 
+    // Reauthorization warning banner (Google Calendar token expired/revoked)
+    Rectangle {
+        id: authBanner
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.margins: 12
+        z: 99
+        height: visible ? bannerLayout.implicitHeight + 16 : 0
+        visible: CalendarService.googleAuthRequired && !root.authBannerDismissed
+        color: Appearance.colors.colErrorContainer
+        radius: Appearance.rounding.normal
+        clip: true
+
+        Behavior on height {
+            NumberAnimation { duration: 250; easing.type: Easing.OutCubic }
+        }
+
+        RowLayout {
+            id: bannerLayout
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.margins: 16
+            spacing: 12
+
+            MaterialSymbol {
+                text: "sync_problem"
+                iconSize: 24
+                color: Appearance.colors.colOnErrorContainer
+            }
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 2
+
+                StyledText {
+                    text: Translation.tr("Google Calendar disconnected")
+                    font.pixelSize: Appearance.font.pixelSize.normal
+                    font.weight: Font.Bold
+                    color: Appearance.colors.colOnErrorContainer
+                }
+
+                StyledText {
+                    text: Translation.tr("Your authorization token expired or was revoked. Reconnect to resume synchronization.")
+                    font.pixelSize: Appearance.font.pixelSize.smaller
+                    color: Appearance.colors.colOnErrorContainer
+                    opacity: 0.85
+                    wrapMode: Text.Wrap
+                    Layout.fillWidth: true
+                }
+            }
+
+            RippleButton {
+                id: dismissButton
+                implicitHeight: 36
+                implicitWidth: dismissLabel.implicitWidth + 24
+                buttonRadius: Appearance.rounding.full
+                colBackground: "transparent"
+                colBackgroundHover: Appearance.colors.colErrorContainerHover
+                colRipple: Appearance.colors.colOnErrorContainer
+                onClicked: root.authBannerDismissed = true
+
+                StyledText {
+                    id: dismissLabel
+                    anchors.centerIn: parent
+                    text: Translation.tr("Dismiss")
+                    font.pixelSize: Appearance.font.pixelSize.small
+                    font.weight: Font.Bold
+                    color: Appearance.colors.colOnErrorContainer
+                }
+            }
+
+            RippleButton {
+                implicitHeight: 36
+                implicitWidth: reauthRow.implicitWidth + 24
+                buttonRadius: Appearance.rounding.full
+                colBackground: Appearance.colors.colError
+                colBackgroundHover: Appearance.colors.colErrorHover
+                colRipple: Appearance.colors.colOnError
+                enabled: !CalendarService.reauthenticatingGoogle
+                onClicked: CalendarService.startGoogleReauth()
+
+                RowLayout {
+                    id: reauthRow
+                    anchors.centerIn: parent
+                    spacing: 8
+
+                    MaterialSymbol {
+                        text: CalendarService.reauthenticatingGoogle ? "progress_activity" : "open_in_new"
+                        iconSize: 18
+                        color: Appearance.colors.colOnError
+
+                        RotationAnimation on rotation {
+                            running: CalendarService.reauthenticatingGoogle
+                            from: 0
+                            to: 360
+                            duration: 1000
+                            loops: Animation.Infinite
+                        }
+                    }
+
+                    StyledText {
+                        text: CalendarService.reauthenticatingGoogle
+                            ? Translation.tr("Waiting for browser…")
+                            : Translation.tr("Reconnect Google")
+                        font.pixelSize: Appearance.font.pixelSize.small
+                        font.weight: Font.Bold
+                        color: Appearance.colors.colOnError
+                    }
+                }
+            }
+        }
+    }
+
     Item {
         id: viewHost
-        anchors.fill: parent
-        anchors.margins: root.activeMode === "month" ? 16 : 0
+        anchors.top: authBanner.visible ? authBanner.bottom : parent.top
+        anchors.bottom: parent.bottom
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.leftMargin: root.activeMode === "month" ? 16 : 0
+        anchors.rightMargin: root.activeMode === "month" ? 16 : 0
+        anchors.bottomMargin: root.activeMode === "month" ? 16 : 0
+        anchors.topMargin: root.activeMode === "month" ? (authBanner.visible ? 8 : 16) : 0
 
         property real switchProgress: 1
 

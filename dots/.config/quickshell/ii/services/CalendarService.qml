@@ -29,6 +29,9 @@ Singleton {
     property string khalDbPath: root.homePath + "/.cache/khal/khal.db"
     readonly property string icsHelperPath: Directories.scriptPath + "/calendar/ics.py"
     readonly property string vdirsyncerSyncPath: Directories.scriptPath + "/calendar/vdirsyncer_sync.py"
+    readonly property string vdirsyncerReauthPath: Directories.scriptPath + "/calendar/vdirsyncer_reauth.py"
+    property bool googleAuthRequired: false
+    property bool reauthenticatingGoogle: false
     property list<var> calendars: []
     property string defaultCalendar: ""
     property list<var> calendarRequestQueue: []
@@ -499,10 +502,15 @@ Singleton {
         if (reply?.ok) {
             root.lastCalendarSyncError = "";
             root.lastCalendarSyncStatus = Translation.tr("Calendar synchronized.");
+            root.googleAuthRequired = false;
         } else {
             root.lastCalendarSyncError = String(reply?.error ?? Translation.tr("Could not synchronize calendar."));
             root.lastCalendarSyncStatus = "";
             console.warn("[CalendarService] vdirsyncer sync failed:", root.lastCalendarSyncError);
+            const lowerErr = root.lastCalendarSyncError.toLowerCase();
+            if (lowerErr.includes("invalid_grant") || lowerErr.includes("expired or revoked") || lowerErr.includes("token_refresh_failed") || lowerErr.includes("unauthorized") || lowerErr.includes("401")) {
+                root.googleAuthRequired = true;
+            }
         }
         root.loadEvents();
         if (root.calendarSyncQueue.length === 0)
@@ -511,6 +519,72 @@ Singleton {
         const next = queue.shift();
         root.calendarSyncQueue = queue;
         Qt.callLater(function() { root.requestCalendarSync(next); });
+    }
+
+    Process {
+        id: vdirsyncerReauthProcess
+
+        command: ["python3", root.vdirsyncerReauthPath]
+        running: false
+        property string responseText: ""
+
+        onRunningChanged: {
+            if (!running)
+                root.reauthenticatingGoogle = false;
+        }
+
+        stdout: StdioCollector {
+            onStreamFinished: vdirsyncerReauthProcess.responseText = this.text.trim()
+        }
+
+        stderr: StdioCollector {
+            onStreamFinished: {
+                if (this.text.trim())
+                    console.warn("[CalendarService] vdirsyncer reauth helper:", this.text.trim());
+            }
+        }
+
+        onExited: exitCode => {
+            root.reauthenticatingGoogle = false;
+            let reply;
+            try {
+                reply = JSON.parse(vdirsyncerReauthProcess.responseText);
+            } catch (e) {
+                reply = { ok: false, error: Translation.tr("Authentication response could not be read.") };
+            }
+            if (exitCode === 0 && reply?.ok) {
+                root.googleAuthRequired = false;
+                root.lastCalendarSyncError = "";
+                root.lastCalendarSyncStatus = Translation.tr("Google Calendar reconnected successfully.");
+                root.requestWritableCalendarSyncs();
+            } else if (root.googleAuthRequired) {
+                root.lastCalendarSyncError = String(reply?.error ?? Translation.tr("Google Calendar reauthorization failed."));
+                console.warn("[CalendarService] Google reauth failed:", root.lastCalendarSyncError);
+            }
+        }
+    }
+
+    IpcHandler {
+        target: "calendar"
+        function sync() {
+            root.requestWritableCalendarSyncs();
+        }
+        function onGoogleAuthComplete() {
+            root.googleAuthRequired = false;
+            root.reauthenticatingGoogle = false;
+            root.lastCalendarSyncError = "";
+            root.lastCalendarSyncStatus = Translation.tr("Google Calendar reconnected successfully.");
+            root.requestWritableCalendarSyncs();
+        }
+    }
+
+    function startGoogleReauth() {
+        if (root.reauthenticatingGoogle)
+            return false;
+        root.reauthenticatingGoogle = true;
+        vdirsyncerReauthProcess.responseText = "";
+        vdirsyncerReauthProcess.running = true;
+        return true;
     }
 
     // A single helper process is serialized because khal owns one SQLite

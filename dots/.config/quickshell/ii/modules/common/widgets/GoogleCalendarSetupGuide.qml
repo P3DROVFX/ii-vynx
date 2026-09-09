@@ -17,7 +17,7 @@ ColumnLayout {
     readonly property var setupSteps: [
         Translation.tr("Open Google Cloud Console and create or select the project shared with Gmail, Tasks and Drive."),
         Translation.tr("Enable the Google Calendar API in APIs & Services → Library."),
-        Translation.tr("Configure the OAuth consent screen, add your account as a test user, and allow Calendar plus basic email scopes."),
+        Translation.tr("Configure OAuth consent screen (External, Calendar/email scopes), then click 'Publish App' (In Production) so tokens do not expire after 7 days."),
         Translation.tr("Create an OAuth 2.0 Desktop client under Credentials."),
         Translation.tr("Save that same client ID and secret in ii/.env as GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET."),
         Translation.tr("Configure vdirsyncer with the same credential pair, run vdirsyncer discover once, then vdirsyncer sync."),
@@ -44,6 +44,12 @@ ColumnLayout {
             materialIcon: "key"
             text: Translation.tr("Use the same Google Cloud OAuth Desktop credentials as the other Google integrations: GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in ii/.env. When configuring the vdirsyncer google_calendar storage, copy this same pair instead of creating another OAuth client.")
         }
+    }
+
+    WarningBox {
+        Layout.fillWidth: true
+        visible: CalendarService.googleAuthRequired
+        text: Translation.tr("Google Calendar token expired or was revoked. Reconnect your account to resume background synchronization.")
     }
 
     WarningBox {
@@ -143,6 +149,26 @@ ColumnLayout {
         font.pixelSize: Appearance.font.pixelSize.small
         color: Appearance.colors.colOnSurfaceVariant
         wrapMode: Text.Wrap
+    }
+
+    RowLayout {
+        Layout.fillWidth: true
+        visible: CalendarService.googleAuthRequired
+        spacing: 8
+
+        RippleButtonWithIcon {
+            Layout.fillWidth: true
+            implicitHeight: 40
+            centerContent: true
+            materialIcon: CalendarService.reauthenticatingGoogle ? "progress_activity" : "login"
+            mainText: CalendarService.reauthenticatingGoogle ? Translation.tr("Connecting…") : Translation.tr("Reconnect Google Calendar")
+            enabled: !CalendarService.reauthenticatingGoogle
+            colText: Appearance.colors.colOnError
+            colBackground: Appearance.colors.colError
+            colBackgroundHover: Appearance.colors.colErrorHover
+            colRipple: Appearance.colors.colOnError
+            onClicked: CalendarService.startGoogleReauth()
+        }
     }
 
     RowLayout {

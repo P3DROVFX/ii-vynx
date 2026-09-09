@@ -20,16 +20,20 @@ Rectangle {
             return Translation.tr("Timetable disabled");
         if (!CalendarService.khalAvailable)
             return Translation.tr("khal unavailable");
+        if (CalendarService.googleAuthRequired)
+            return Translation.tr("Auth required");
         if (CalendarService.calendars.length === 0)
             return Translation.tr("No calendars found");
         return Translation.tr("Ready");
     }
-    readonly property bool healthy: root.timetableEnabled && CalendarService.khalAvailable && CalendarService.calendars.length > 0
+    readonly property bool healthy: root.timetableEnabled && CalendarService.khalAvailable && !CalendarService.googleAuthRequired && CalendarService.calendars.length > 0
     readonly property string detail: {
         if (!root.timetableEnabled)
             return Translation.tr("Enable the Timetable switch in Cheatsheet settings to use the calendar.");
         if (!CalendarService.khalAvailable)
             return Translation.tr("Install and configure khal and vdirsyncer, then run a recheck.");
+        if (CalendarService.googleAuthRequired)
+            return Translation.tr("Google Calendar token expired or was revoked. Reconnect to resume synchronization.");
         if (CalendarService.calendars.length === 0)
             return Translation.tr("khal is configured but reports no calendars. Open the setup guide below or run khal configure.");
         return Translation.tr("%1 writable calendar(s) · %2 read-only").arg(String(root.writableCalendarCount)).arg(String(root.readOnlyCalendarCount));
@@ -101,6 +105,24 @@ Rectangle {
                 font.pixelSize: Appearance.font.pixelSize.smaller
                 color: Appearance.colors.colSubtext
                 wrapMode: Text.Wrap
+            }
+
+            RippleButtonWithIcon {
+                id: reconnectButton
+
+                visible: CalendarService.googleAuthRequired
+                implicitHeight: 40
+                centerContent: true
+                materialIcon: CalendarService.reauthenticatingGoogle ? "progress_activity" : "login"
+                mainText: CalendarService.reauthenticatingGoogle ? Translation.tr("Connecting…") : Translation.tr("Reconnect Google")
+                enabled: !CalendarService.reauthenticatingGoogle
+                Accessible.name: Translation.tr("Reconnect Google Calendar")
+                Accessible.description: Translation.tr("Open browser to reauthorize Google Calendar synchronization")
+                colText: Appearance.colors.colOnError
+                colBackground: Appearance.colors.colError
+                colBackgroundHover: Appearance.colors.colErrorHover
+                colRipple: Appearance.colors.colOnError
+                onClicked: CalendarService.startGoogleReauth()
             }
 
             RippleButtonWithIcon {
